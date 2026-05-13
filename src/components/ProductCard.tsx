@@ -1,9 +1,8 @@
 import { type Product, formatNaira } from "@/lib/products";
-import { whatsappLink } from "@/lib/contact";
 import { ShoppingBag } from "lucide-react";
+import { BuyNowDialog } from "./BuyNowDialog";
 
 export function ProductCard({ product }: { product: Product }) {
-  const msg = `Hi E Style Collection 👋, I'd like to order: ${product.name} (${formatNaira(product.price)}). Is it available?`;
   return (
     <div className="group">
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted">
@@ -20,15 +19,18 @@ export function ProductCard({ product }: { product: Product }) {
             {product.tag}
           </span>
         )}
-        <a
-          href={whatsappLink(msg)}
-          target="_blank"
-          rel="noreferrer"
-          className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity btn-primary !py-2 !px-3 text-xs"
-          aria-label={`Order ${product.name}`}
-        >
-          <ShoppingBag size={14} /> Order
-        </a>
+        <BuyNowDialog
+          product={product}
+          trigger={
+            <button
+              type="button"
+              className="absolute bottom-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity btn-primary !py-2 !px-3 text-xs"
+              aria-label={`Buy ${product.name}`}
+            >
+              <ShoppingBag size={14} /> Buy now
+            </button>
+          }
+        />
       </div>
       <div className="mt-4 flex items-start justify-between gap-3">
         <div>
@@ -40,3 +42,4 @@ export function ProductCard({ product }: { product: Product }) {
     </div>
   );
 }
+
