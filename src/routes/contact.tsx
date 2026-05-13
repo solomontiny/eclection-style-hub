@@ -275,6 +275,3 @@ function WhatsappOrderForm() {
     </div>
   );
 }
-    </>
-  );
-}
