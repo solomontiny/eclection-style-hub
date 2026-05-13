@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Truck, ShieldCheck, Sparkles } from "lucide-react";
 import hero from "@/assets/hero.jpg";
+import logo from "@/assets/logo.jpg";
 import { PRODUCTS } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
 import { whatsappLink } from "@/lib/contact";
@@ -23,6 +24,7 @@ function Home() {
       <section className="relative overflow-hidden" style={{ background: "var(--gradient-hero)" }}>
         <div className="container-x py-16 lg:py-24 grid lg:grid-cols-2 gap-12 items-center">
           <div>
+            <img src={logo} alt="E Style Collection logo" width={160} height={224} className="mb-6 h-32 md:h-40 w-auto object-contain mix-blend-multiply" />
             <span className="inline-block px-3 py-1 rounded-full bg-background/70 text-xs font-semibold tracking-widest uppercase text-primary">
               New Season · 2026
             </span>
