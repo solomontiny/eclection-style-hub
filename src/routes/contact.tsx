@@ -222,36 +222,52 @@ function WhatsappOrderForm() {
       <div className="rounded-2xl bg-background p-5 border border-border/60 space-y-3">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Your order</p>
         {items.map((it, i) => (
-          <div key={i} className="grid grid-cols-12 gap-2 items-center">
-            <input
-              value={it.name}
-              onChange={(e) => updateItem(i, { name: e.target.value })}
-              placeholder="Item name (e.g. Floral Maxi Dress)"
-              className="col-span-7 rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary"
-            />
-            <select
-              value={it.size}
-              onChange={(e) => updateItem(i, { size: e.target.value })}
-              className="col-span-2 rounded-lg border border-border px-2 py-2 text-sm focus:outline-none focus:border-primary"
-            >
-              {["S", "M", "L", "XL", "XXL"].map((s) => <option key={s}>{s}</option>)}
-            </select>
-            <input
-              type="number"
-              min={1}
-              value={it.qty}
-              onChange={(e) => updateItem(i, { qty: Math.max(1, Number(e.target.value) || 1) })}
-              className="col-span-2 rounded-lg border border-border px-2 py-2 text-sm focus:outline-none focus:border-primary text-center"
-            />
-            <button
-              type="button"
-              onClick={() => removeItem(i)}
-              disabled={items.length === 1}
-              className="col-span-1 text-muted-foreground hover:text-destructive disabled:opacity-30 text-lg"
-              aria-label="Remove item"
-            >
-              ×
-            </button>
+          <div key={i} className="space-y-2 pb-3 border-b border-border/40 last:border-0 last:pb-0">
+            <div className="grid grid-cols-12 gap-2 items-center">
+              <input
+                value={it.name}
+                onChange={(e) => updateItem(i, { name: e.target.value })}
+                placeholder="Item name (e.g. Floral Maxi Dress)"
+                className="col-span-7 rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary"
+              />
+              <select
+                value={it.size}
+                onChange={(e) => updateItem(i, { size: e.target.value })}
+                className="col-span-2 rounded-lg border border-border px-2 py-2 text-sm focus:outline-none focus:border-primary"
+              >
+                {["S", "M", "L", "XL", "XXL"].map((s) => <option key={s}>{s}</option>)}
+              </select>
+              <input
+                type="number"
+                min={1}
+                value={it.qty}
+                onChange={(e) => updateItem(i, { qty: Math.max(1, Number(e.target.value) || 1) })}
+                className="col-span-2 rounded-lg border border-border px-2 py-2 text-sm focus:outline-none focus:border-primary text-center"
+              />
+              <button
+                type="button"
+                onClick={() => removeItem(i)}
+                disabled={items.length === 1}
+                className="col-span-1 text-muted-foreground hover:text-destructive disabled:opacity-30 text-lg"
+                aria-label="Remove item"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground w-20">Unit price (₦)</span>
+              <input
+                type="number"
+                min={0}
+                value={it.price || ""}
+                onChange={(e) => updateItem(i, { price: Math.max(0, Number(e.target.value) || 0) })}
+                placeholder="0"
+                className="flex-1 rounded-lg border border-border px-3 py-1.5 text-sm focus:outline-none focus:border-primary"
+              />
+              <span className="text-xs font-semibold text-primary min-w-[80px] text-right">
+                = {formatNaira(it.price * it.qty)}
+              </span>
+            </div>
           </div>
         ))}
         <button type="button" onClick={addItem} className="text-xs font-semibold text-primary hover:underline">
@@ -273,6 +289,33 @@ function WhatsappOrderForm() {
           className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
         />
         <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City / State (e.g. Lekki, Lagos)" className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+        <div>
+          <p className="text-xs text-muted-foreground mb-1.5">Delivery zone</p>
+          <div className="flex flex-wrap gap-1.5">
+            {DELIVERY_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => setDeliveryFee(p.fee)}
+                className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
+                  deliveryFee === p.fee ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary"
+                }`}
+              >
+                {p.label} {p.fee > 0 && `· ${formatNaira(p.fee)}`}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs text-muted-foreground w-20">Custom (₦)</span>
+            <input
+              type="number"
+              min={0}
+              value={deliveryFee}
+              onChange={(e) => setDeliveryFee(Math.max(0, Number(e.target.value) || 0))}
+              className="flex-1 rounded-lg border border-border px-3 py-1.5 text-sm focus:outline-none focus:border-primary"
+            />
+          </div>
+        </div>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -280,6 +323,12 @@ function WhatsappOrderForm() {
           rows={2}
           className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
         />
+      </div>
+
+      <div className="rounded-2xl bg-background p-5 border border-border/60 space-y-2 text-sm">
+        <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-semibold">{formatNaira(subtotal)}</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Delivery fee</span><span className="font-semibold">{deliveryFee === 0 ? "FREE" : formatNaira(deliveryFee)}</span></div>
+        <div className="flex justify-between pt-2 border-t border-border/60"><span className="font-display text-lg">Total</span><span className="font-display text-2xl text-primary">{formatNaira(total)}</span></div>
       </div>
 
       <a
