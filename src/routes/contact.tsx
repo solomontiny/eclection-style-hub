@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Mail, Phone, MapPin, Instagram, Facebook, MessageCircle, Copy, Check } from "lucide-react";
 import { CONTACT, whatsappLink } from "@/lib/contact";
+import { formatNaira } from "@/lib/products";
 import { useState } from "react";
 
 export const Route = createFileRoute("/contact")({
