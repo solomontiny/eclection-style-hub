@@ -136,10 +136,10 @@ export function CustomerCareWidget() {
       )}
       <button
         onClick={() => setOpen((v) => !v)}
-        aria-label="Customer care chat"
-        className="fixed bottom-5 right-4 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-card)] flex items-center justify-center hover:scale-105 transition-transform"
+        aria-label="Customer care chat on WhatsApp"
+        className="fixed bottom-5 right-4 z-50 h-14 w-14 rounded-full bg-[#25D366] text-white shadow-[var(--shadow-card)] flex items-center justify-center hover:scale-105 transition-transform"
       >
-        {open ? <X size={22} /> : <MessageCircle size={22} />}
+        {open ? <X size={22} /> : <WhatsAppIcon size={28} />}
       </button>
     </>
   );
