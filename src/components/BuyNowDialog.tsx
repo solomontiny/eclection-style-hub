@@ -11,14 +11,23 @@ export function BuyNowDialog({ product, trigger }: { product: Product; trigger: 
   const total = product.price * qty;
 
   const message =
-    `Hi E Style Collection 👋, I'd like to place an order:\n\n` +
-    `• Product: ${product.name}\n` +
-    `• Category: ${product.category}\n` +
-    `• Size: ${size}\n` +
-    `• Quantity: ${qty}\n` +
-    `• Unit price: ${formatNaira(product.price)}\n` +
-    `• Total: ${formatNaira(total)}\n\n` +
-    `Please confirm availability and delivery details. Thank you!`;
+    `*New Order — E Style Collection* 🛍️\n` +
+    `━━━━━━━━━━━━━━━━━━\n\n` +
+    `Hi E Style Collection 👋\n` +
+    `I'd like to place the following order:\n\n` +
+    `🧾 *Order Details*\n` +
+    `• Product   : ${product.name}\n` +
+    `• Category  : ${product.category}\n` +
+    `• Size      : ${size}\n` +
+    `• Quantity  : ${qty}\n\n` +
+    `💰 *Price Breakdown*\n` +
+    `• Unit price : ${formatNaira(product.price)}\n` +
+    `• Quantity   : x${qty}\n` +
+    `• Subtotal   : ${formatNaira(total)}\n\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `*TOTAL: ${formatNaira(total)}*\n` +
+    `━━━━━━━━━━━━━━━━━━\n\n` +
+    `Please confirm availability and delivery details. Thank you! 💕`;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
