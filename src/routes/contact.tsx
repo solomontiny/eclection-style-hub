@@ -76,11 +76,45 @@ function Contact() {
         {/* Payment */}
         <div className="rounded-3xl p-8 text-foreground" style={{ background: "var(--gradient-soft)" }}>
           <p className="text-xs uppercase tracking-widest text-primary font-semibold">Payment</p>
-          <h2 className="font-display text-2xl mt-2">How to pay</h2>
-          <ol className="mt-5 space-y-3 text-sm">
-            <li className="flex gap-3"><span className="font-semibold text-primary">1.</span> Send us your order on WhatsApp — we'll confirm availability and total (item + delivery).</li>
-            <li className="flex gap-3"><span className="font-semibold text-primary">2.</span> Pay via bank transfer to the account below.</li>
-            <li className="flex gap-3"><span className="font-semibold text-primary">3.</span> Send proof of payment. We dispatch within 24 hours.</li>
+          <h2 className="font-display text-2xl mt-2">Choose how to pay</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Select your preferred Nigerian payment method below.</p>
+          <PaymentSelector copied={copied} copyAcct={copyAcct} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () => void }) {
+  const [method, setMethod] = useState<"bank" | "whatsapp">("bank");
+
+  return (
+    <>
+      <div className="mt-5 grid grid-cols-2 gap-2 p-1 rounded-full bg-background/60 border border-border/60">
+        <button
+          onClick={() => setMethod("bank")}
+          className={`py-2.5 rounded-full text-sm font-semibold transition-colors ${
+            method === "bank" ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground hover:bg-background"
+          }`}
+        >
+          🏦 Bank Transfer
+        </button>
+        <button
+          onClick={() => setMethod("whatsapp")}
+          className={`py-2.5 rounded-full text-sm font-semibold transition-colors ${
+            method === "whatsapp" ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground hover:bg-background"
+          }`}
+        >
+          💬 WhatsApp
+        </button>
+      </div>
+
+      {method === "bank" ? (
+        <div className="mt-6 animate-in fade-in slide-in-from-bottom-2">
+          <ol className="space-y-3 text-sm">
+            <li className="flex gap-3"><span className="font-semibold text-primary">1.</span> Confirm your order total with us on WhatsApp (item + delivery fee).</li>
+            <li className="flex gap-3"><span className="font-semibold text-primary">2.</span> Transfer the exact amount to the account below.</li>
+            <li className="flex gap-3"><span className="font-semibold text-primary">3.</span> Send proof of payment on WhatsApp — we dispatch within 24 hours.</li>
           </ol>
 
           <div className="mt-6 rounded-2xl bg-background p-5 border border-border/60">
@@ -98,7 +132,7 @@ function Contact() {
                 <p className="text-muted-foreground text-xs">Account number</p>
                 <div className="flex items-center gap-3 mt-1">
                   <p className="font-display text-2xl text-primary">{CONTACT.bank.accountNumber}</p>
-                  <button onClick={copyAcct} className="p-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Copy">
+                  <button onClick={copyAcct} className="p-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Copy account number">
                     {copied ? <Check size={16} /> : <Copy size={16} />}
                   </button>
                 </div>
@@ -106,14 +140,57 @@ function Contact() {
             </div>
           </div>
 
-          <a href={whatsappLink("Hi E Style 👋, I'd like to place an order.")} target="_blank" rel="noreferrer" className="btn-primary mt-6 w-full justify-center">
-            <MessageCircle size={16} /> Start order on WhatsApp
+          <a
+            href={whatsappLink(
+              `Hi E Style 👋, I've made a bank transfer to ${CONTACT.bank.bankName} (${CONTACT.bank.accountNumber}). My proof of payment is attached.`,
+            )}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-primary mt-6 w-full justify-center"
+          >
+            <MessageCircle size={16} /> Send proof of payment
           </a>
           <p className="mt-3 text-xs text-muted-foreground text-center">
             Card payments (Paystack / Flutterwave) coming soon.
           </p>
         </div>
-      </div>
-    </section>
+      ) : (
+        <div className="mt-6 animate-in fade-in slide-in-from-bottom-2">
+          <ol className="space-y-3 text-sm">
+            <li className="flex gap-3"><span className="font-semibold text-primary">1.</span> Tap the button below to open a WhatsApp chat with our team.</li>
+            <li className="flex gap-3"><span className="font-semibold text-primary">2.</span> Share the item(s), size, quantity and your delivery address.</li>
+            <li className="flex gap-3"><span className="font-semibold text-primary">3.</span> We'll confirm the total and guide you through payment & delivery.</li>
+          </ol>
+
+          <div className="mt-6 rounded-2xl bg-background p-5 border border-border/60">
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Chat with us</p>
+            <div className="mt-3 flex items-center justify-between">
+              <div>
+                <p className="text-muted-foreground text-xs">WhatsApp number</p>
+                <p className="font-display text-2xl text-primary">{CONTACT.phone}</p>
+              </div>
+              <span className="flex items-center gap-1.5 text-xs text-green-600 font-semibold">
+                <span className="h-2 w-2 rounded-full bg-green-500 inline-block" /> Online
+              </span>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Replies Mon–Sat, 9am–7pm WAT. Outside hours, drop a message and we'll respond first thing.
+            </p>
+          </div>
+
+          <a
+            href={whatsappLink("Hi E Style 👋, I'd like to place an order. Here are my details:")}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-primary mt-6 w-full justify-center"
+          >
+            <MessageCircle size={16} /> Start order on WhatsApp
+          </a>
+          <p className="mt-3 text-xs text-muted-foreground text-center">
+            Fastest way to order — we'll handle everything in chat.
+          </p>
+        </div>
+      )}
+    </>
   );
 }
