@@ -155,42 +155,126 @@ function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () =
           </p>
         </div>
       ) : (
-        <div className="mt-6 animate-in fade-in slide-in-from-bottom-2">
-          <ol className="space-y-3 text-sm">
-            <li className="flex gap-3"><span className="font-semibold text-primary">1.</span> Tap the button below to open a WhatsApp chat with our team.</li>
-            <li className="flex gap-3"><span className="font-semibold text-primary">2.</span> Share the item(s), size, quantity and your delivery address.</li>
-            <li className="flex gap-3"><span className="font-semibold text-primary">3.</span> We'll confirm the total and guide you through payment & delivery.</li>
-          </ol>
-
-          <div className="mt-6 rounded-2xl bg-background p-5 border border-border/60">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Chat with us</p>
-            <div className="mt-3 flex items-center justify-between">
-              <div>
-                <p className="text-muted-foreground text-xs">WhatsApp number</p>
-                <p className="font-display text-2xl text-primary">{CONTACT.phone}</p>
-              </div>
-              <span className="flex items-center gap-1.5 text-xs text-green-600 font-semibold">
-                <span className="h-2 w-2 rounded-full bg-green-500 inline-block" /> Online
-              </span>
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Replies Mon–Sat, 9am–7pm WAT. Outside hours, drop a message and we'll respond first thing.
-            </p>
-          </div>
-
-          <a
-            href={whatsappLink("Hi E Style 👋, I'd like to place an order. Here are my details:")}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-primary mt-6 w-full justify-center"
-          >
-            <MessageCircle size={16} /> Start order on WhatsApp
-          </a>
-          <p className="mt-3 text-xs text-muted-foreground text-center">
-            Fastest way to order — we'll handle everything in chat.
-          </p>
-        </div>
+        <WhatsappOrderForm />
       )}
+    </>
+  );
+}
+
+type OrderItem = { name: string; size: string; qty: number };
+
+function WhatsappOrderForm() {
+  const [items, setItems] = useState<OrderItem[]>([{ name: "", size: "M", qty: 1 }]);
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const updateItem = (i: number, patch: Partial<OrderItem>) =>
+    setItems((arr) => arr.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
+  const addItem = () => setItems((arr) => [...arr, { name: "", size: "M", qty: 1 }]);
+  const removeItem = (i: number) => setItems((arr) => (arr.length > 1 ? arr.filter((_, idx) => idx !== i) : arr));
+
+  const validItems = items.filter((it) => it.name.trim());
+  const canSend = validItems.length > 0 && address.trim() && fullName.trim();
+
+  const message =
+    `*New Order — E Style Collection* 🛍️\n` +
+    `━━━━━━━━━━━━━━━━━━\n\n` +
+    `🧾 *Items*\n` +
+    (validItems.length
+      ? validItems.map((it, i) => `${i + 1}. ${it.name} — Size ${it.size} × ${it.qty}`).join("\n")
+      : "(no items yet)") +
+    `\n\n👤 *Customer*\n` +
+    `• Name   : ${fullName || "—"}\n` +
+    `• Phone  : ${phone || "—"}\n\n` +
+    `📍 *Delivery Address*\n` +
+    `${address || "—"}${city ? `, ${city}` : ""}\n\n` +
+    (notes.trim() ? `📝 *Notes*\n${notes}\n\n` : "") +
+    `Please confirm availability, total + delivery fee. Thank you! 💕`;
+
+  return (
+    <div className="mt-6 animate-in fade-in slide-in-from-bottom-2 space-y-4">
+      <div className="rounded-2xl bg-background p-5 border border-border/60 space-y-3">
+        <p className="text-xs uppercase tracking-widest text-muted-foreground">Your order</p>
+        {items.map((it, i) => (
+          <div key={i} className="grid grid-cols-12 gap-2 items-center">
+            <input
+              value={it.name}
+              onChange={(e) => updateItem(i, { name: e.target.value })}
+              placeholder="Item name (e.g. Floral Maxi Dress)"
+              className="col-span-7 rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary"
+            />
+            <select
+              value={it.size}
+              onChange={(e) => updateItem(i, { size: e.target.value })}
+              className="col-span-2 rounded-lg border border-border px-2 py-2 text-sm focus:outline-none focus:border-primary"
+            >
+              {["S", "M", "L", "XL", "XXL"].map((s) => <option key={s}>{s}</option>)}
+            </select>
+            <input
+              type="number"
+              min={1}
+              value={it.qty}
+              onChange={(e) => updateItem(i, { qty: Math.max(1, Number(e.target.value) || 1) })}
+              className="col-span-2 rounded-lg border border-border px-2 py-2 text-sm focus:outline-none focus:border-primary text-center"
+            />
+            <button
+              type="button"
+              onClick={() => removeItem(i)}
+              disabled={items.length === 1}
+              className="col-span-1 text-muted-foreground hover:text-destructive disabled:opacity-30 text-lg"
+              aria-label="Remove item"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        <button type="button" onClick={addItem} className="text-xs font-semibold text-primary hover:underline">
+          + Add another item
+        </button>
+      </div>
+
+      <div className="rounded-2xl bg-background p-5 border border-border/60 space-y-3">
+        <p className="text-xs uppercase tracking-widest text-muted-foreground">Delivery details</p>
+        <div className="grid grid-cols-2 gap-2">
+          <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name *" className="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number" className="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+        </div>
+        <textarea
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="Delivery address *"
+          rows={2}
+          className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
+        />
+        <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City / State (e.g. Lekki, Lagos)" className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Notes (color preference, landmark…)"
+          rows={2}
+          className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
+        />
+      </div>
+
+      <a
+        href={canSend ? whatsappLink(message) : undefined}
+        target="_blank"
+        rel="noreferrer"
+        aria-disabled={!canSend}
+        onClick={(e) => { if (!canSend) e.preventDefault(); }}
+        className={`btn-primary w-full justify-center ${!canSend ? "opacity-50 cursor-not-allowed" : ""}`}
+      >
+        <MessageCircle size={16} /> Send order on WhatsApp
+      </a>
+      <p className="text-xs text-muted-foreground text-center">
+        Your items, sizes, quantities and delivery address are pre-filled in the message.
+      </p>
+    </div>
+  );
+}
     </>
   );
 }
