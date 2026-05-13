@@ -88,6 +88,7 @@ function RootComponent() {
           <Outlet />
         </main>
         <SiteFooter />
+        <CustomerCareWidget />
       </div>
     </QueryClientProvider>
   );
