@@ -124,8 +124,8 @@ export function CustomerCareWidget() {
             ))}
           </div>
           <div className="border-t border-border p-2 bg-background">
-            <a href={whatsappLink(handoffMsg)} target="_blank" rel="noreferrer" className="block w-full text-center text-xs font-semibold text-primary hover:underline mb-2">
-              Continue on WhatsApp →
+            <a href={whatsappLink(handoffMsg)} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 w-full text-center text-xs font-semibold text-[#25D366] hover:underline mb-2">
+              <WhatsAppIcon size={14} /> Continue on WhatsApp →
             </a>
             <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex gap-2">
               <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type a message…" className="flex-1 rounded-full border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary" />
