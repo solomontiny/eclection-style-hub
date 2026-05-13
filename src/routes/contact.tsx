@@ -192,7 +192,30 @@ function WhatsappOrderForm() {
   const canSend = validItems.length > 0 && address.trim() && fullName.trim();
 
   const subtotal = validItems.reduce((sum, it) => sum + it.price * it.qty, 0);
-  const total = subtotal + deliveryFee;
+  const discount = !promo ? 0
+    : promo.type === "percent" ? Math.round((subtotal * promo.value) / 100)
+    : promo.type === "amount" ? Math.min(subtotal, promo.value)
+    : 0;
+  const discountedSubtotal = Math.max(0, subtotal - discount);
+  const effectiveDelivery = promo?.type === "freeship" ? 0 : deliveryFee;
+  const total = discountedSubtotal + effectiveDelivery;
+
+  const PROMO_CODES: Record<string, { type: "percent" | "amount" | "freeship"; value: number; label: string }> = {
+    WELCOME10: { type: "percent", value: 10, label: "10% off" },
+    ESTYLE5: { type: "percent", value: 5, label: "5% off" },
+    SAVE2K: { type: "amount", value: 2000, label: "₦2,000 off" },
+    FREESHIP: { type: "freeship", value: 0, label: "Free delivery" },
+  };
+
+  const applyPromo = () => {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) { setPromo(null); setPromoError(""); return; }
+    const found = PROMO_CODES[code];
+    if (!found) { setPromo(null); setPromoError("Invalid promo code"); return; }
+    setPromo({ code, type: found.type, value: found.value });
+    setPromoError("");
+  };
+  const clearPromo = () => { setPromo(null); setPromoInput(""); setPromoError(""); };
 
   const message =
     `*New Order — E Style Collection* 🛍️\n` +
