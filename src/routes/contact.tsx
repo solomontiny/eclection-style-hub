@@ -231,9 +231,11 @@ function WhatsappOrderForm() {
       : "(no items yet)") +
     `\n\n💰 *Price Breakdown*\n` +
     `• Subtotal      : ${formatNaira(subtotal)}\n` +
-    `• Delivery fee  : ${deliveryFee === 0 ? "FREE (pickup)" : formatNaira(deliveryFee)}\n` +
+    (promo ? `• Promo (${promo.code}) : -${formatNaira(discount)}${promo.type === "freeship" ? " (free delivery)" : ""}\n` : "") +
+    `• Delivery fee  : ${effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
     `*TOTAL: ${formatNaira(total)}*\n` +
+    `━━━━━━━━━━━━━━━━━━\n\n` +
     `━━━━━━━━━━━━━━━━━━\n\n` +
     `👤 *Customer*\n` +
     `• Name   : ${fullName || "—"}\n` +
