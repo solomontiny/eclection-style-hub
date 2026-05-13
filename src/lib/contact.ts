@@ -9,9 +9,9 @@ export const CONTACT = {
   tiktokHandle: "supplier.affordable",
   // Bank details — update with real account info
   bank: {
-    bankName: "GTBank",
-    accountName: "E Style Collection",
-    accountNumber: "0123456789",
+    bankName: "Access Bank",
+    accountName: "Aken Margaret Ifeoma",
+    accountNumber: "0800175647",
   },
 } as const;
 
