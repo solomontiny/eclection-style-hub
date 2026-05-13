@@ -162,38 +162,60 @@ function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () =
   );
 }
 
-type OrderItem = { name: string; size: string; qty: number };
+type OrderItem = { name: string; size: string; qty: number; price: number };
+
+const DELIVERY_PRESETS = [
+  { label: "Lekki / Ajah", fee: 2500 },
+  { label: "Lagos Mainland", fee: 3500 },
+  { label: "Other states (NG)", fee: 5000 },
+  { label: "Pickup (free)", fee: 0 },
+];
 
 function WhatsappOrderForm() {
-  const [items, setItems] = useState<OrderItem[]>([{ name: "", size: "M", qty: 1 }]);
+  const [items, setItems] = useState<OrderItem[]>([{ name: "", size: "M", qty: 1, price: 0 }]);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [notes, setNotes] = useState("");
+  const [deliveryFee, setDeliveryFee] = useState(2500);
 
   const updateItem = (i: number, patch: Partial<OrderItem>) =>
     setItems((arr) => arr.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
-  const addItem = () => setItems((arr) => [...arr, { name: "", size: "M", qty: 1 }]);
+  const addItem = () => setItems((arr) => [...arr, { name: "", size: "M", qty: 1, price: 0 }]);
   const removeItem = (i: number) => setItems((arr) => (arr.length > 1 ? arr.filter((_, idx) => idx !== i) : arr));
 
   const validItems = items.filter((it) => it.name.trim());
   const canSend = validItems.length > 0 && address.trim() && fullName.trim();
+
+  const subtotal = validItems.reduce((sum, it) => sum + it.price * it.qty, 0);
+  const total = subtotal + deliveryFee;
 
   const message =
     `*New Order — E Style Collection* 🛍️\n` +
     `━━━━━━━━━━━━━━━━━━\n\n` +
     `🧾 *Items*\n` +
     (validItems.length
-      ? validItems.map((it, i) => `${i + 1}. ${it.name} — Size ${it.size} × ${it.qty}`).join("\n")
+      ? validItems
+          .map(
+            (it, i) =>
+              `${i + 1}. ${it.name} — Size ${it.size} × ${it.qty}\n   ${formatNaira(it.price)} × ${it.qty} = ${formatNaira(it.price * it.qty)}`,
+          )
+          .join("\n")
       : "(no items yet)") +
-    `\n\n👤 *Customer*\n` +
+    `\n\n💰 *Price Breakdown*\n` +
+    `• Subtotal      : ${formatNaira(subtotal)}\n` +
+    `• Delivery fee  : ${deliveryFee === 0 ? "FREE (pickup)" : formatNaira(deliveryFee)}\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `*TOTAL: ${formatNaira(total)}*\n` +
+    `━━━━━━━━━━━━━━━━━━\n\n` +
+    `👤 *Customer*\n` +
     `• Name   : ${fullName || "—"}\n` +
     `• Phone  : ${phone || "—"}\n\n` +
     `📍 *Delivery Address*\n` +
     `${address || "—"}${city ? `, ${city}` : ""}\n\n` +
     (notes.trim() ? `📝 *Notes*\n${notes}\n\n` : "") +
-    `Please confirm availability, total + delivery fee. Thank you! 💕`;
+    `Please confirm availability and final total. Thank you! 💕`;
 
   return (
     <div className="mt-6 animate-in fade-in slide-in-from-bottom-2 space-y-4">
