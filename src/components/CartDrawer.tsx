@@ -57,7 +57,12 @@ export function CartDrawer() {
                     <img src={it.image} alt={it.name} className="h-20 w-16 object-cover rounded-lg" />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm truncate">{it.name}</p>
-                      <p className="text-xs text-muted-foreground">Size {it.size}</p>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Size</span>
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-5 px-1.5 rounded-md bg-primary/10 text-primary text-[11px] font-bold">
+                          {it.size}
+                        </span>
+                      </div>
                       <p className="text-sm text-primary font-semibold mt-1">{formatNaira(it.price)}</p>
                       <div className="mt-2 flex items-center gap-2">
                         <div className="flex items-center border border-border rounded-full">
