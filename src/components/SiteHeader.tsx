@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { CartDrawer } from "./CartDrawer";
 
 const links = [
   { to: "/", label: "Home" },
@@ -31,14 +32,18 @@ export function SiteHeader() {
           <Link to="/contact" className="btn-primary !py-2.5 !px-5 text-sm">
             Order Now
           </Link>
+          <CartDrawer />
         </nav>
-        <button
-          className="md:hidden p-2"
-          onClick={() => setOpen(!open)}
-          aria-label="Menu"
-        >
-          {open ? <X size={22} /> : <Menu size={22} />}
-        </button>
+        <div className="md:hidden flex items-center gap-1">
+          <CartDrawer />
+          <button
+            className="p-2"
+            onClick={() => setOpen(!open)}
+            aria-label="Menu"
+          >
+            {open ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
       </div>
       {open && (
         <div className="md:hidden border-t border-border/60 bg-background">

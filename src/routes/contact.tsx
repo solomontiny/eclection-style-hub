@@ -179,6 +179,7 @@ function WhatsappOrderForm() {
   const [city, setCity] = useState("");
   const [notes, setNotes] = useState("");
   const [deliveryFee, setDeliveryFee] = useState(2500);
+  const [deliveryLabel, setDeliveryLabel] = useState<string>("Lekki / Ajah");
   const [promoInput, setPromoInput] = useState("");
   const [promo, setPromo] = useState<{ code: string; type: "percent" | "amount" | "freeship"; value: number } | null>(null);
   const [promoError, setPromoError] = useState("");
@@ -232,6 +233,7 @@ function WhatsappOrderForm() {
     `\n\n💰 *Price Breakdown*\n` +
     `• Subtotal      : ${formatNaira(subtotal)}\n` +
     (promo ? `• Promo (${promo.code}) : -${formatNaira(discount)}${promo.type === "freeship" ? " (free delivery)" : ""}\n` : "") +
+    `• Delivery zone : ${promo?.type === "freeship" ? `${deliveryLabel} (free shipping promo)` : deliveryLabel}\n` +
     `• Delivery fee  : ${effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
     `*TOTAL: ${formatNaira(total)}*\n` +
@@ -324,9 +326,9 @@ function WhatsappOrderForm() {
               <button
                 key={p.label}
                 type="button"
-                onClick={() => setDeliveryFee(p.fee)}
+                onClick={() => { setDeliveryFee(p.fee); setDeliveryLabel(p.label); }}
                 className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
-                  deliveryFee === p.fee ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary"
+                  deliveryLabel === p.label ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary"
                 }`}
               >
                 {p.label} {p.fee > 0 && `· ${formatNaira(p.fee)}`}
@@ -339,7 +341,7 @@ function WhatsappOrderForm() {
               type="number"
               min={0}
               value={deliveryFee}
-              onChange={(e) => setDeliveryFee(Math.max(0, Number(e.target.value) || 0))}
+              onChange={(e) => { setDeliveryFee(Math.max(0, Number(e.target.value) || 0)); setDeliveryLabel("Custom"); }}
               className="flex-1 rounded-lg border border-border px-3 py-1.5 text-sm focus:outline-none focus:border-primary"
             />
           </div>

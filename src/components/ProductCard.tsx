@@ -1,8 +1,10 @@
 import { type Product, formatNaira } from "@/lib/products";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Plus } from "lucide-react";
 import { BuyNowDialog } from "./BuyNowDialog";
+import { useCart } from "@/lib/cart";
 
 export function ProductCard({ product }: { product: Product }) {
+  const { addItem } = useCart();
   return (
     <div className="group">
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted">
@@ -19,18 +21,29 @@ export function ProductCard({ product }: { product: Product }) {
             {product.tag}
           </span>
         )}
-        <BuyNowDialog
-          product={product}
-          trigger={
-            <button
-              type="button"
-              className="absolute bottom-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity btn-primary !py-2 !px-3 text-xs"
-              aria-label={`Buy ${product.name}`}
-            >
-              <ShoppingBag size={14} /> Buy now
-            </button>
-          }
-        />
+        <div className="absolute bottom-3 right-3 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={() => addItem(product, "M", 1)}
+            className="rounded-full bg-background/95 text-foreground hover:bg-primary hover:text-primary-foreground p-2 shadow-sm transition-colors"
+            aria-label={`Add ${product.name} to cart`}
+            title="Add to cart"
+          >
+            <Plus size={14} />
+          </button>
+          <BuyNowDialog
+            product={product}
+            trigger={
+              <button
+                type="button"
+                className="btn-primary !py-2 !px-3 text-xs"
+                aria-label={`Buy ${product.name}`}
+              >
+                <ShoppingBag size={14} /> Buy now
+              </button>
+            }
+          />
+        </div>
       </div>
       <div className="mt-4 flex items-start justify-between gap-3">
         <div>
@@ -42,4 +55,3 @@ export function ProductCard({ product }: { product: Product }) {
     </div>
   );
 }
-
