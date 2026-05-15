@@ -1,4 +1,4 @@
-import { ShoppingCart, MessageCircle, Trash2, Minus, Plus } from "lucide-react";
+import { ShoppingCart, MessageCircle, Trash2, Minus, Plus, Sparkles, Copy, Check } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useCart, cartItemKey } from "@/lib/cart";
 import { formatNaira } from "@/lib/products";
@@ -12,39 +12,99 @@ const DELIVERY_PRESETS = [
   { label: "Pickup", fee: 0 },
 ];
 
-const PROMO_CODES: Record<string, { type: "percent" | "amount" | "freeship"; value: number; label: string }> = {
-  WELCOME10: { type: "percent", value: 10, label: "10% off" },
-  ESTYLE5: { type: "percent", value: 5, label: "5% off" },
-  SAVE2K: { type: "amount", value: 2000, label: "₦2,000 off" },
-  FREESHIP: { type: "freeship", value: 0, label: "Free delivery" },
+type PromoType = "percent" | "amount" | "freeship";
+type Promo = { code: string; type: PromoType; value: number; label: string };
+
+const PROMO_CODES: Record<string, Omit<Promo, "code">> = {
+  WELCOME10: { type: "percent", value: 10, label: "10% off your order" },
+  ESTYLE5:   { type: "percent", value: 5,  label: "5% off your order" },
+  SAVE2K:    { type: "amount",  value: 2000, label: "₦2,000 off your order" },
+  FREESHIP:  { type: "freeship", value: 0, label: "Free delivery" },
 };
+
+// Keyword-based fare estimator for custom addresses
+const FARE_RULES: { keywords: string[]; label: string; fee: number }[] = [
+  { keywords: ["lekki", "ajah", "ikoyi", "vi", "victoria island", "lagos island", "oniru", "chevron", "ikate", "sangotedo", "ibeju"], label: "Lekki axis", fee: 2500 },
+  { keywords: ["yaba", "ikeja", "surulere", "gbagada", "maryland", "ogba", "ojota", "magodo", "ketu", "mushin", "oshodi", "festac", "agege", "isolo", "ojo", "ipaja", "alimosho"], label: "Lagos Mainland", fee: 3500 },
+  { keywords: ["abuja", "port harcourt", "ibadan", "kano", "enugu", "kaduna", "owerri", "benin", "calabar", "warri", "uyo", "abeokuta", "akure", "jos", "lokoja", "ilorin", "asaba", "onitsha"], label: "Other states", fee: 5000 },
+  { keywords: ["ogun", "ibafo", "mowe", "sagamu", "ota", "ifo"], label: "Ogun (border)", fee: 4000 },
+];
+
+function estimateFare(address: string): { label: string; fee: number } {
+  const a = address.toLowerCase();
+  for (const rule of FARE_RULES) {
+    if (rule.keywords.some((k) => a.includes(k))) return { label: rule.label, fee: rule.fee };
+  }
+  return { label: "Lagos area (estimate)", fee: 3500 };
+}
+
+function generateRandomPromo(): Promo {
+  const rolls: Promo[] = [
+    { code: `ESC${Math.floor(1000 + Math.random() * 9000)}`, type: "percent", value: 7, label: "7% off your order" },
+    { code: `ESC${Math.floor(1000 + Math.random() * 9000)}`, type: "percent", value: 12, label: "12% off your order" },
+    { code: `ESC${Math.floor(1000 + Math.random() * 9000)}`, type: "amount", value: 1500, label: "₦1,500 off your order" },
+    { code: `ESC${Math.floor(1000 + Math.random() * 9000)}`, type: "amount", value: 3000, label: "₦3,000 off your order" },
+    { code: `SHIP${Math.floor(100 + Math.random() * 900)}`, type: "freeship", value: 0, label: "Free delivery" },
+  ];
+  return rolls[Math.floor(Math.random() * rolls.length)];
+}
 
 export function CartDrawer() {
   const { items, count, subtotal, open, setOpen, updateQty, removeItem, clear } = useCart();
   const [deliveryLabel, setDeliveryLabel] = useState("Lekki / Ajah");
   const [deliveryFee, setDeliveryFee] = useState(2500);
+  const [customAddress, setCustomAddress] = useState("");
+  const [usingCustom, setUsingCustom] = useState(false);
+
   const [promoInput, setPromoInput] = useState("");
-  const [promo, setPromo] = useState<{ code: string; type: "percent" | "amount" | "freeship"; value: number } | null>(null);
+  const [promo, setPromo] = useState<Promo | null>(null);
   const [promoError, setPromoError] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const { discount, effectiveDelivery, total } = useMemo(() => {
     const d = !promo ? 0
       : promo.type === "percent" ? Math.round((subtotal * promo.value) / 100)
-      : promo.type === "amount" ? Math.min(subtotal, promo.value)
+      : promo.type === "amount"  ? Math.min(subtotal, promo.value)
       : 0;
     const ed = promo?.type === "freeship" ? 0 : deliveryFee;
     return { discount: d, effectiveDelivery: ed, total: Math.max(0, subtotal - d) + ed };
   }, [promo, subtotal, deliveryFee]);
+
+  const promoDescriptor = (p: Promo) =>
+    p.type === "percent"  ? `${p.value}% off`
+  : p.type === "amount"   ? `${formatNaira(p.value)} flat off`
+  :                         `Free delivery`;
 
   const applyPromo = () => {
     const code = promoInput.trim().toUpperCase();
     if (!code) { setPromo(null); setPromoError(""); return; }
     const found = PROMO_CODES[code];
     if (!found) { setPromo(null); setPromoError("Invalid promo code"); return; }
-    setPromo({ code, type: found.type, value: found.value });
+    setPromo({ code, ...found });
     setPromoError("");
   };
   const clearPromo = () => { setPromo(null); setPromoInput(""); setPromoError(""); };
+
+  const handleGenerate = () => {
+    const p = generateRandomPromo();
+    setPromo(p);
+    setPromoInput(p.code);
+    setPromoError("");
+    setCopied(false);
+  };
+
+  const copyPromo = async () => {
+    if (!promo) return;
+    try { await navigator.clipboard.writeText(promo.code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ }
+  };
+
+  const applyCustomAddress = () => {
+    if (!customAddress.trim()) return;
+    const est = estimateFare(customAddress);
+    setDeliveryLabel(`${est.label} — ${customAddress.trim()}`);
+    setDeliveryFee(est.fee);
+    setUsingCustom(true);
+  };
 
   const message =
     `*New Cart Order — E Style Collection* 🛍️\n` +
@@ -54,10 +114,13 @@ export function CartDrawer() {
       .map((it, i) => `${i + 1}. ${it.name} — Size ${it.size} × ${it.qty}\n   ${formatNaira(it.price)} × ${it.qty} = ${formatNaira(it.price * it.qty)}`)
       .join("\n") +
     `\n\n💰 *Price Breakdown*\n` +
-    `• Subtotal      : ${formatNaira(subtotal)}\n` +
-    (promo ? `• Promo (${promo.code}) : -${formatNaira(discount)}${promo.type === "freeship" ? " (free delivery)" : ""}\n` : "") +
-    `• Delivery zone : ${deliveryLabel}${promo?.type === "freeship" ? " (free shipping promo)" : ""}\n` +
-    `• Delivery fee  : ${effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}\n` +
+    `• Subtotal       : ${formatNaira(subtotal)}\n` +
+    (promo
+      ? `• Promo code     : ${promo.code} (${promoDescriptor(promo)})\n` +
+        `• Discount       : -${formatNaira(discount)}${promo.type === "freeship" ? "  +  free delivery" : ""}\n`
+      : "") +
+    `• Delivery zone  : ${deliveryLabel}\n` +
+    `• Delivery fee   : ${effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}${promo?.type === "freeship" ? "  (free shipping promo)" : ""}\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
     `*TOTAL: ${formatNaira(total)}*\n` +
     `━━━━━━━━━━━━━━━━━━\n\n` +
@@ -98,15 +161,29 @@ export function CartDrawer() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-semibold">{formatNaira(subtotal)}</span>
               </div>
+
+              {promo ? (
+                <div className="rounded-lg bg-primary/5 border border-primary/20 px-2.5 py-2 my-1">
+                  <div className="flex justify-between items-start">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold text-primary truncate">Promo · {promo.code}</p>
+                      <p className="text-[10px] text-muted-foreground">{promo.label} ({promoDescriptor(promo)})</p>
+                    </div>
+                    <span className="font-semibold text-primary whitespace-nowrap">
+                      {discount > 0 ? `−${formatNaira(discount)}` : promo.type === "freeship" ? "Free ship" : "—"}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Discount</span>
+                  <span className="text-muted-foreground">—</span>
+                </div>
+              )}
+
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Discount {promo ? `(${promo.code})` : ""}</span>
-                <span className={`font-semibold ${discount > 0 ? "text-primary" : ""}`}>
-                  {discount > 0 ? `−${formatNaira(discount)}` : "—"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Delivery <span className="text-[10px]">({deliveryLabel})</span></span>
-                <span className="font-semibold">{effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}</span>
+                <span className="text-muted-foreground truncate pr-2">Delivery <span className="text-[10px]">({deliveryLabel})</span></span>
+                <span className="font-semibold whitespace-nowrap">{effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}</span>
               </div>
               <div className="flex justify-between pt-2 mt-1 border-t border-border/60">
                 <span className="font-display text-base">Grand total</span>
@@ -158,18 +235,53 @@ export function CartDrawer() {
                     <button
                       key={p.label}
                       type="button"
-                      onClick={() => { setDeliveryLabel(p.label); setDeliveryFee(p.fee); }}
+                      onClick={() => { setDeliveryLabel(p.label); setDeliveryFee(p.fee); setUsingCustom(false); }}
                       className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
-                        deliveryLabel === p.label ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary"
+                        !usingCustom && deliveryLabel === p.label ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary"
                       }`}
                     >
                       {p.label}{p.fee > 0 && ` · ${formatNaira(p.fee)}`}
                     </button>
                   ))}
                 </div>
+
+                {/* Custom address */}
+                <div className="mt-2">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Or enter your address</p>
+                  <div className="flex gap-2">
+                    <input
+                      value={customAddress}
+                      onChange={(e) => setCustomAddress(e.target.value)}
+                      placeholder="e.g. 12 Admiralty Way, Lekki Phase 1"
+                      className="flex-1 rounded-lg border border-border px-3 py-1.5 text-xs focus:outline-none focus:border-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={applyCustomAddress}
+                      className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold hover:bg-primary/90"
+                    >
+                      Estimate
+                    </button>
+                  </div>
+                  {usingCustom && (
+                    <p className="mt-1 text-[11px] text-primary font-semibold">
+                      ✓ Estimated fare: {formatNaira(deliveryFee)} ({deliveryLabel.split(" — ")[0]})
+                    </p>
+                  )}
+                </div>
               </div>
+
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Promo code</p>
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Promo code</p>
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-primary font-semibold hover:underline"
+                  >
+                    <Sparkles size={11} /> Generate
+                  </button>
+                </div>
                 <div className="flex gap-2">
                   <input
                     value={promoInput}
@@ -188,7 +300,14 @@ export function CartDrawer() {
                   )}
                 </div>
                 {promoError && <p className="mt-1 text-[11px] text-destructive">{promoError}</p>}
-                {promo && <p className="mt-1 text-[11px] text-primary font-semibold">✓ {promo.code} applied</p>}
+                {promo && (
+                  <div className="mt-1.5 flex items-center justify-between text-[11px]">
+                    <span className="text-primary font-semibold">✓ {promo.code} · {promoDescriptor(promo)}</span>
+                    <button type="button" onClick={copyPromo} className="inline-flex items-center gap-1 text-muted-foreground hover:text-primary">
+                      {copied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+                    </button>
+                  </div>
+                )}
               </div>
 
               <a
