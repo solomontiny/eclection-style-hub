@@ -90,6 +90,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <CartProvider>
         <div className="min-h-screen flex flex-col">
+          <AnnouncementBar />
           <SiteHeader />
           <main className="flex-1">
             <Outlet />
