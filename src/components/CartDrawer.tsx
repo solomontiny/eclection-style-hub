@@ -167,6 +167,7 @@ export function CartDrawer() {
         `• Discount       : -${formatNaira(discount)}${promo.type === "freeship" ? "  +  free delivery" : ""}\n`
       : "") +
     `• Delivery zone  : ${deliveryLabel}\n` +
+    `• ETA            : ${deliveryEta}\n` +
     `• Delivery fee   : ${effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}${promo?.type === "freeship" ? "  (free shipping promo)" : ""}\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
     `*TOTAL: ${formatNaira(total)}*\n` +
