@@ -1,16 +1,18 @@
-import { ShoppingCart, MessageCircle, Trash2, Minus, Plus, Sparkles, Copy, Check } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ShoppingCart, MessageCircle, Trash2, Minus, Plus, Sparkles, Copy, Check, Clock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useCart, cartItemKey } from "@/lib/cart";
 import { formatNaira } from "@/lib/products";
 import { whatsappLink } from "@/lib/contact";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const DELIVERY_PRESETS = [
-  { label: "Lekki / Ajah", fee: 2500 },
-  { label: "Lagos Mainland", fee: 3500 },
-  { label: "Other states", fee: 5000 },
-  { label: "Pickup", fee: 0 },
+  { label: "Lekki / Ajah", fee: 2500, eta: "Same day – next day" },
+  { label: "Lagos Mainland", fee: 3500, eta: "1 – 2 business days" },
+  { label: "Other states", fee: 5000, eta: "3 – 5 business days" },
+  { label: "Pickup", fee: 0, eta: "Ready in 24 hrs" },
 ];
+
+const ADDRESS_STORAGE_KEY = "esc:custom-address";
 
 type PromoType = "percent" | "amount" | "freeship";
 type Promo = { code: string; type: PromoType; value: number; label: string };
