@@ -255,18 +255,25 @@ function WhatsappOrderForm() {
   const effectiveDelivery = promo?.type === "freeship" ? 0 : deliveryFee;
   const total = discountedSubtotal + effectiveDelivery;
 
-  const PROMO_CODES: Record<string, { type: "percent" | "amount" | "freeship"; value: number; label: string }> = {
+  const PROMO_CODES: Record<string, { type: "percent" | "amount" | "freeship"; value: number; label: string; minSubtotal?: number }> = {
     WELCOME10: { type: "percent", value: 10, label: "10% off" },
     ESTYLE5: { type: "percent", value: 5, label: "5% off" },
-    SAVE2K: { type: "amount", value: 2000, label: "₦2,000 off" },
-    FREESHIP: { type: "freeship", value: 0, label: "Free delivery" },
+    SAVE2K: { type: "amount", value: 2000, label: "₦2,000 off", minSubtotal: 10000 },
+    FREESHIP: { type: "freeship", value: 0, label: "Free delivery", minSubtotal: 15000 },
   };
 
   const applyPromo = () => {
     const code = promoInput.trim().toUpperCase();
-    if (!code) { setPromo(null); setPromoError(""); return; }
+    if (!code) { setPromo(null); setPromoError("Enter a promo code"); return; }
+    if (!/^[A-Z0-9]{3,12}$/.test(code)) { setPromo(null); setPromoError("Codes are 3–12 letters/numbers"); return; }
+    if (subtotal <= 0) { setPromo(null); setPromoError("Add an item with a price first"); return; }
     const found = PROMO_CODES[code];
-    if (!found) { setPromo(null); setPromoError("Invalid promo code"); return; }
+    if (!found) { setPromo(null); setPromoError("This code doesn't exist or has expired"); return; }
+    if (found.minSubtotal && subtotal < found.minSubtotal) {
+      setPromo(null);
+      setPromoError(`Spend at least ${formatNaira(found.minSubtotal)} to use ${code}`);
+      return;
+    }
     setPromo({ code, type: found.type, value: found.value });
     setPromoError("");
   };
