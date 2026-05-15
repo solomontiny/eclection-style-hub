@@ -1,41 +1,43 @@
-import { ShoppingCart, MessageCircle, Trash2, Minus, Plus, Sparkles, Copy, Check } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ShoppingCart, MessageCircle, Trash2, Minus, Plus, Sparkles, Copy, Check, Clock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useCart, cartItemKey } from "@/lib/cart";
 import { formatNaira } from "@/lib/products";
 import { whatsappLink } from "@/lib/contact";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const DELIVERY_PRESETS = [
-  { label: "Lekki / Ajah", fee: 2500 },
-  { label: "Lagos Mainland", fee: 3500 },
-  { label: "Other states", fee: 5000 },
-  { label: "Pickup", fee: 0 },
+  { label: "Lekki / Ajah", fee: 2500, eta: "Same day – next day" },
+  { label: "Lagos Mainland", fee: 3500, eta: "1 – 2 business days" },
+  { label: "Other states", fee: 5000, eta: "3 – 5 business days" },
+  { label: "Pickup", fee: 0, eta: "Ready in 24 hrs" },
 ];
 
+const ADDRESS_STORAGE_KEY = "esc:custom-address";
+
 type PromoType = "percent" | "amount" | "freeship";
-type Promo = { code: string; type: PromoType; value: number; label: string };
+type Promo = { code: string; type: PromoType; value: number; label: string; minSubtotal?: number; expiresAt?: number };
 
 const PROMO_CODES: Record<string, Omit<Promo, "code">> = {
   WELCOME10: { type: "percent", value: 10, label: "10% off your order" },
   ESTYLE5:   { type: "percent", value: 5,  label: "5% off your order" },
-  SAVE2K:    { type: "amount",  value: 2000, label: "₦2,000 off your order" },
-  FREESHIP:  { type: "freeship", value: 0, label: "Free delivery" },
+  SAVE2K:    { type: "amount",  value: 2000, label: "₦2,000 off your order", minSubtotal: 10000 },
+  FREESHIP:  { type: "freeship", value: 0, label: "Free delivery", minSubtotal: 15000 },
 };
 
 // Keyword-based fare estimator for custom addresses
-const FARE_RULES: { keywords: string[]; label: string; fee: number }[] = [
-  { keywords: ["lekki", "ajah", "ikoyi", "vi", "victoria island", "lagos island", "oniru", "chevron", "ikate", "sangotedo", "ibeju"], label: "Lekki axis", fee: 2500 },
-  { keywords: ["yaba", "ikeja", "surulere", "gbagada", "maryland", "ogba", "ojota", "magodo", "ketu", "mushin", "oshodi", "festac", "agege", "isolo", "ojo", "ipaja", "alimosho"], label: "Lagos Mainland", fee: 3500 },
-  { keywords: ["abuja", "port harcourt", "ibadan", "kano", "enugu", "kaduna", "owerri", "benin", "calabar", "warri", "uyo", "abeokuta", "akure", "jos", "lokoja", "ilorin", "asaba", "onitsha"], label: "Other states", fee: 5000 },
-  { keywords: ["ogun", "ibafo", "mowe", "sagamu", "ota", "ifo"], label: "Ogun (border)", fee: 4000 },
+const FARE_RULES: { keywords: string[]; label: string; fee: number; eta: string }[] = [
+  { keywords: ["lekki", "ajah", "ikoyi", "vi", "victoria island", "lagos island", "oniru", "chevron", "ikate", "sangotedo", "ibeju"], label: "Lekki axis", fee: 2500, eta: "Same day – next day" },
+  { keywords: ["yaba", "ikeja", "surulere", "gbagada", "maryland", "ogba", "ojota", "magodo", "ketu", "mushin", "oshodi", "festac", "agege", "isolo", "ojo", "ipaja", "alimosho"], label: "Lagos Mainland", fee: 3500, eta: "1 – 2 business days" },
+  { keywords: ["abuja", "port harcourt", "ibadan", "kano", "enugu", "kaduna", "owerri", "benin", "calabar", "warri", "uyo", "abeokuta", "akure", "jos", "lokoja", "ilorin", "asaba", "onitsha"], label: "Other states", fee: 5000, eta: "3 – 5 business days" },
+  { keywords: ["ogun", "ibafo", "mowe", "sagamu", "ota", "ifo"], label: "Ogun (border)", fee: 4000, eta: "2 – 3 business days" },
 ];
 
-function estimateFare(address: string): { label: string; fee: number } {
+function estimateFare(address: string): { label: string; fee: number; eta: string } {
   const a = address.toLowerCase();
   for (const rule of FARE_RULES) {
-    if (rule.keywords.some((k) => a.includes(k))) return { label: rule.label, fee: rule.fee };
+    if (rule.keywords.some((k) => a.includes(k))) return { label: rule.label, fee: rule.fee, eta: rule.eta };
   }
-  return { label: "Lagos area (estimate)", fee: 3500 };
+  return { label: "Lagos area (estimate)", fee: 3500, eta: "1 – 3 business days" };
 }
 
 function generateRandomPromo(): Promo {
@@ -53,13 +55,33 @@ export function CartDrawer() {
   const { items, count, subtotal, open, setOpen, updateQty, removeItem, clear } = useCart();
   const [deliveryLabel, setDeliveryLabel] = useState("Lekki / Ajah");
   const [deliveryFee, setDeliveryFee] = useState(2500);
+  const [deliveryEta, setDeliveryEta] = useState("Same day – next day");
   const [customAddress, setCustomAddress] = useState("");
   const [usingCustom, setUsingCustom] = useState(false);
+  const [savedAddress, setSavedAddress] = useState(false);
 
   const [promoInput, setPromoInput] = useState("");
   const [promo, setPromo] = useState<Promo | null>(null);
   const [promoError, setPromoError] = useState("");
   const [copied, setCopied] = useState(false);
+
+  // Restore saved custom address on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ADDRESS_STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as { address: string; label: string; fee: number; eta: string };
+        if (saved?.address) {
+          setCustomAddress(saved.address);
+          setDeliveryLabel(`${saved.label} — ${saved.address}`);
+          setDeliveryFee(saved.fee);
+          setDeliveryEta(saved.eta);
+          setUsingCustom(true);
+          setSavedAddress(true);
+        }
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   const { discount, effectiveDelivery, total } = useMemo(() => {
     const d = !promo ? 0
@@ -77,9 +99,19 @@ export function CartDrawer() {
 
   const applyPromo = () => {
     const code = promoInput.trim().toUpperCase();
-    if (!code) { setPromo(null); setPromoError(""); return; }
+    if (!code) { setPromo(null); setPromoError("Enter a promo code"); return; }
+    if (!/^[A-Z0-9]{3,12}$/.test(code)) { setPromo(null); setPromoError("Codes are 3–12 letters/numbers"); return; }
+    if (subtotal <= 0) { setPromo(null); setPromoError("Add items to your cart first"); return; }
     const found = PROMO_CODES[code];
-    if (!found) { setPromo(null); setPromoError("Invalid promo code"); return; }
+    if (!found) { setPromo(null); setPromoError("This code doesn't exist or has expired"); return; }
+    if (found.minSubtotal && subtotal < found.minSubtotal) {
+      setPromo(null);
+      setPromoError(`Spend at least ${formatNaira(found.minSubtotal)} to use ${code}`);
+      return;
+    }
+    if (found.expiresAt && Date.now() > found.expiresAt) {
+      setPromo(null); setPromoError("This promo code has expired"); return;
+    }
     setPromo({ code, ...found });
     setPromoError("");
   };
@@ -99,11 +131,26 @@ export function CartDrawer() {
   };
 
   const applyCustomAddress = () => {
-    if (!customAddress.trim()) return;
-    const est = estimateFare(customAddress);
-    setDeliveryLabel(`${est.label} — ${customAddress.trim()}`);
+    const trimmed = customAddress.trim();
+    if (!trimmed) return;
+    const est = estimateFare(trimmed);
+    setDeliveryLabel(`${est.label} — ${trimmed}`);
     setDeliveryFee(est.fee);
+    setDeliveryEta(est.eta);
     setUsingCustom(true);
+    try {
+      localStorage.setItem(ADDRESS_STORAGE_KEY, JSON.stringify({ address: trimmed, label: est.label, fee: est.fee, eta: est.eta }));
+      setSavedAddress(true);
+    } catch { /* ignore */ }
+  };
+
+  const forgetAddress = () => {
+    try { localStorage.removeItem(ADDRESS_STORAGE_KEY); } catch { /* ignore */ }
+    setSavedAddress(false);
+    setCustomAddress("");
+    setUsingCustom(false);
+    const p = DELIVERY_PRESETS[0];
+    setDeliveryLabel(p.label); setDeliveryFee(p.fee); setDeliveryEta(p.eta);
   };
 
   const message =
@@ -120,6 +167,7 @@ export function CartDrawer() {
         `• Discount       : -${formatNaira(discount)}${promo.type === "freeship" ? "  +  free delivery" : ""}\n`
       : "") +
     `• Delivery zone  : ${deliveryLabel}\n` +
+    `• ETA            : ${deliveryEta}\n` +
     `• Delivery fee   : ${effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}${promo?.type === "freeship" ? "  (free shipping promo)" : ""}\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
     `*TOTAL: ${formatNaira(total)}*\n` +
@@ -185,6 +233,9 @@ export function CartDrawer() {
                 <span className="text-muted-foreground truncate pr-2">Delivery <span className="text-[10px]">({deliveryLabel})</span></span>
                 <span className="font-semibold whitespace-nowrap">{effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}</span>
               </div>
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground -mt-0.5">
+                <Clock size={10} /> ETA: <span className="font-semibold text-foreground">{deliveryEta}</span>
+              </div>
               <div className="flex justify-between pt-2 mt-1 border-t border-border/60">
                 <span className="font-display text-base">Grand total</span>
                 <span className="font-display text-xl text-primary">{formatNaira(total)}</span>
@@ -235,10 +286,11 @@ export function CartDrawer() {
                     <button
                       key={p.label}
                       type="button"
-                      onClick={() => { setDeliveryLabel(p.label); setDeliveryFee(p.fee); setUsingCustom(false); }}
+                      onClick={() => { setDeliveryLabel(p.label); setDeliveryFee(p.fee); setDeliveryEta(p.eta); setUsingCustom(false); }}
                       className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
                         !usingCustom && deliveryLabel === p.label ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary"
                       }`}
+                      title={p.eta}
                     >
                       {p.label}{p.fee > 0 && ` · ${formatNaira(p.fee)}`}
                     </button>
@@ -247,7 +299,14 @@ export function CartDrawer() {
 
                 {/* Custom address */}
                 <div className="mt-2">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Or enter your address</p>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Or enter your address</p>
+                    {savedAddress && (
+                      <button type="button" onClick={forgetAddress} className="text-[10px] text-muted-foreground hover:text-destructive underline">
+                        Forget
+                      </button>
+                    )}
+                  </div>
                   <div className="flex gap-2">
                     <input
                       value={customAddress}
@@ -264,9 +323,13 @@ export function CartDrawer() {
                     </button>
                   </div>
                   {usingCustom && (
-                    <p className="mt-1 text-[11px] text-primary font-semibold">
-                      ✓ Estimated fare: {formatNaira(deliveryFee)} ({deliveryLabel.split(" — ")[0]})
-                    </p>
+                    <div className="mt-1 text-[11px] text-primary font-semibold space-y-0.5">
+                      <p>✓ Estimated fare: {formatNaira(deliveryFee)} ({deliveryLabel.split(" — ")[0]})</p>
+                      <p className="flex items-center gap-1 text-muted-foreground font-normal">
+                        <Clock size={10} /> ETA: <span className="font-semibold text-foreground">{deliveryEta}</span>
+                        {savedAddress && <span className="ml-auto text-[10px] text-primary">· saved</span>}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>

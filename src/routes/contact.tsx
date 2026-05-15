@@ -44,6 +44,7 @@ function Contact() {
               <div>
                 <p className="font-semibold">Call</p>
                 <p className="text-muted-foreground">{CONTACT.phone}</p>
+                <a href={`tel:${CONTACT.phone2}`} className="text-muted-foreground hover:text-primary block">{CONTACT.phone2}</a>
               </div>
             </a>
             <a href={`mailto:${CONTACT.email}`} className="flex items-start gap-3 hover:text-primary">
@@ -55,10 +56,29 @@ function Contact() {
             </a>
             <div className="flex items-start gap-3">
               <MapPin className="text-primary mt-0.5" size={20} />
-              <div>
+              <div className="flex-1">
                 <p className="font-semibold">Office</p>
                 <p className="text-muted-foreground">{CONTACT.address}</p>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CONTACT.mapQuery)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-primary font-semibold hover:underline mt-1 inline-block"
+                >
+                  Open in Google Maps →
+                </a>
               </div>
+            </div>
+            <div className="rounded-2xl overflow-hidden border border-border/60 mt-2">
+              <iframe
+                title="E Style Collection location"
+                src={`https://www.google.com/maps?q=${encodeURIComponent(CONTACT.mapQuery)}&output=embed`}
+                width="100%"
+                height="220"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                style={{ border: 0 }}
+              />
             </div>
           </div>
           <div className="mt-6 pt-6 border-t border-border/60">
@@ -87,22 +107,30 @@ function Contact() {
 }
 
 function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () => void }) {
-  const [method, setMethod] = useState<"bank" | "whatsapp">("bank");
+  const [method, setMethod] = useState<"bank" | "paystack" | "whatsapp">("paystack");
 
   return (
     <>
-      <div className="mt-5 grid grid-cols-2 gap-2 p-1 rounded-full bg-background/60 border border-border/60">
+      <div className="mt-5 grid grid-cols-3 gap-2 p-1 rounded-full bg-background/60 border border-border/60">
+        <button
+          onClick={() => setMethod("paystack")}
+          className={`py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-colors ${
+            method === "paystack" ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground hover:bg-background"
+          }`}
+        >
+          💳 Paystack
+        </button>
         <button
           onClick={() => setMethod("bank")}
-          className={`py-2.5 rounded-full text-sm font-semibold transition-colors ${
+          className={`py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-colors ${
             method === "bank" ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground hover:bg-background"
           }`}
         >
-          🏦 Bank Transfer
+          🏦 Bank
         </button>
         <button
           onClick={() => setMethod("whatsapp")}
-          className={`py-2.5 rounded-full text-sm font-semibold transition-colors ${
+          className={`py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-colors ${
             method === "whatsapp" ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground hover:bg-background"
           }`}
         >
@@ -110,7 +138,33 @@ function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () =
         </button>
       </div>
 
-      {method === "bank" ? (
+      {method === "paystack" ? (
+        <div className="mt-6 animate-in fade-in slide-in-from-bottom-2">
+          <div className="rounded-2xl bg-background p-5 border border-border/60">
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Pay with card · bank · USSD</p>
+            <h3 className="font-display text-xl mt-1">Secure checkout via Paystack</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Pay instantly with your debit card, bank transfer, USSD or mobile money. You'll be redirected to a secure Paystack page.
+            </p>
+            <ul className="mt-4 space-y-1.5 text-xs text-muted-foreground">
+              <li>✓ 256-bit SSL encryption</li>
+              <li>✓ Verve, Visa, Mastercard accepted</li>
+              <li>✓ Instant order confirmation</li>
+            </ul>
+          </div>
+          <a
+            href={CONTACT.paystackUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-primary mt-6 w-full justify-center"
+          >
+            💳 Pay now on Paystack
+          </a>
+          <p className="mt-3 text-xs text-muted-foreground text-center">
+            Confirm your order total with us first, then complete the payment.
+          </p>
+        </div>
+      ) : method === "bank" ? (
         <div className="mt-6 animate-in fade-in slide-in-from-bottom-2">
           <ol className="space-y-3 text-sm">
             <li className="flex gap-3"><span className="font-semibold text-primary">1.</span> Confirm your order total with us on WhatsApp (item + delivery fee).</li>
@@ -152,7 +206,7 @@ function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () =
             <MessageCircle size={16} /> Send proof of payment
           </a>
           <p className="mt-3 text-xs text-muted-foreground text-center">
-            Card payments (Paystack / Flutterwave) coming soon.
+            Prefer card? Switch to the Paystack tab above for instant checkout.
           </p>
         </div>
       ) : (
@@ -201,18 +255,25 @@ function WhatsappOrderForm() {
   const effectiveDelivery = promo?.type === "freeship" ? 0 : deliveryFee;
   const total = discountedSubtotal + effectiveDelivery;
 
-  const PROMO_CODES: Record<string, { type: "percent" | "amount" | "freeship"; value: number; label: string }> = {
+  const PROMO_CODES: Record<string, { type: "percent" | "amount" | "freeship"; value: number; label: string; minSubtotal?: number }> = {
     WELCOME10: { type: "percent", value: 10, label: "10% off" },
     ESTYLE5: { type: "percent", value: 5, label: "5% off" },
-    SAVE2K: { type: "amount", value: 2000, label: "₦2,000 off" },
-    FREESHIP: { type: "freeship", value: 0, label: "Free delivery" },
+    SAVE2K: { type: "amount", value: 2000, label: "₦2,000 off", minSubtotal: 10000 },
+    FREESHIP: { type: "freeship", value: 0, label: "Free delivery", minSubtotal: 15000 },
   };
 
   const applyPromo = () => {
     const code = promoInput.trim().toUpperCase();
-    if (!code) { setPromo(null); setPromoError(""); return; }
+    if (!code) { setPromo(null); setPromoError("Enter a promo code"); return; }
+    if (!/^[A-Z0-9]{3,12}$/.test(code)) { setPromo(null); setPromoError("Codes are 3–12 letters/numbers"); return; }
+    if (subtotal <= 0) { setPromo(null); setPromoError("Add an item with a price first"); return; }
     const found = PROMO_CODES[code];
-    if (!found) { setPromo(null); setPromoError("Invalid promo code"); return; }
+    if (!found) { setPromo(null); setPromoError("This code doesn't exist or has expired"); return; }
+    if (found.minSubtotal && subtotal < found.minSubtotal) {
+      setPromo(null);
+      setPromoError(`Spend at least ${formatNaira(found.minSubtotal)} to use ${code}`);
+      return;
+    }
     setPromo({ code, type: found.type, value: found.value });
     setPromoError("");
   };
