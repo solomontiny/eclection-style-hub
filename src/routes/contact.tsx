@@ -107,22 +107,30 @@ function Contact() {
 }
 
 function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () => void }) {
-  const [method, setMethod] = useState<"bank" | "whatsapp">("bank");
+  const [method, setMethod] = useState<"bank" | "paystack" | "whatsapp">("paystack");
 
   return (
     <>
-      <div className="mt-5 grid grid-cols-2 gap-2 p-1 rounded-full bg-background/60 border border-border/60">
+      <div className="mt-5 grid grid-cols-3 gap-2 p-1 rounded-full bg-background/60 border border-border/60">
+        <button
+          onClick={() => setMethod("paystack")}
+          className={`py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-colors ${
+            method === "paystack" ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground hover:bg-background"
+          }`}
+        >
+          💳 Paystack
+        </button>
         <button
           onClick={() => setMethod("bank")}
-          className={`py-2.5 rounded-full text-sm font-semibold transition-colors ${
+          className={`py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-colors ${
             method === "bank" ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground hover:bg-background"
           }`}
         >
-          🏦 Bank Transfer
+          🏦 Bank
         </button>
         <button
           onClick={() => setMethod("whatsapp")}
-          className={`py-2.5 rounded-full text-sm font-semibold transition-colors ${
+          className={`py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-colors ${
             method === "whatsapp" ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground hover:bg-background"
           }`}
         >
@@ -130,7 +138,33 @@ function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () =
         </button>
       </div>
 
-      {method === "bank" ? (
+      {method === "paystack" ? (
+        <div className="mt-6 animate-in fade-in slide-in-from-bottom-2">
+          <div className="rounded-2xl bg-background p-5 border border-border/60">
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Pay with card · bank · USSD</p>
+            <h3 className="font-display text-xl mt-1">Secure checkout via Paystack</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Pay instantly with your debit card, bank transfer, USSD or mobile money. You'll be redirected to a secure Paystack page.
+            </p>
+            <ul className="mt-4 space-y-1.5 text-xs text-muted-foreground">
+              <li>✓ 256-bit SSL encryption</li>
+              <li>✓ Verve, Visa, Mastercard accepted</li>
+              <li>✓ Instant order confirmation</li>
+            </ul>
+          </div>
+          <a
+            href={CONTACT.paystackUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-primary mt-6 w-full justify-center"
+          >
+            💳 Pay now on Paystack
+          </a>
+          <p className="mt-3 text-xs text-muted-foreground text-center">
+            Confirm your order total with us first, then complete the payment.
+          </p>
+        </div>
+      ) : method === "bank" ? (
         <div className="mt-6 animate-in fade-in slide-in-from-bottom-2">
           <ol className="space-y-3 text-sm">
             <li className="flex gap-3"><span className="font-semibold text-primary">1.</span> Confirm your order total with us on WhatsApp (item + delivery fee).</li>
