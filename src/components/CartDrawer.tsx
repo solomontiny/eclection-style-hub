@@ -25,19 +25,19 @@ const PROMO_CODES: Record<string, Omit<Promo, "code">> = {
 };
 
 // Keyword-based fare estimator for custom addresses
-const FARE_RULES: { keywords: string[]; label: string; fee: number }[] = [
-  { keywords: ["lekki", "ajah", "ikoyi", "vi", "victoria island", "lagos island", "oniru", "chevron", "ikate", "sangotedo", "ibeju"], label: "Lekki axis", fee: 2500 },
-  { keywords: ["yaba", "ikeja", "surulere", "gbagada", "maryland", "ogba", "ojota", "magodo", "ketu", "mushin", "oshodi", "festac", "agege", "isolo", "ojo", "ipaja", "alimosho"], label: "Lagos Mainland", fee: 3500 },
-  { keywords: ["abuja", "port harcourt", "ibadan", "kano", "enugu", "kaduna", "owerri", "benin", "calabar", "warri", "uyo", "abeokuta", "akure", "jos", "lokoja", "ilorin", "asaba", "onitsha"], label: "Other states", fee: 5000 },
-  { keywords: ["ogun", "ibafo", "mowe", "sagamu", "ota", "ifo"], label: "Ogun (border)", fee: 4000 },
+const FARE_RULES: { keywords: string[]; label: string; fee: number; eta: string }[] = [
+  { keywords: ["lekki", "ajah", "ikoyi", "vi", "victoria island", "lagos island", "oniru", "chevron", "ikate", "sangotedo", "ibeju"], label: "Lekki axis", fee: 2500, eta: "Same day – next day" },
+  { keywords: ["yaba", "ikeja", "surulere", "gbagada", "maryland", "ogba", "ojota", "magodo", "ketu", "mushin", "oshodi", "festac", "agege", "isolo", "ojo", "ipaja", "alimosho"], label: "Lagos Mainland", fee: 3500, eta: "1 – 2 business days" },
+  { keywords: ["abuja", "port harcourt", "ibadan", "kano", "enugu", "kaduna", "owerri", "benin", "calabar", "warri", "uyo", "abeokuta", "akure", "jos", "lokoja", "ilorin", "asaba", "onitsha"], label: "Other states", fee: 5000, eta: "3 – 5 business days" },
+  { keywords: ["ogun", "ibafo", "mowe", "sagamu", "ota", "ifo"], label: "Ogun (border)", fee: 4000, eta: "2 – 3 business days" },
 ];
 
-function estimateFare(address: string): { label: string; fee: number } {
+function estimateFare(address: string): { label: string; fee: number; eta: string } {
   const a = address.toLowerCase();
   for (const rule of FARE_RULES) {
-    if (rule.keywords.some((k) => a.includes(k))) return { label: rule.label, fee: rule.fee };
+    if (rule.keywords.some((k) => a.includes(k))) return { label: rule.label, fee: rule.fee, eta: rule.eta };
   }
-  return { label: "Lagos area (estimate)", fee: 3500 };
+  return { label: "Lagos area (estimate)", fee: 3500, eta: "1 – 3 business days" };
 }
 
 function generateRandomPromo(): Promo {
