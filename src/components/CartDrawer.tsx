@@ -55,13 +55,33 @@ export function CartDrawer() {
   const { items, count, subtotal, open, setOpen, updateQty, removeItem, clear } = useCart();
   const [deliveryLabel, setDeliveryLabel] = useState("Lekki / Ajah");
   const [deliveryFee, setDeliveryFee] = useState(2500);
+  const [deliveryEta, setDeliveryEta] = useState("Same day – next day");
   const [customAddress, setCustomAddress] = useState("");
   const [usingCustom, setUsingCustom] = useState(false);
+  const [savedAddress, setSavedAddress] = useState(false);
 
   const [promoInput, setPromoInput] = useState("");
   const [promo, setPromo] = useState<Promo | null>(null);
   const [promoError, setPromoError] = useState("");
   const [copied, setCopied] = useState(false);
+
+  // Restore saved custom address on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ADDRESS_STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as { address: string; label: string; fee: number; eta: string };
+        if (saved?.address) {
+          setCustomAddress(saved.address);
+          setDeliveryLabel(`${saved.label} — ${saved.address}`);
+          setDeliveryFee(saved.fee);
+          setDeliveryEta(saved.eta);
+          setUsingCustom(true);
+          setSavedAddress(true);
+        }
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   const { discount, effectiveDelivery, total } = useMemo(() => {
     const d = !promo ? 0
@@ -79,9 +99,19 @@ export function CartDrawer() {
 
   const applyPromo = () => {
     const code = promoInput.trim().toUpperCase();
-    if (!code) { setPromo(null); setPromoError(""); return; }
+    if (!code) { setPromo(null); setPromoError("Enter a promo code"); return; }
+    if (!/^[A-Z0-9]{3,12}$/.test(code)) { setPromo(null); setPromoError("Codes are 3–12 letters/numbers"); return; }
+    if (subtotal <= 0) { setPromo(null); setPromoError("Add items to your cart first"); return; }
     const found = PROMO_CODES[code];
-    if (!found) { setPromo(null); setPromoError("Invalid promo code"); return; }
+    if (!found) { setPromo(null); setPromoError("This code doesn't exist or has expired"); return; }
+    if (found.minSubtotal && subtotal < found.minSubtotal) {
+      setPromo(null);
+      setPromoError(`Spend at least ${formatNaira(found.minSubtotal)} to use ${code}`);
+      return;
+    }
+    if (found.expiresAt && Date.now() > found.expiresAt) {
+      setPromo(null); setPromoError("This promo code has expired"); return;
+    }
     setPromo({ code, ...found });
     setPromoError("");
   };
@@ -101,11 +131,26 @@ export function CartDrawer() {
   };
 
   const applyCustomAddress = () => {
-    if (!customAddress.trim()) return;
-    const est = estimateFare(customAddress);
-    setDeliveryLabel(`${est.label} — ${customAddress.trim()}`);
+    const trimmed = customAddress.trim();
+    if (!trimmed) return;
+    const est = estimateFare(trimmed);
+    setDeliveryLabel(`${est.label} — ${trimmed}`);
     setDeliveryFee(est.fee);
+    setDeliveryEta(est.eta);
     setUsingCustom(true);
+    try {
+      localStorage.setItem(ADDRESS_STORAGE_KEY, JSON.stringify({ address: trimmed, label: est.label, fee: est.fee, eta: est.eta }));
+      setSavedAddress(true);
+    } catch { /* ignore */ }
+  };
+
+  const forgetAddress = () => {
+    try { localStorage.removeItem(ADDRESS_STORAGE_KEY); } catch { /* ignore */ }
+    setSavedAddress(false);
+    setCustomAddress("");
+    setUsingCustom(false);
+    const p = DELIVERY_PRESETS[0];
+    setDeliveryLabel(p.label); setDeliveryFee(p.fee); setDeliveryEta(p.eta);
   };
 
   const message =
