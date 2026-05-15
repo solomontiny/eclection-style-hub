@@ -206,7 +206,7 @@ function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () =
             <MessageCircle size={16} /> Send proof of payment
           </a>
           <p className="mt-3 text-xs text-muted-foreground text-center">
-            Prefer card? Use the <button type="button" className="text-primary font-semibold underline" onClick={() => location.reload()}>Paystack</button> tab above.
+            Prefer card? Switch to the Paystack tab above for instant checkout.
           </p>
         </div>
       ) : (
