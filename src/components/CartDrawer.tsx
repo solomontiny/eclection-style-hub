@@ -15,13 +15,13 @@ const DELIVERY_PRESETS = [
 const ADDRESS_STORAGE_KEY = "esc:custom-address";
 
 type PromoType = "percent" | "amount" | "freeship";
-type Promo = { code: string; type: PromoType; value: number; label: string };
+type Promo = { code: string; type: PromoType; value: number; label: string; minSubtotal?: number; expiresAt?: number };
 
 const PROMO_CODES: Record<string, Omit<Promo, "code">> = {
   WELCOME10: { type: "percent", value: 10, label: "10% off your order" },
   ESTYLE5:   { type: "percent", value: 5,  label: "5% off your order" },
-  SAVE2K:    { type: "amount",  value: 2000, label: "₦2,000 off your order" },
-  FREESHIP:  { type: "freeship", value: 0, label: "Free delivery" },
+  SAVE2K:    { type: "amount",  value: 2000, label: "₦2,000 off your order", minSubtotal: 10000 },
+  FREESHIP:  { type: "freeship", value: 0, label: "Free delivery", minSubtotal: 15000 },
 };
 
 // Keyword-based fare estimator for custom addresses
