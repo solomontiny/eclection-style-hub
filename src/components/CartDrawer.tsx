@@ -233,6 +233,9 @@ export function CartDrawer() {
                 <span className="text-muted-foreground truncate pr-2">Delivery <span className="text-[10px]">({deliveryLabel})</span></span>
                 <span className="font-semibold whitespace-nowrap">{effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}</span>
               </div>
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground -mt-0.5">
+                <Clock size={10} /> ETA: <span className="font-semibold text-foreground">{deliveryEta}</span>
+              </div>
               <div className="flex justify-between pt-2 mt-1 border-t border-border/60">
                 <span className="font-display text-base">Grand total</span>
                 <span className="font-display text-xl text-primary">{formatNaira(total)}</span>
