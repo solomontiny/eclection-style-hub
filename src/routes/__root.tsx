@@ -12,6 +12,7 @@ import appCss from "../styles.css?url";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { CustomerCareWidget } from "@/components/CustomerCareWidget";
+import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { CartProvider } from "@/lib/cart";
 
 function NotFoundComponent() {
