@@ -206,7 +206,7 @@ function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () =
             <MessageCircle size={16} /> Send proof of payment
           </a>
           <p className="mt-3 text-xs text-muted-foreground text-center">
-            Card payments (Paystack / Flutterwave) coming soon.
+            Prefer card? Use the <button type="button" className="text-primary font-semibold underline" onClick={() => location.reload()}>Paystack</button> tab above.
           </p>
         </div>
       ) : (
