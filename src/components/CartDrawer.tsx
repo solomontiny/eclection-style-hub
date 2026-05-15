@@ -323,9 +323,13 @@ export function CartDrawer() {
                     </button>
                   </div>
                   {usingCustom && (
-                    <p className="mt-1 text-[11px] text-primary font-semibold">
-                      ✓ Estimated fare: {formatNaira(deliveryFee)} ({deliveryLabel.split(" — ")[0]})
-                    </p>
+                    <div className="mt-1 text-[11px] text-primary font-semibold space-y-0.5">
+                      <p>✓ Estimated fare: {formatNaira(deliveryFee)} ({deliveryLabel.split(" — ")[0]})</p>
+                      <p className="flex items-center gap-1 text-muted-foreground font-normal">
+                        <Clock size={10} /> ETA: <span className="font-semibold text-foreground">{deliveryEta}</span>
+                        {savedAddress && <span className="ml-auto text-[10px] text-primary">· saved</span>}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
