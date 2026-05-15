@@ -44,6 +44,7 @@ function Contact() {
               <div>
                 <p className="font-semibold">Call</p>
                 <p className="text-muted-foreground">{CONTACT.phone}</p>
+                <a href={`tel:${CONTACT.phone2}`} className="text-muted-foreground hover:text-primary block">{CONTACT.phone2}</a>
               </div>
             </a>
             <a href={`mailto:${CONTACT.email}`} className="flex items-start gap-3 hover:text-primary">
@@ -55,10 +56,29 @@ function Contact() {
             </a>
             <div className="flex items-start gap-3">
               <MapPin className="text-primary mt-0.5" size={20} />
-              <div>
+              <div className="flex-1">
                 <p className="font-semibold">Office</p>
                 <p className="text-muted-foreground">{CONTACT.address}</p>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CONTACT.mapQuery)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-primary font-semibold hover:underline mt-1 inline-block"
+                >
+                  Open in Google Maps →
+                </a>
               </div>
+            </div>
+            <div className="rounded-2xl overflow-hidden border border-border/60 mt-2">
+              <iframe
+                title="E Style Collection location"
+                src={`https://www.google.com/maps?q=${encodeURIComponent(CONTACT.mapQuery)}&output=embed`}
+                width="100%"
+                height="220"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                style={{ border: 0 }}
+              />
             </div>
           </div>
           <div className="mt-6 pt-6 border-t border-border/60">
