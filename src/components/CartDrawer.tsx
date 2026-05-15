@@ -286,10 +286,11 @@ export function CartDrawer() {
                     <button
                       key={p.label}
                       type="button"
-                      onClick={() => { setDeliveryLabel(p.label); setDeliveryFee(p.fee); setUsingCustom(false); }}
+                      onClick={() => { setDeliveryLabel(p.label); setDeliveryFee(p.fee); setDeliveryEta(p.eta); setUsingCustom(false); }}
                       className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
                         !usingCustom && deliveryLabel === p.label ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary"
                       }`}
+                      title={p.eta}
                     >
                       {p.label}{p.fee > 0 && ` · ${formatNaira(p.fee)}`}
                     </button>
@@ -298,7 +299,14 @@ export function CartDrawer() {
 
                 {/* Custom address */}
                 <div className="mt-2">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Or enter your address</p>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Or enter your address</p>
+                    {savedAddress && (
+                      <button type="button" onClick={forgetAddress} className="text-[10px] text-muted-foreground hover:text-destructive underline">
+                        Forget
+                      </button>
+                    )}
+                  </div>
                   <div className="flex gap-2">
                     <input
                       value={customAddress}
