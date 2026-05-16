@@ -388,39 +388,10 @@ function WhatsappOrderForm() {
         />
       </div>
 
-      <div className="rounded-2xl bg-background p-5 border border-border/60 space-y-3 text-sm">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">Promo code</p>
-          <div className="flex gap-2">
-            <input
-              value={promoInput}
-              onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
-              placeholder="e.g. WELCOME10"
-              className="flex-1 rounded-lg border border-border px-3 py-2 text-sm uppercase tracking-wider focus:outline-none focus:border-primary"
-            />
-            {promo ? (
-              <button type="button" onClick={clearPromo} className="px-4 py-2 rounded-lg border border-border text-xs font-semibold hover:bg-secondary">
-                Remove
-              </button>
-            ) : (
-              <button type="button" onClick={applyPromo} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90">
-                Apply
-              </button>
-            )}
-          </div>
-          {promo && (
-            <p className="mt-2 text-xs text-primary font-semibold">✓ {promo.code} applied — {promo.type === "percent" ? `${promo.value}% off` : promo.type === "amount" ? `${formatNaira(promo.value)} off` : "Free delivery"}</p>
-          )}
-          {promoError && <p className="mt-2 text-xs text-destructive">{promoError}</p>}
-        </div>
-        <div className="pt-3 border-t border-border/60 space-y-2">
-          <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-semibold">{formatNaira(subtotal)}</span></div>
-          {promo && discount > 0 && (
-            <div className="flex justify-between text-primary"><span>Discount ({promo.code})</span><span className="font-semibold">−{formatNaira(discount)}</span></div>
-          )}
-          <div className="flex justify-between"><span className="text-muted-foreground">Delivery fee</span><span className="font-semibold">{effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}</span></div>
-          <div className="flex justify-between pt-2 border-t border-border/60"><span className="font-display text-lg">Total</span><span className="font-display text-2xl text-primary">{formatNaira(total)}</span></div>
-        </div>
+      <div className="rounded-2xl bg-background p-5 border border-border/60 space-y-2 text-sm">
+        <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-semibold">{formatNaira(subtotal)}</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Delivery fee</span><span className="font-semibold">{deliveryFee === 0 ? "FREE" : formatNaira(deliveryFee)}</span></div>
+        <div className="flex justify-between pt-2 border-t border-border/60"><span className="font-display text-lg">Total</span><span className="font-display text-2xl text-primary">{formatNaira(total)}</span></div>
       </div>
 
       <a
