@@ -144,13 +144,17 @@ function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () =
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Pay with card · bank · USSD</p>
             <h3 className="font-display text-xl mt-1">Secure checkout via Paystack</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Pay instantly with your debit card, bank transfer, USSD or mobile money. You'll be redirected to a secure Paystack page.
+              Pay instantly with your debit card, bank transfer, USSD or mobile money. Paystack handles the payment securely; you'll receive a reference code on completion.
             </p>
             <ul className="mt-4 space-y-1.5 text-xs text-muted-foreground">
               <li>✓ 256-bit SSL encryption</li>
               <li>✓ Verve, Visa, Mastercard accepted</li>
-              <li>✓ Instant order confirmation</li>
+              <li>✓ Reference code captured automatically for your receipt</li>
             </ul>
+            <div className="mt-4 rounded-lg bg-primary/5 border border-primary/15 p-3 text-[11px] text-muted-foreground">
+              <p className="font-semibold text-foreground mb-0.5">After paying:</p>
+              Come back to our <a href="/thank-you" className="text-primary underline font-semibold">order confirmation page</a> and paste your Paystack reference — we'll email your receipt to you and to our team.
+            </div>
           </div>
           <a
             href={CONTACT.paystackUrl}
@@ -160,9 +164,12 @@ function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () =
           >
             💳 Pay now on Paystack
           </a>
-          <p className="mt-3 text-xs text-muted-foreground text-center">
-            Confirm your order total with us first, then complete the payment.
-          </p>
+          <a
+            href="/thank-you"
+            className="mt-3 flex items-center justify-center gap-2 w-full py-2 rounded-full border border-border text-xs font-semibold hover:bg-secondary"
+          >
+            Already paid? Confirm your order →
+          </a>
         </div>
       ) : method === "bank" ? (
         <div className="mt-6 animate-in fade-in slide-in-from-bottom-2">
@@ -234,9 +241,6 @@ function WhatsappOrderForm() {
   const [notes, setNotes] = useState("");
   const [deliveryFee, setDeliveryFee] = useState(2500);
   const [deliveryLabel, setDeliveryLabel] = useState<string>("Lekki / Ajah");
-  const [promoInput, setPromoInput] = useState("");
-  const [promo, setPromo] = useState<{ code: string; type: "percent" | "amount" | "freeship"; value: number } | null>(null);
-  const [promoError, setPromoError] = useState("");
 
   const updateItem = (i: number, patch: Partial<OrderItem>) =>
     setItems((arr) => arr.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
@@ -247,37 +251,7 @@ function WhatsappOrderForm() {
   const canSend = validItems.length > 0 && address.trim() && fullName.trim();
 
   const subtotal = validItems.reduce((sum, it) => sum + it.price * it.qty, 0);
-  const discount = !promo ? 0
-    : promo.type === "percent" ? Math.round((subtotal * promo.value) / 100)
-    : promo.type === "amount" ? Math.min(subtotal, promo.value)
-    : 0;
-  const discountedSubtotal = Math.max(0, subtotal - discount);
-  const effectiveDelivery = promo?.type === "freeship" ? 0 : deliveryFee;
-  const total = discountedSubtotal + effectiveDelivery;
-
-  const PROMO_CODES: Record<string, { type: "percent" | "amount" | "freeship"; value: number; label: string; minSubtotal?: number }> = {
-    WELCOME10: { type: "percent", value: 10, label: "10% off" },
-    ESTYLE5: { type: "percent", value: 5, label: "5% off" },
-    SAVE2K: { type: "amount", value: 2000, label: "₦2,000 off", minSubtotal: 10000 },
-    FREESHIP: { type: "freeship", value: 0, label: "Free delivery", minSubtotal: 15000 },
-  };
-
-  const applyPromo = () => {
-    const code = promoInput.trim().toUpperCase();
-    if (!code) { setPromo(null); setPromoError("Enter a promo code"); return; }
-    if (!/^[A-Z0-9]{3,12}$/.test(code)) { setPromo(null); setPromoError("Codes are 3–12 letters/numbers"); return; }
-    if (subtotal <= 0) { setPromo(null); setPromoError("Add an item with a price first"); return; }
-    const found = PROMO_CODES[code];
-    if (!found) { setPromo(null); setPromoError("This code doesn't exist or has expired"); return; }
-    if (found.minSubtotal && subtotal < found.minSubtotal) {
-      setPromo(null);
-      setPromoError(`Spend at least ${formatNaira(found.minSubtotal)} to use ${code}`);
-      return;
-    }
-    setPromo({ code, type: found.type, value: found.value });
-    setPromoError("");
-  };
-  const clearPromo = () => { setPromo(null); setPromoInput(""); setPromoError(""); };
+  const total = subtotal + deliveryFee;
 
   const message =
     `*New Order — E Style Collection* 🛍️\n` +
@@ -293,12 +267,10 @@ function WhatsappOrderForm() {
       : "(no items yet)") +
     `\n\n💰 *Price Breakdown*\n` +
     `• Subtotal      : ${formatNaira(subtotal)}\n` +
-    (promo ? `• Promo (${promo.code}) : -${formatNaira(discount)}${promo.type === "freeship" ? " (free delivery)" : ""}\n` : "") +
-    `• Delivery zone : ${promo?.type === "freeship" ? `${deliveryLabel} (free shipping promo)` : deliveryLabel}\n` +
-    `• Delivery fee  : ${effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}\n` +
+    `• Delivery zone : ${deliveryLabel}\n` +
+    `• Delivery fee  : ${deliveryFee === 0 ? "FREE" : formatNaira(deliveryFee)}\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
     `*TOTAL: ${formatNaira(total)}*\n` +
-    `━━━━━━━━━━━━━━━━━━\n\n` +
     `━━━━━━━━━━━━━━━━━━\n\n` +
     `👤 *Customer*\n` +
     `• Name   : ${fullName || "—"}\n` +
@@ -416,39 +388,10 @@ function WhatsappOrderForm() {
         />
       </div>
 
-      <div className="rounded-2xl bg-background p-5 border border-border/60 space-y-3 text-sm">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">Promo code</p>
-          <div className="flex gap-2">
-            <input
-              value={promoInput}
-              onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
-              placeholder="e.g. WELCOME10"
-              className="flex-1 rounded-lg border border-border px-3 py-2 text-sm uppercase tracking-wider focus:outline-none focus:border-primary"
-            />
-            {promo ? (
-              <button type="button" onClick={clearPromo} className="px-4 py-2 rounded-lg border border-border text-xs font-semibold hover:bg-secondary">
-                Remove
-              </button>
-            ) : (
-              <button type="button" onClick={applyPromo} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90">
-                Apply
-              </button>
-            )}
-          </div>
-          {promo && (
-            <p className="mt-2 text-xs text-primary font-semibold">✓ {promo.code} applied — {promo.type === "percent" ? `${promo.value}% off` : promo.type === "amount" ? `${formatNaira(promo.value)} off` : "Free delivery"}</p>
-          )}
-          {promoError && <p className="mt-2 text-xs text-destructive">{promoError}</p>}
-        </div>
-        <div className="pt-3 border-t border-border/60 space-y-2">
-          <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-semibold">{formatNaira(subtotal)}</span></div>
-          {promo && discount > 0 && (
-            <div className="flex justify-between text-primary"><span>Discount ({promo.code})</span><span className="font-semibold">−{formatNaira(discount)}</span></div>
-          )}
-          <div className="flex justify-between"><span className="text-muted-foreground">Delivery fee</span><span className="font-semibold">{effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}</span></div>
-          <div className="flex justify-between pt-2 border-t border-border/60"><span className="font-display text-lg">Total</span><span className="font-display text-2xl text-primary">{formatNaira(total)}</span></div>
-        </div>
+      <div className="rounded-2xl bg-background p-5 border border-border/60 space-y-2 text-sm">
+        <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-semibold">{formatNaira(subtotal)}</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Delivery fee</span><span className="font-semibold">{deliveryFee === 0 ? "FREE" : formatNaira(deliveryFee)}</span></div>
+        <div className="flex justify-between pt-2 border-t border-border/60"><span className="font-display text-lg">Total</span><span className="font-display text-2xl text-primary">{formatNaira(total)}</span></div>
       </div>
 
       <a

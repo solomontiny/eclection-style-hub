@@ -1,8 +1,8 @@
-import { ShoppingCart, MessageCircle, Trash2, Minus, Plus, Sparkles, Copy, Check, Clock } from "lucide-react";
+import { ShoppingCart, MessageCircle, Trash2, Minus, Plus, Clock, CreditCard, Truck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useCart, cartItemKey } from "@/lib/cart";
 import { formatNaira } from "@/lib/products";
-import { whatsappLink } from "@/lib/contact";
+import { whatsappLink, CONTACT } from "@/lib/contact";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const DELIVERY_PRESETS = [
@@ -13,16 +13,7 @@ const DELIVERY_PRESETS = [
 ];
 
 const ADDRESS_STORAGE_KEY = "esc:custom-address";
-
-type PromoType = "percent" | "amount" | "freeship";
-type Promo = { code: string; type: PromoType; value: number; label: string; minSubtotal?: number; expiresAt?: number };
-
-const PROMO_CODES: Record<string, Omit<Promo, "code">> = {
-  WELCOME10: { type: "percent", value: 10, label: "10% off your order" },
-  ESTYLE5:   { type: "percent", value: 5,  label: "5% off your order" },
-  SAVE2K:    { type: "amount",  value: 2000, label: "₦2,000 off your order", minSubtotal: 10000 },
-  FREESHIP:  { type: "freeship", value: 0, label: "Free delivery", minSubtotal: 15000 },
-};
+export const PENDING_ORDER_KEY = "esc:pending-order";
 
 // Keyword-based fare estimator for custom addresses
 const FARE_RULES: { keywords: string[]; label: string; fee: number; eta: string }[] = [
@@ -40,17 +31,6 @@ function estimateFare(address: string): { label: string; fee: number; eta: strin
   return { label: "Lagos area (estimate)", fee: 3500, eta: "1 – 3 business days" };
 }
 
-function generateRandomPromo(): Promo {
-  const rolls: Promo[] = [
-    { code: `ESC${Math.floor(1000 + Math.random() * 9000)}`, type: "percent", value: 7, label: "7% off your order" },
-    { code: `ESC${Math.floor(1000 + Math.random() * 9000)}`, type: "percent", value: 12, label: "12% off your order" },
-    { code: `ESC${Math.floor(1000 + Math.random() * 9000)}`, type: "amount", value: 1500, label: "₦1,500 off your order" },
-    { code: `ESC${Math.floor(1000 + Math.random() * 9000)}`, type: "amount", value: 3000, label: "₦3,000 off your order" },
-    { code: `SHIP${Math.floor(100 + Math.random() * 900)}`, type: "freeship", value: 0, label: "Free delivery" },
-  ];
-  return rolls[Math.floor(Math.random() * rolls.length)];
-}
-
 export function CartDrawer() {
   const { items, count, subtotal, open, setOpen, updateQty, removeItem, clear } = useCart();
   const [deliveryLabel, setDeliveryLabel] = useState("Lekki / Ajah");
@@ -60,12 +40,11 @@ export function CartDrawer() {
   const [usingCustom, setUsingCustom] = useState(false);
   const [savedAddress, setSavedAddress] = useState(false);
 
-  const [promoInput, setPromoInput] = useState("");
-  const [promo, setPromo] = useState<Promo | null>(null);
-  const [promoError, setPromoError] = useState("");
-  const [copied, setCopied] = useState(false);
+  // Customer details collected before payment (so emails have somewhere to go)
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
 
-  // Restore saved custom address on mount
   useEffect(() => {
     try {
       const raw = localStorage.getItem(ADDRESS_STORAGE_KEY);
@@ -80,55 +59,17 @@ export function CartDrawer() {
           setSavedAddress(true);
         }
       }
+      const c = localStorage.getItem("esc:customer");
+      if (c) {
+        const { name, email, phone } = JSON.parse(c);
+        if (name) setCustomerName(name);
+        if (email) setCustomerEmail(email);
+        if (phone) setCustomerPhone(phone);
+      }
     } catch { /* ignore */ }
   }, []);
 
-  const { discount, effectiveDelivery, total } = useMemo(() => {
-    const d = !promo ? 0
-      : promo.type === "percent" ? Math.round((subtotal * promo.value) / 100)
-      : promo.type === "amount"  ? Math.min(subtotal, promo.value)
-      : 0;
-    const ed = promo?.type === "freeship" ? 0 : deliveryFee;
-    return { discount: d, effectiveDelivery: ed, total: Math.max(0, subtotal - d) + ed };
-  }, [promo, subtotal, deliveryFee]);
-
-  const promoDescriptor = (p: Promo) =>
-    p.type === "percent"  ? `${p.value}% off`
-  : p.type === "amount"   ? `${formatNaira(p.value)} flat off`
-  :                         `Free delivery`;
-
-  const applyPromo = () => {
-    const code = promoInput.trim().toUpperCase();
-    if (!code) { setPromo(null); setPromoError("Enter a promo code"); return; }
-    if (!/^[A-Z0-9]{3,12}$/.test(code)) { setPromo(null); setPromoError("Codes are 3–12 letters/numbers"); return; }
-    if (subtotal <= 0) { setPromo(null); setPromoError("Add items to your cart first"); return; }
-    const found = PROMO_CODES[code];
-    if (!found) { setPromo(null); setPromoError("This code doesn't exist or has expired"); return; }
-    if (found.minSubtotal && subtotal < found.minSubtotal) {
-      setPromo(null);
-      setPromoError(`Spend at least ${formatNaira(found.minSubtotal)} to use ${code}`);
-      return;
-    }
-    if (found.expiresAt && Date.now() > found.expiresAt) {
-      setPromo(null); setPromoError("This promo code has expired"); return;
-    }
-    setPromo({ code, ...found });
-    setPromoError("");
-  };
-  const clearPromo = () => { setPromo(null); setPromoInput(""); setPromoError(""); };
-
-  const handleGenerate = () => {
-    const p = generateRandomPromo();
-    setPromo(p);
-    setPromoInput(p.code);
-    setPromoError("");
-    setCopied(false);
-  };
-
-  const copyPromo = async () => {
-    if (!promo) return;
-    try { await navigator.clipboard.writeText(promo.code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ }
-  };
+  const total = subtotal + deliveryFee;
 
   const applyCustomAddress = () => {
     const trimmed = customAddress.trim();
@@ -162,17 +103,39 @@ export function CartDrawer() {
       .join("\n") +
     `\n\n💰 *Price Breakdown*\n` +
     `• Subtotal       : ${formatNaira(subtotal)}\n` +
-    (promo
-      ? `• Promo code     : ${promo.code} (${promoDescriptor(promo)})\n` +
-        `• Discount       : -${formatNaira(discount)}${promo.type === "freeship" ? "  +  free delivery" : ""}\n`
-      : "") +
     `• Delivery zone  : ${deliveryLabel}\n` +
     `• ETA            : ${deliveryEta}\n` +
-    `• Delivery fee   : ${effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}${promo?.type === "freeship" ? "  (free shipping promo)" : ""}\n` +
+    `• Delivery fee   : ${deliveryFee === 0 ? "FREE" : formatNaira(deliveryFee)}\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
     `*TOTAL: ${formatNaira(total)}*\n` +
     `━━━━━━━━━━━━━━━━━━\n\n` +
     `Please confirm availability and final total. Thank you! 💕`;
+
+  const canPay = items.length > 0 && customerName.trim() && /\S+@\S+\.\S+/.test(customerEmail);
+
+  const handlePayNow = () => {
+    if (!canPay) return;
+    // Persist a snapshot so /thank-you can build the receipt after Paystack returns
+    const orderRef = `ESC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    const snapshot = {
+      orderRef,
+      createdAt: Date.now(),
+      customer: { name: customerName.trim(), email: customerEmail.trim(), phone: customerPhone.trim() },
+      items: items.map((it) => ({ id: it.id, name: it.name, size: it.size, qty: it.qty, price: it.price, image: it.image })),
+      delivery: { label: deliveryLabel, fee: deliveryFee, eta: deliveryEta },
+      subtotal,
+      total,
+    };
+    try {
+      localStorage.setItem(PENDING_ORDER_KEY, JSON.stringify(snapshot));
+      localStorage.setItem("esc:customer", JSON.stringify(snapshot.customer));
+    } catch { /* ignore */ }
+    // Open Paystack in a new tab. On return, customer comes back and visits /thank-you
+    // (set this as the callback URL in your Paystack page settings: /thank-you)
+    window.open(CONTACT.paystackUrl, "_blank", "noopener,noreferrer");
+    // Also navigate this tab to thank-you so customer lands on the reference form
+    window.location.href = `/thank-you?ref=${encodeURIComponent(orderRef)}`;
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -209,32 +172,15 @@ export function CartDrawer() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-semibold">{formatNaira(subtotal)}</span>
               </div>
-
-              {promo ? (
-                <div className="rounded-lg bg-primary/5 border border-primary/20 px-2.5 py-2 my-1">
-                  <div className="flex justify-between items-start">
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-bold text-primary truncate">Promo · {promo.code}</p>
-                      <p className="text-[10px] text-muted-foreground">{promo.label} ({promoDescriptor(promo)})</p>
-                    </div>
-                    <span className="font-semibold text-primary whitespace-nowrap">
-                      {discount > 0 ? `−${formatNaira(discount)}` : promo.type === "freeship" ? "Free ship" : "—"}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Discount</span>
-                  <span className="text-muted-foreground">—</span>
-                </div>
-              )}
-
               <div className="flex justify-between">
                 <span className="text-muted-foreground truncate pr-2">Delivery <span className="text-[10px]">({deliveryLabel})</span></span>
-                <span className="font-semibold whitespace-nowrap">{effectiveDelivery === 0 ? "FREE" : formatNaira(effectiveDelivery)}</span>
+                <span className="font-semibold whitespace-nowrap">{deliveryFee === 0 ? "FREE" : formatNaira(deliveryFee)}</span>
               </div>
-              <div className="flex items-center gap-1 text-[10px] text-muted-foreground -mt-0.5">
-                <Clock size={10} /> ETA: <span className="font-semibold text-foreground">{deliveryEta}</span>
+              <div className="flex items-center gap-1.5 rounded-lg bg-primary/5 border border-primary/15 px-2.5 py-1.5 mt-1.5">
+                <Truck size={12} className="text-primary shrink-0" />
+                <Clock size={11} className="text-muted-foreground shrink-0" />
+                <span className="text-[11px] text-muted-foreground">Arrives in</span>
+                <span className="text-[11px] font-bold text-primary">{deliveryEta}</span>
               </div>
               <div className="flex justify-between pt-2 mt-1 border-t border-border/60">
                 <span className="font-display text-base">Grand total</span>
@@ -277,7 +223,7 @@ export function CartDrawer() {
               })}
             </div>
 
-            {/* Delivery + promo controls */}
+            {/* Delivery + customer + checkout */}
             <div className="border-t border-border/60 pt-3 space-y-3">
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Delivery zone</p>
@@ -326,7 +272,7 @@ export function CartDrawer() {
                     <div className="mt-1 text-[11px] text-primary font-semibold space-y-0.5">
                       <p>✓ Estimated fare: {formatNaira(deliveryFee)} ({deliveryLabel.split(" — ")[0]})</p>
                       <p className="flex items-center gap-1 text-muted-foreground font-normal">
-                        <Clock size={10} /> ETA: <span className="font-semibold text-foreground">{deliveryEta}</span>
+                        <Clock size={10} /> Arrives in <span className="font-semibold text-foreground">{deliveryEta}</span>
                         {savedAddress && <span className="ml-auto text-[10px] text-primary">· saved</span>}
                       </p>
                     </div>
@@ -334,52 +280,51 @@ export function CartDrawer() {
                 </div>
               </div>
 
+              {/* Customer details required for receipts */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Promo code</p>
-                  <button
-                    type="button"
-                    onClick={handleGenerate}
-                    className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-primary font-semibold hover:underline"
-                  >
-                    <Sparkles size={11} /> Generate
-                  </button>
-                </div>
-                <div className="flex gap-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Your details (for receipt)</p>
+                <div className="grid grid-cols-2 gap-1.5">
                   <input
-                    value={promoInput}
-                    onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
-                    placeholder="e.g. WELCOME10"
-                    className="flex-1 rounded-lg border border-border px-3 py-1.5 text-xs uppercase tracking-wider focus:outline-none focus:border-primary"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Full name *"
+                    className="rounded-lg border border-border px-2.5 py-1.5 text-xs focus:outline-none focus:border-primary"
                   />
-                  {promo ? (
-                    <button type="button" onClick={clearPromo} className="px-3 py-1.5 rounded-lg border border-border text-[11px] font-semibold hover:bg-secondary">
-                      Remove
-                    </button>
-                  ) : (
-                    <button type="button" onClick={applyPromo} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold hover:bg-primary/90">
-                      Apply
-                    </button>
-                  )}
+                  <input
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="Phone"
+                    className="rounded-lg border border-border px-2.5 py-1.5 text-xs focus:outline-none focus:border-primary"
+                  />
                 </div>
-                {promoError && <p className="mt-1 text-[11px] text-destructive">{promoError}</p>}
-                {promo && (
-                  <div className="mt-1.5 flex items-center justify-between text-[11px]">
-                    <span className="text-primary font-semibold">✓ {promo.code} · {promoDescriptor(promo)}</span>
-                    <button type="button" onClick={copyPromo} className="inline-flex items-center gap-1 text-muted-foreground hover:text-primary">
-                      {copied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
-                    </button>
-                  </div>
-                )}
+                <input
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  type="email"
+                  placeholder="Email * (receipt will be sent here)"
+                  className="mt-1.5 w-full rounded-lg border border-border px-2.5 py-1.5 text-xs focus:outline-none focus:border-primary"
+                />
               </div>
+
+              <button
+                type="button"
+                onClick={handlePayNow}
+                disabled={!canPay}
+                className="btn-primary w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <CreditCard size={16} /> Pay now · {formatNaira(total)}
+              </button>
+              {!canPay && items.length > 0 && (
+                <p className="text-[11px] text-muted-foreground text-center">Add your name and email to enable payment.</p>
+              )}
 
               <a
                 href={whatsappLink(message)}
                 target="_blank"
                 rel="noreferrer"
-                className="btn-primary w-full justify-center"
+                className="flex items-center justify-center gap-2 w-full py-2 rounded-full border border-border text-xs font-semibold hover:bg-secondary"
               >
-                <MessageCircle size={16} /> Checkout on WhatsApp · {formatNaira(total)}
+                <MessageCircle size={14} /> Or checkout on WhatsApp
               </a>
               <button
                 type="button"
