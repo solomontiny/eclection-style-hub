@@ -144,13 +144,17 @@ function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () =
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Pay with card · bank · USSD</p>
             <h3 className="font-display text-xl mt-1">Secure checkout via Paystack</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Pay instantly with your debit card, bank transfer, USSD or mobile money. You'll be redirected to a secure Paystack page.
+              Pay instantly with your debit card, bank transfer, USSD or mobile money. Paystack handles the payment securely; you'll receive a reference code on completion.
             </p>
             <ul className="mt-4 space-y-1.5 text-xs text-muted-foreground">
               <li>✓ 256-bit SSL encryption</li>
               <li>✓ Verve, Visa, Mastercard accepted</li>
-              <li>✓ Instant order confirmation</li>
+              <li>✓ Reference code captured automatically for your receipt</li>
             </ul>
+            <div className="mt-4 rounded-lg bg-primary/5 border border-primary/15 p-3 text-[11px] text-muted-foreground">
+              <p className="font-semibold text-foreground mb-0.5">After paying:</p>
+              Come back to our <a href="/thank-you" className="text-primary underline font-semibold">order confirmation page</a> and paste your Paystack reference — we'll email your receipt to you and to our team.
+            </div>
           </div>
           <a
             href={CONTACT.paystackUrl}
@@ -160,9 +164,12 @@ function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () =
           >
             💳 Pay now on Paystack
           </a>
-          <p className="mt-3 text-xs text-muted-foreground text-center">
-            Confirm your order total with us first, then complete the payment.
-          </p>
+          <a
+            href="/thank-you"
+            className="mt-3 flex items-center justify-center gap-2 w-full py-2 rounded-full border border-border text-xs font-semibold hover:bg-secondary"
+          >
+            Already paid? Confirm your order →
+          </a>
         </div>
       ) : method === "bank" ? (
         <div className="mt-6 animate-in fade-in slide-in-from-bottom-2">
