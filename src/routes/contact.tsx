@@ -241,9 +241,6 @@ function WhatsappOrderForm() {
   const [notes, setNotes] = useState("");
   const [deliveryFee, setDeliveryFee] = useState(2500);
   const [deliveryLabel, setDeliveryLabel] = useState<string>("Lekki / Ajah");
-  const [promoInput, setPromoInput] = useState("");
-  const [promo, setPromo] = useState<{ code: string; type: "percent" | "amount" | "freeship"; value: number } | null>(null);
-  const [promoError, setPromoError] = useState("");
 
   const updateItem = (i: number, patch: Partial<OrderItem>) =>
     setItems((arr) => arr.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
