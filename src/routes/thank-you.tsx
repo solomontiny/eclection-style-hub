@@ -91,9 +91,6 @@ function ThankYou() {
         setSent("ok");
         clear();
         try { localStorage.removeItem(PENDING_ORDER_KEY); } catch { /* ignore */ }
-      } else if (res.status === "pending") {
-        setSent("pending");
-        setErrMsg(res.message || "Email service is being set up.");
       } else {
         setSent("error");
         setErrMsg(res.message || "Could not send email.");
