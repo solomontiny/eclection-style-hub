@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User as UserIcon, LayoutDashboard } from "lucide-react";
 import { CartDrawer } from "./CartDrawer";
+import { useAuth } from "@/lib/auth";
 
 const links = [
   { to: "/", label: "Home" },
@@ -12,13 +13,15 @@ const links = [
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const { user, isAdmin, signOut } = useAuth();
+
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border/60">
       <div className="container-x flex items-center justify-between h-20">
         <Link to="/" className="font-display text-xl tracking-tight">
           E Style <span className="text-primary">Collection</span>
         </Link>
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-6">
           {links.map((l) => (
             <Link
               key={l.to}
@@ -29,6 +32,30 @@ export function SiteHeader() {
               {l.label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="text-sm font-medium text-primary hover:opacity-80 inline-flex items-center gap-1.5"
+              activeProps={{ className: "underline" }}
+            >
+              <LayoutDashboard size={15} /> Admin
+            </Link>
+          )}
+          {user ? (
+            <button
+              onClick={() => signOut()}
+              className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors"
+            >
+              Sign out
+            </button>
+          ) : (
+            <Link
+              to="/login"
+              className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors inline-flex items-center gap-1.5"
+            >
+              <UserIcon size={15} /> Sign in
+            </Link>
+          )}
           <Link to="/contact" className="btn-primary !py-2.5 !px-5 text-sm">
             Order Now
           </Link>
@@ -58,9 +85,24 @@ export function SiteHeader() {
                 {l.label}
               </Link>
             ))}
+            {isAdmin && (
+              <Link to="/admin" onClick={() => setOpen(false)} className="py-2 text-sm font-medium text-primary">
+                Admin dashboard
+              </Link>
+            )}
+            {user ? (
+              <button onClick={() => { setOpen(false); signOut(); }} className="py-2 text-sm font-medium text-left">
+                Sign out
+              </button>
+            ) : (
+              <Link to="/login" onClick={() => setOpen(false)} className="py-2 text-sm font-medium">
+                Sign in
+              </Link>
+            )}
           </div>
         </div>
       )}
     </header>
   );
 }
+

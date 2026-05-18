@@ -14,6 +14,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { CustomerCareWidget } from "@/components/CustomerCareWidget";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { CartProvider } from "@/lib/cart";
+import { AuthProvider } from "@/lib/auth";
 
 function NotFoundComponent() {
   return (
@@ -88,17 +89,19 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <CartProvider>
-        <div className="min-h-screen flex flex-col">
-          <AnnouncementBar />
-          <SiteHeader />
-          <main className="flex-1">
-            <Outlet />
-          </main>
-          <SiteFooter />
-          <CustomerCareWidget />
-        </div>
-      </CartProvider>
+      <AuthProvider>
+        <CartProvider>
+          <div className="min-h-screen flex flex-col">
+            <AnnouncementBar />
+            <SiteHeader />
+            <main className="flex-1">
+              <Outlet />
+            </main>
+            <SiteFooter />
+            <CustomerCareWidget />
+          </div>
+        </CartProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
