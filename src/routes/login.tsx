@@ -127,6 +127,10 @@ function LoginPage() {
           )}
         </div>
 
+        <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+          <strong className="text-primary">Admin access:</strong> sign in with your admin email and password. You'll be redirected to <code>/admin</code> automatically.
+        </div>
+
         <div className="mt-6 text-center text-xs text-muted-foreground">
           <Link to="/" className="underline">Back to shop</Link>
         </div>
