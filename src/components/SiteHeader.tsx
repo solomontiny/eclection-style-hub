@@ -49,12 +49,21 @@ export function SiteHeader() {
               Sign out
             </button>
           ) : (
-            <Link
-              to="/login"
-              className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors inline-flex items-center gap-1.5"
-            >
-              <UserIcon size={15} /> Sign in
-            </Link>
+            <>
+              <Link
+                to="/login"
+                className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors inline-flex items-center gap-1.5"
+              >
+                <UserIcon size={15} /> Sign in
+              </Link>
+              <Link
+                to="/login"
+                className="text-xs font-semibold text-primary border border-primary/40 rounded-full px-3 py-1.5 hover:bg-primary hover:text-primary-foreground transition-colors inline-flex items-center gap-1.5"
+                title="Admin sign in"
+              >
+                <LayoutDashboard size={13} /> Admin
+              </Link>
+            </>
           )}
           <Link to="/contact" className="btn-primary !py-2.5 !px-5 text-sm">
             Order Now
