@@ -41,6 +41,20 @@ export function SiteFooter() {
           </ul>
         </div>
       </div>
+      <div className="container-x pb-12">
+        <div className="rounded-2xl overflow-hidden border border-border/60 shadow-sm">
+          <iframe
+            title="E Style Collection location"
+            src={`https://www.google.com/maps?q=${encodeURIComponent(CONTACT.mapQuery)}&output=embed`}
+            width="100%"
+            height="320"
+            style={{ border: 0 }}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            allowFullScreen
+          />
+        </div>
+      </div>
       <div className="border-t border-border/60">
         <div className="container-x py-5 text-xs text-muted-foreground flex flex-wrap gap-2 justify-between">
           <p>© {new Date().getFullYear()} E Style Collection. All rights reserved.</p>
