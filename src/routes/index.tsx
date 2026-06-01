@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Truck, ShieldCheck, Sparkles } from "lucide-react";
-import hero from "@/assets/hero.jpg";
-import logo from "@/assets/logo.jpg";
+import { ArrowRight } from "lucide-react";
+import hero from "@/assets/hero-forest.jpg";
 import { PRODUCTS } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
 import { whatsappLink } from "@/lib/contact";
