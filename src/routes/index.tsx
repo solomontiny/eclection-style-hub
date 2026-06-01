@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Truck, ShieldCheck, Sparkles } from "lucide-react";
-import hero from "@/assets/hero.jpg";
-import logo from "@/assets/logo.jpg";
+import { ArrowRight } from "lucide-react";
+import hero from "@/assets/hero-forest.jpg";
 import { PRODUCTS } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
 import { whatsappLink } from "@/lib/contact";
@@ -20,44 +19,40 @@ function Home() {
   const featured = PRODUCTS.slice(0, 6);
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden" style={{ background: "var(--gradient-hero)" }}>
-        <div className="container-x py-16 lg:py-24 grid lg:grid-cols-2 gap-12 items-center">
-          <div>
-            <img src={logo} alt="E Style Collection logo" width={160} height={224} className="mb-6 h-32 md:h-40 w-auto object-contain mix-blend-multiply" />
-            <span className="inline-block px-3 py-1 rounded-full bg-background/70 text-xs font-semibold tracking-widest uppercase text-primary">
-              New Season · 2026
-            </span>
-            <h1 className="mt-5 font-display text-5xl md:text-6xl lg:text-7xl leading-[1.05]">
-              Style that <em className="italic text-primary not-italic font-normal" style={{ fontStyle: "italic" }}>feels</em> like you.
-            </h1>
-            <p className="mt-5 text-lg text-muted-foreground max-w-md">
-              Affordable, elevated fashion for women and men — handpicked in Lagos and ready to wear.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/shop" className="btn-primary">Shop the collection <ArrowRight size={16} /></Link>
-              <a href={whatsappLink("Hi E Style Collection 👋, I'd like to see what's available.")} target="_blank" rel="noreferrer" className="btn-outline">
-                Chat on WhatsApp
-              </a>
-            </div>
-            <div className="mt-10 flex flex-wrap gap-6 text-sm">
-              <div className="flex items-center gap-2"><Truck size={16} className="text-primary" /> Lagos-wide delivery</div>
-              <div className="flex items-center gap-2"><ShieldCheck size={16} className="text-primary" /> Secure bank transfer</div>
-              <div className="flex items-center gap-2"><Sparkles size={16} className="text-primary" /> Fresh drops weekly</div>
-            </div>
-          </div>
-          <div className="relative">
-            <div className="aspect-[4/5] rounded-3xl overflow-hidden shadow-[var(--shadow-soft)]">
-              <img src={hero} alt="E Style Collection model in lavender gown" width={1280} height={1600} className="h-full w-full object-cover" />
-            </div>
-            <div className="hidden md:block absolute -bottom-6 -left-6 bg-background rounded-2xl p-4 shadow-[var(--shadow-card)] max-w-[200px]">
-              <p className="text-xs text-muted-foreground uppercase tracking-widest">Bestseller</p>
-              <p className="font-display text-base mt-1">Violet Evening Gown</p>
-              <p className="text-primary font-semibold text-sm mt-1">₦65,000</p>
-            </div>
+      {/* Full-bleed hero */}
+      <section className="relative -mt-20 h-[100vh] min-h-[640px] w-full overflow-hidden">
+        <img
+          src={hero}
+          alt="Woman in straw hat walking through sunlit pine forest"
+          width={1920}
+          height={1280}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-foreground/30 via-foreground/20 to-foreground/50" />
+        <div className="relative h-full flex flex-col items-center justify-center text-center px-6 pt-20">
+          <p className="text-primary text-xs md:text-sm font-semibold tracking-[0.3em] uppercase mb-6">
+            ✦ Affordable Fashion for Everyone ✦
+          </p>
+          <h1 className="font-display text-white text-6xl md:text-7xl lg:text-8xl leading-[1] tracking-tight drop-shadow-lg">
+            E Style
+            <br />
+            <em className="italic font-normal">Collection</em>
+          </h1>
+          <p className="mt-6 text-white/90 text-base md:text-lg max-w-md">
+            Premium fashion for women & men. Elegance meets affordability.
+          </p>
+          <div className="mt-9 flex flex-wrap gap-4 justify-center">
+            <Link to="/shop" className="btn-primary !rounded-none !px-8 !py-3.5 text-xs tracking-[0.2em] uppercase">
+              Shop Now <ArrowRight size={14} />
+            </Link>
+            <Link to="/about" className="btn-outline !rounded-none !px-8 !py-3.5 text-xs tracking-[0.2em] uppercase !border-white !text-white hover:!bg-white hover:!text-foreground">
+              Learn More
+            </Link>
           </div>
         </div>
       </section>
+
+
 
       {/* Featured grid */}
       <section className="container-x py-20">
