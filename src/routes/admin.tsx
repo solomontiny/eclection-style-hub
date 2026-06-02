@@ -1,77 +1,90 @@
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, Outlet, Link, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Ticket, Boxes, Settings, LogOut, Store } from "lucide-react";
+import { Toaster } from "sonner";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({
-    meta: [
-      { title: "Admin — E Style Collection" },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "Admin — E Style Collection" }, { name: "robots", content: "noindex" }] }),
   beforeLoad: async ({ location }) => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw redirect({ to: "/login", search: { redirect: location.href } as never });
-    }
-    const { data: isAdmin } = await supabase.rpc("has_role", {
-      _user_id: user.id,
-      _role: "admin",
-    });
-    if (!isAdmin) {
-      throw redirect({ to: "/" });
-    }
+    if (!user) throw redirect({ to: "/login", search: { redirect: location.href } as never });
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+    if (!isAdmin) throw redirect({ to: "/" });
   },
-  component: AdminHome,
+  component: AdminLayout,
 });
 
-function AdminHome() {
+const navItems = [
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { to: "/admin/products", label: "Products", icon: Package },
+  { to: "/admin/categories", label: "Categories", icon: FolderTree },
+  { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
+  { to: "/admin/customers", label: "Customers", icon: Users },
+  { to: "/admin/inventory", label: "Inventory", icon: Boxes },
+  { to: "/admin/coupons", label: "Coupons", icon: Ticket },
+  { to: "/admin/settings", label: "Settings", icon: Settings },
+];
+
+function AdminLayout() {
   const { user, signOut } = useAuth();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <section className="container-x py-12">
-      <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-primary font-semibold">Admin</p>
-          <h1 className="font-display text-4xl">Dashboard</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Signed in as {user?.email}
-          </p>
+    <div className="min-h-screen flex bg-muted/20 -mt-px">
+      <aside className="hidden md:flex w-64 flex-col bg-background border-r border-border sticky top-0 h-screen">
+        <div className="px-6 py-5 border-b border-border">
+          <p className="text-[10px] uppercase tracking-widest text-primary font-semibold">Admin</p>
+          <h2 className="font-display text-xl mt-1">E Style</h2>
         </div>
-        <div className="flex gap-3">
-          <Link to="/" className="btn-secondary">View store</Link>
-          <button onClick={() => signOut()} className="btn-ghost">Sign out</button>
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          {navItems.map((item) => {
+            const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  active ? "bg-primary/10 text-primary font-medium" : "text-foreground/70 hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="p-3 border-t border-border space-y-1">
+          <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground/70 hover:bg-muted">
+            <Store className="h-4 w-4" /> View store
+          </Link>
+          <button onClick={() => signOut()} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground/70 hover:bg-muted">
+            <LogOut className="h-4 w-4" /> Sign out
+          </button>
+          <p className="px-3 pt-2 text-[11px] text-muted-foreground truncate">{user?.email}</p>
         </div>
-      </div>
+      </aside>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {[
-          { title: "Products", desc: "Manage catalog, prices, sizes.", coming: true },
-          { title: "Orders", desc: "Review, fulfil, and track orders.", coming: true },
-          { title: "Customers", desc: "View customer accounts.", coming: true },
-          { title: "Coupons", desc: "Create discount codes.", coming: true },
-          { title: "Banners & content", desc: "Edit homepage banners.", coming: true },
-          { title: "Reports", desc: "Sales analytics and exports.", coming: true },
-        ].map((c) => (
-          <div key={c.title} className="card-elegant p-5">
-            <h3 className="font-display text-xl">{c.title}</h3>
-            <p className="text-sm text-muted-foreground mt-1">{c.desc}</p>
-            {c.coming && (
-              <span className="inline-block mt-3 text-[11px] uppercase tracking-widest text-primary">
-                Coming next
-              </span>
-            )}
-          </div>
-        ))}
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="md:hidden bg-background border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-20">
+          <span className="font-display text-lg">Admin</span>
+          <button onClick={() => signOut()} className="text-sm text-muted-foreground">Sign out</button>
+        </header>
+        <nav className="md:hidden flex overflow-x-auto gap-1 px-3 py-2 bg-background border-b border-border">
+          {navItems.map((item) => {
+            const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+            return (
+              <Link key={item.to} to={item.to} className={`px-3 py-1.5 rounded-md text-xs whitespace-nowrap ${active ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/70"}`}>
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+        <main className="flex-1 p-4 md:p-8">
+          <Outlet />
+        </main>
+        <Toaster richColors position="top-right" />
       </div>
-
-      <div className="mt-10 rounded-2xl border border-dashed border-border p-6 bg-muted/30">
-        <h2 className="font-display text-xl mb-2">Foundation ready</h2>
-        <p className="text-sm text-muted-foreground">
-          Auth, role-based access, and the admin shell are live. Next slices will fill in each card above —
-          one shippable feature per message. Let me know which area to build first.
-        </p>
-      </div>
-    </section>
+    </div>
   );
 }
