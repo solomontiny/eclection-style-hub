@@ -11,12 +11,16 @@ export const Route = createFileRoute("/admin")({
     if (!user) throw redirect({ to: "/login", search: { redirect: location.href } as never });
     const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
     if (!isAdmin) throw redirect({ to: "/" });
+    // Send /admin to /admin/dashboard
+    if (location.pathname === "/admin" || location.pathname === "/admin/") {
+      throw redirect({ to: "/admin/dashboard" });
+    }
   },
   component: AdminLayout,
 });
 
 const navItems = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/categories", label: "Categories", icon: FolderTree },
   { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
