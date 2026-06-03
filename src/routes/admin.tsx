@@ -11,12 +11,16 @@ export const Route = createFileRoute("/admin")({
     if (!user) throw redirect({ to: "/login", search: { redirect: location.href } as never });
     const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
     if (!isAdmin) throw redirect({ to: "/" });
+    // Send /admin to /admin/dashboard
+    if (location.pathname === "/admin" || location.pathname === "/admin/") {
+      throw redirect({ to: "/admin/dashboard" });
+    }
   },
   component: AdminLayout,
 });
 
 const navItems = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/categories", label: "Categories", icon: FolderTree },
   { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
@@ -39,7 +43,7 @@ function AdminLayout() {
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+            const active = pathname === item.to || pathname.startsWith(item.to + "/");
             return (
               <Link
                 key={item.to}
@@ -72,7 +76,7 @@ function AdminLayout() {
         </header>
         <nav className="md:hidden flex overflow-x-auto gap-1 px-3 py-2 bg-background border-b border-border">
           {navItems.map((item) => {
-            const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+            const active = pathname === item.to || pathname.startsWith(item.to + "/");
             return (
               <Link key={item.to} to={item.to} className={`px-3 py-1.5 rounded-md text-xs whitespace-nowrap ${active ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/70"}`}>
                 {item.label}

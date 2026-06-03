@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -25,7 +26,7 @@ function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      navigate({ to: isAdmin ? "/admin" : "/" });
+      navigate({ to: isAdmin ? "/admin/dashboard" : "/" });
     }
   }, [user, loading, isAdmin, navigate]);
 
@@ -37,7 +38,15 @@ function LoginPage() {
       const res = mode === "signin"
         ? await signIn(email.trim(), password)
         : await signUp(email.trim(), password, displayName.trim() || undefined);
-      if (res.error) setErr(res.error);
+      if (res.error) { setErr(res.error); return; }
+      if (mode === "signin") {
+        // Resolve admin status immediately to avoid a redirect race.
+        const { data: { user: u } } = await supabase.auth.getUser();
+        if (u) {
+          const { data: admin } = await supabase.rpc("has_role", { _user_id: u.id, _role: "admin" });
+          navigate({ to: admin ? "/admin/dashboard" : "/" });
+        }
+      }
     } finally {
       setBusy(false);
     }
