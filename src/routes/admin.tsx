@@ -1,7 +1,7 @@
 import { createFileRoute, redirect, Outlet, Link, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Ticket, Boxes, Settings, User, LogOut, Store } from "lucide-react";
+import { LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Ticket, Boxes, Settings, LogOut, Store } from "lucide-react";
 import { Toaster } from "sonner";
 
 export const Route = createFileRoute("/admin")({
@@ -23,7 +23,6 @@ const navItems = [
   { to: "/admin/customers", label: "Customers", icon: Users },
   { to: "/admin/inventory", label: "Inventory", icon: Boxes },
   { to: "/admin/coupons", label: "Coupons", icon: Ticket },
-  { to: "/admin/profile", label: "Profile", icon: User },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

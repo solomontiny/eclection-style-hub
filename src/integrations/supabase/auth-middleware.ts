@@ -4,78 +4,77 @@ import { getRequest } from '@tanstack/react-start/server'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './types'
 
+
+
 export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
-    // ✅ Unified environment variables (works in Cloudflare + local)
-    const SUPABASE_URL =
-      process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+    
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
 
-    const SUPABASE_ANON_KEY =
-      process.env.SUPABASE_ANON_KEY ||
-      process.env.VITE_SUPABASE_ANON_KEY ||
-      process.env.SUPABASE_PUBLISHABLE_KEY
-
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
       const missing = [
         ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
-        ...(!SUPABASE_ANON_KEY ? ['SUPABASE_ANON_KEY'] : []),
-      ]
-
-      const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Cloudflare Variables.`
-
-      console.error(`[Supabase] ${message}`)
-      throw new Error(message)
+        ...(!SUPABASE_PUBLISHABLE_KEY ? ['SUPABASE_PUBLISHABLE_KEY'] : []),
+      ];
+      const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
+      console.error(`[Supabase] ${message}`);
+      throw new Error(message);
     }
-
-    const request = getRequest()
+    
+    const request = getRequest();
 
     if (!request?.headers) {
-      throw new Error('Unauthorized: No request headers available')
+      throw new Error('Unauthorized: No request headers available');
     }
 
-    const authHeader = request.headers.get('authorization')
+    const authHeader = request.headers.get('authorization');
 
     if (!authHeader) {
-      throw new Error('Unauthorized: No authorization header provided')
+      throw new Error('Unauthorized: No authorization header provided');
     }
 
     if (!authHeader.startsWith('Bearer ')) {
-      throw new Error('Unauthorized: Only Bearer tokens are supported')
+      throw new Error('Unauthorized: Only Bearer tokens are supported');
     }
 
-    const token = authHeader.replace('Bearer ', '')
-
+    const token = authHeader.replace('Bearer ', '');
     if (!token) {
-      throw new Error('Unauthorized: No token provided')
+      throw new Error('Unauthorized: No token provided');
     }
 
-    // ✅ Supabase client (server-side safe)
-    const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
+    const supabase = createClient<Database>(
+      SUPABASE_URL!,
+      SUPABASE_PUBLISHABLE_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      },
-      auth: {
-        storage: undefined,
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    })
+        auth: {
+          storage: undefined,
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
 
-    // ✅ Validate token
-    const { data, error } = await supabase.auth.getUser(token)
+    const { data, error } = await supabase.auth.getClaims(token);
+    if (error || !data?.claims) {
+      throw new Error('Unauthorized: Invalid token');
+    }
 
-    if (error || !data?.user) {
-      throw new Error('Unauthorized: Invalid token')
+    if (!data.claims.sub) {
+      throw new Error('Unauthorized: No user ID found in token');
     }
 
     return next({
       context: {
         supabase,
-        userId: data.user.id,
-        user: data.user,
+        userId: data.claims.sub,
+        claims: data.claims,
       },
-    })
-  }
-)
+    });
+  },
+);

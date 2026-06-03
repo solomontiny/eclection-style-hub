@@ -22,19 +22,8 @@ const statusClass: Record<Status, string> = {
 };
 
 type Order = {
-  id: string;
-  user_id: string | null;
-  order_number: string | null;
-  customer_name: string | null;
-  customer_email: string | null;
-  total: number;
-  status: Status;
-  created_at: string;
-  customer_phone?: string | null;
-  shipping_address?: unknown;
-  subtotal?: number | null;
-  discount?: number | null;
-  shipping?: number | null;
+  id: string; order_number: string; customer_name: string; customer_email: string;
+  total: number; status: Status; created_at: string; currency: string;
 };
 
 function OrdersPage() {
@@ -46,18 +35,16 @@ function OrdersPage() {
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["admin-orders"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("orders").select("id, user_id, order_number, customer_name, customer_email, total, status, created_at").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       return data as Order[];
     },
   });
 
-  const filtered = useMemo(() => orders.filter((o) => {
+  const filtered = useMemo(() => orders.filter(o => {
     if (filter !== "all" && o.status !== filter) return false;
-    if (!q) return true;
-    const query = q.toLowerCase();
-    return [o.order_number, o.customer_name, o.customer_email]
-      .some((value) => typeof value === "string" && value.toLowerCase().includes(query));
+    if (q && !(o.order_number.includes(q) || o.customer_name.toLowerCase().includes(q.toLowerCase()) || o.customer_email.toLowerCase().includes(q.toLowerCase()))) return false;
+    return true;
   }), [orders, q, filter]);
 
   const updateStatus = useMutation({
@@ -101,12 +88,12 @@ function OrdersPage() {
                filtered.length === 0 ? <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No orders.</td></tr> :
                filtered.map((o) => (
                 <tr key={o.id} className="border-t border-border">
-                  <td className="p-3 font-medium">{o.order_number ?? o.id}</td>
+                  <td className="p-3 font-medium">{o.order_number}</td>
                   <td className="p-3">
-                    <p>{o.customer_name ?? "Guest"}</p>
-                    <p className="text-xs text-muted-foreground">{o.customer_email ?? "—"}</p>
+                    <p>{o.customer_name}</p>
+                    <p className="text-xs text-muted-foreground">{o.customer_email}</p>
                   </td>
-                  <td className="p-3">{fmtNGN(o.total ?? 0)}</td>
+                  <td className="p-3">{fmtNGN(o.total)}</td>
                   <td className="p-3 text-muted-foreground">{fmtDate(o.created_at)}</td>
                   <td className="p-3">
                     <Select value={o.status} onValueChange={(v) => updateStatus.mutate({ id: o.id, status: v as Status })}>
@@ -134,15 +121,11 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
     queryKey: ["admin-order", orderId],
     enabled: !!orderId,
     queryFn: async () => {
-      const [orderRes, itemsRes] = await Promise.all([
-        supabase.from("orders").select("id, order_number, customer_name, customer_email, customer_phone, total, status, created_at, shipping_address, subtotal, discount, shipping").eq("id", orderId!).single(),
-        supabase.from("order_items").select("id, product_name, unit_price, quantity, subtotal").eq("order_id", orderId!),
+      const [order, items] = await Promise.all([
+        supabase.from("orders").select("*").eq("id", orderId!).single(),
+        supabase.from("order_items").select("*").eq("order_id", orderId!),
       ]);
-
-      if (orderRes.error) throw orderRes.error;
-      if (itemsRes.error) throw itemsRes.error;
-
-      return { order: orderRes.data, items: itemsRes.data ?? [] };
+      return { order: order.data, items: items.data ?? [] };
     },
   });
 
@@ -153,22 +136,11 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
         {data?.order && (
           <div className="space-y-4 text-sm">
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Customer</p>
-                <p>{data.order.customer_name ?? "Guest"}</p>
-                <p className="text-xs">{data.order.customer_email ?? "—"}</p>
-                {data.order.customer_phone && <p className="text-xs">{data.order.customer_phone}</p>}
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Date</p>
-                <p>{fmtDate(data.order.created_at)}</p>
-              </div>
+              <div><p className="text-xs text-muted-foreground">Customer</p><p>{data.order.customer_name}</p><p className="text-xs">{data.order.customer_email}</p>{data.order.customer_phone && <p className="text-xs">{data.order.customer_phone}</p>}</div>
+              <div><p className="text-xs text-muted-foreground">Date</p><p>{fmtDate(data.order.created_at)}</p></div>
             </div>
             {data.order.shipping_address && (
-              <div>
-                <p className="text-xs text-muted-foreground">Shipping address</p>
-                <pre className="text-xs bg-muted p-2 rounded">{JSON.stringify(data.order.shipping_address, null, 2)}</pre>
-              </div>
+              <div><p className="text-xs text-muted-foreground">Shipping address</p><pre className="text-xs bg-muted p-2 rounded">{JSON.stringify(data.order.shipping_address, null, 2)}</pre></div>
             )}
             <div>
               <p className="text-xs text-muted-foreground mb-2">Items</p>
@@ -176,18 +148,16 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
                 {data.items.map((it) => (
                   <div key={it.id} className="flex justify-between border-b border-border py-1">
                     <span>{it.product_name} × {it.quantity}</span>
-                    <span>{fmtNGN(it.subtotal ?? 0)}</span>
+                    <span>{fmtNGN(it.subtotal)}</span>
                   </div>
                 ))}
               </div>
             </div>
             <div className="space-y-1 pt-2 border-t border-border">
-              <div className="flex justify-between text-xs"><span>Subtotal</span><span>{fmtNGN(data.order.subtotal ?? 0)}</span></div>
-              {Number(data.order.discount ?? 0) > 0 && (
-                <div className="flex justify-between text-xs"><span>Discount</span><span>-{fmtNGN(data.order.discount ?? 0)}</span></div>
-              )}
-              <div className="flex justify-between text-xs"><span>Shipping</span><span>{fmtNGN(data.order.shipping ?? 0)}</span></div>
-              <div className="flex justify-between font-display text-lg pt-1"><span>Total</span><span>{fmtNGN(data.order.total ?? 0)}</span></div>
+              <div className="flex justify-between text-xs"><span>Subtotal</span><span>{fmtNGN(data.order.subtotal)}</span></div>
+              {Number(data.order.discount) > 0 && <div className="flex justify-between text-xs"><span>Discount</span><span>-{fmtNGN(data.order.discount)}</span></div>}
+              <div className="flex justify-between text-xs"><span>Shipping</span><span>{fmtNGN(data.order.shipping)}</span></div>
+              <div className="flex justify-between font-display text-lg pt-1"><span>Total</span><span>{fmtNGN(data.order.total)}</span></div>
             </div>
           </div>
         )}
