@@ -1,0 +1,6 @@
+name = "supplieraffordable"
+compatibility_date = "2026-01-01"
+
+[build]
+command = "npm run build"
+output_directory = "dist"
