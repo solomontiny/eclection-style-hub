@@ -3,12 +3,13 @@ import type { Database } from "./types";
 
 /**
  * Supabase environment variables (STRICT VITE ONLY)
+ * Must be injected by Cloudflare / Vite build system
  */
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 /**
- * HARD FAIL FAST (prevents silent fallback bugs)
+ * HARD FAIL FAST (prevents silent broken auth)
  */
 if (!SUPABASE_URL) {
   throw new Error(
@@ -23,26 +24,23 @@ if (!SUPABASE_ANON_KEY) {
 }
 
 /**
- * DEBUG: confirms which environment is actually running
- * This is VERY important for Cloudflare debugging
+ * DEBUG: confirm correct Supabase project in runtime
  */
 console.log("🔗 Supabase URL in use:", SUPABASE_URL);
 
 /**
- * EXTRA DEBUG: detect wrong Supabase project instantly
- * (this helps catch your old rhbbrrhygdmceqmkwwfe issue)
+ * EXTRA SAFETY CHECK (catches old broken project instantly)
  */
 if (SUPABASE_URL.includes("rhbbrrhygdmceqmkwwfe")) {
-  console.error("❌ WRONG SUPABASE PROJECT DETECTED!");
+  console.error("❌ WRONG SUPABASE PROJECT STILL BEING USED!");
 }
 
 /**
- * Cloudflare deploy trigger marker (safe, production-safe)
- * This proves the latest build is being executed
+ * 🚀 CLOUDFLARE REBUILD TRIGGER
+ * This forces a new build hash when pushed to GitHub
+ * Safe: only logs, no runtime impact
  */
-if (import.meta.env.DEV) {
-  console.log("🚀 Dev mode active - client.ts loaded correctly");
-}
+console.log("🚀 client.ts build sync:", new Date().toISOString());
 
 /**
  * Supabase client instance
