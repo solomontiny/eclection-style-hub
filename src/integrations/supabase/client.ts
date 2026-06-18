@@ -3,7 +3,6 @@ import type { Database } from "./types";
 
 /**
  * Supabase environment variables (STRICT VITE ONLY)
- * Cloudflare + Vite only inject VITE_* vars reliably
  */
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -24,10 +23,26 @@ if (!SUPABASE_ANON_KEY) {
 }
 
 /**
- * Debug (ONLY visible in dev tools)
- * Helps confirm correct Supabase project is being used
+ * DEBUG: confirms which environment is actually running
+ * This is VERY important for Cloudflare debugging
  */
 console.log("🔗 Supabase URL in use:", SUPABASE_URL);
+
+/**
+ * EXTRA DEBUG: detect wrong Supabase project instantly
+ * (this helps catch your old rhbbrrhygdmceqmkwwfe issue)
+ */
+if (SUPABASE_URL.includes("rhbbrrhygdmceqmkwwfe")) {
+  console.error("❌ WRONG SUPABASE PROJECT DETECTED!");
+}
+
+/**
+ * Cloudflare deploy trigger marker (safe, production-safe)
+ * This proves the latest build is being executed
+ */
+if (import.meta.env.DEV) {
+  console.log("🚀 Dev mode active - client.ts loaded correctly");
+}
 
 /**
  * Supabase client instance
