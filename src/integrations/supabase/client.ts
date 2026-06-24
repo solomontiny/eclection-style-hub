@@ -4,18 +4,18 @@ import type { Database } from "./types";
 /**
  * Supabase environment variables (STRICT VITE ONLY)
  */
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim();
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
 /**
- * HARD FAIL FAST
+ * HARD FAIL FAST (prevents silent Supabase misconfig)
  */
 if (!SUPABASE_URL) {
-  throw new Error("❌ Missing VITE_SUPABASE_URL");
+  throw new Error("❌ Missing VITE_SUPABASE_URL in .env");
 }
 
 if (!SUPABASE_ANON_KEY) {
-  throw new Error("❌ Missing VITE_SUPABASE_ANON_KEY");
+  throw new Error("❌ Missing VITE_SUPABASE_ANON_KEY in .env");
 }
 
 /**
@@ -26,10 +26,14 @@ if (SUPABASE_URL.includes("rhbbrrhygdmceqmkwwfe")) {
 }
 
 /**
- * DEBUG (only in browser console)
+ * DEBUG (dev only)
  */
 if (import.meta.env.DEV) {
   console.log("🔗 Supabase URL:", SUPABASE_URL);
+  console.log(
+    "🔑 Supabase Key Loaded:",
+    SUPABASE_ANON_KEY ? "YES" : "NO"
+  );
 }
 
 /**
@@ -43,6 +47,11 @@ export const supabase = createClient<Database>(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+    },
+    global: {
+      headers: {
+        "x-application-name": "shop-app",
+      },
     },
   }
 );

@@ -21,7 +21,7 @@ export function ProductCard({ product }: { product: Product }) {
     <div className="group">
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted">
         <img
-          src={product.image}
+          src={product.image ?? product.image_url ?? ""}
           alt={product.name}
           width={800}
           height={1000}
@@ -48,7 +48,7 @@ export function ProductCard({ product }: { product: Product }) {
       </div>
       <div className="mt-4 flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category}</p>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
           <h3 className="font-display text-lg mt-0.5">{product.name}</h3>
         </div>
         <p className="font-semibold text-primary whitespace-nowrap">{formatNaira(product.price)}</p>

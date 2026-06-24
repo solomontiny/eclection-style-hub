@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { PRODUCTS } from "@/lib/products";
+import { useQuery } from "@tanstack/react-query";
+import { Product, getProducts } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
 
 const TABS = ["All", "Women", "Men", "Accessories"] as const;
@@ -17,7 +18,14 @@ export const Route = createFileRoute("/shop")({
 
 function Shop() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("All");
-  const items = tab === "All" ? PRODUCTS : PRODUCTS.filter((p) => p.category === tab);
+  const { data: products = [] } = useQuery<Product[]>({
+    queryKey: ["products"],
+    queryFn: getProducts,
+  });
+  const items =
+    tab === "All"
+      ? products
+      : products.filter((p) => p.category?.toLowerCase() === tab.toLowerCase());
   return (
     <section className="container-x py-16">
       <p className="text-xs uppercase tracking-widest text-primary font-semibold">Collection</p>

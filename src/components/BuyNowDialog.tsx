@@ -17,7 +17,7 @@ export function BuyNowDialog({ product, trigger }: { product: Product; trigger: 
     `I'd like to place the following order:\n\n` +
     `🧾 *Order Details*\n` +
     `• Product   : ${product.name}\n` +
-    `• Category  : ${product.category}\n` +
+    `• Category  : ${product.category ?? "Uncategorized"}\n` +
     `• Size      : ${size}\n` +
     `• Quantity  : ${qty}\n\n` +
     `💰 *Price Breakdown*\n` +
@@ -37,9 +37,9 @@ export function BuyNowDialog({ product, trigger }: { product: Product; trigger: 
           <DialogTitle className="font-display text-2xl">{product.name}</DialogTitle>
         </DialogHeader>
         <div className="flex gap-4">
-          <img src={product.image} alt={product.name} className="h-28 w-24 rounded-xl object-cover" />
+          <img src={product.image ?? product.image_url ?? ""} alt={product.name} className="h-28 w-24 rounded-xl object-cover" />
           <div className="flex-1">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category}</p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
             <p className="mt-1 font-semibold text-primary">{formatNaira(product.price)}</p>
             <div className="mt-3">
               <p className="text-xs font-medium mb-1.5">Size</p>

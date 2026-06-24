@@ -55,7 +55,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return [
         ...arr,
-        { id: product.id, name: product.name, price: product.price, image: product.image, size, qty },
+        {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image ?? product.image_url ?? "",
+          size,
+          qty,
+        },
       ];
     });
     setOpen(true);

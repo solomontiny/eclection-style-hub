@@ -26,6 +26,7 @@ import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
+import { Route as AdminAddProductRouteImport } from './routes/admin.add-product'
 
 const ThankYouRoute = ThankYouRouteImport.update({
   id: '/thank-you',
@@ -112,6 +113,11 @@ const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAddProductRoute = AdminAddProductRouteImport.update({
+  id: '/add-product',
+  path: '/add-product',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/shop': typeof ShopRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/thank-you': typeof ThankYouRoute
+  '/admin/add-product': typeof AdminAddProductRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/shop': typeof ShopRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/thank-you': typeof ThankYouRoute
+  '/admin/add-product': typeof AdminAddProductRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/shop': typeof ShopRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/thank-you': typeof ThankYouRoute
+  '/admin/add-product': typeof AdminAddProductRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/sitemap.xml'
     | '/thank-you'
+    | '/admin/add-product'
     | '/admin/categories'
     | '/admin/coupons'
     | '/admin/customers'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/sitemap.xml'
     | '/thank-you'
+    | '/admin/add-product'
     | '/admin/categories'
     | '/admin/coupons'
     | '/admin/customers'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/sitemap.xml'
     | '/thank-you'
+    | '/admin/add-product'
     | '/admin/categories'
     | '/admin/coupons'
     | '/admin/customers'
@@ -361,10 +373,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCategoriesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/add-product': {
+      id: '/admin/add-product'
+      path: '/add-product'
+      fullPath: '/admin/add-product'
+      preLoaderRoute: typeof AdminAddProductRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminAddProductRoute: typeof AdminAddProductRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCouponsRoute: typeof AdminCouponsRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
@@ -377,6 +397,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAddProductRoute: AdminAddProductRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCouponsRoute: AdminCouponsRoute,
   AdminCustomersRoute: AdminCustomersRoute,

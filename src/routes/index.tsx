@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import hero from "@/assets/hero-forest.jpg";
-import { PRODUCTS } from "@/lib/products";
+import { Product, getProducts } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
 import { whatsappLink } from "@/lib/contact";
 
@@ -16,7 +17,11 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const featured = PRODUCTS.slice(0, 6);
+  const { data: products = [] } = useQuery<Product[]>({
+    queryKey: ["products"],
+    queryFn: getProducts,
+  });
+  const featured = products.slice(0, 6);
   return (
     <>
       {/* Full-bleed hero */}
@@ -73,8 +78,8 @@ function Home() {
       {/* Categories split */}
       <section className="container-x pb-20 grid md:grid-cols-2 gap-6">
         {[
-          { label: "Women", img: PRODUCTS[2].image },
-          { label: "Men", img: PRODUCTS[1].image },
+          { label: "Women", img: featured[2]?.image ?? featured[2]?.image_url ?? "" },
+          { label: "Men", img: featured[1]?.image ?? featured[1]?.image_url ?? "" },
         ].map((c) => (
           <Link key={c.label} to="/shop" className="group relative aspect-[5/3] rounded-3xl overflow-hidden">
             <img src={c.img} alt={c.label} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />

@@ -1,27 +1,124 @@
-import p1 from "@/assets/product-1.jpg";
-import p2 from "@/assets/product-2.jpg";
-import p3 from "@/assets/product-3.jpg";
-import p4 from "@/assets/product-4.jpg";
-import p5 from "@/assets/product-5.jpg";
-import p6 from "@/assets/product-6.jpg";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
-export type Product = {
-  id: string;
-  name: string;
-  price: number; // NGN
-  image: string;
-  category: "Women" | "Men" | "Accessories";
-  tag?: string;
+type ProductRow = Database["public"]["Tables"]["products"]["Row"];
+export type Product = ProductRow & {
+  category?: string | null;
+  image_url?: string | null;
+  image?: string | null;
+  tag?: string | null;
 };
 
-export const PRODUCTS: Product[] = [
-  { id: "blush-ruffle-dress", name: "Blush Ruffle Dress", price: 24500, image: p1, category: "Women", tag: "New" },
-  { id: "lavender-three-piece", name: "Lavender Three-Piece Suit", price: 89000, image: p2, category: "Men" },
-  { id: "violet-evening-gown", name: "Violet Evening Gown", price: 65000, image: p3, category: "Women", tag: "Bestseller" },
-  { id: "coral-linen-shirt", name: "Coral Linen Shirt Set", price: 32000, image: p4, category: "Men" },
-  { id: "blush-handbag-set", name: "Blush Handbag Set", price: 28500, image: p5, category: "Accessories" },
-  { id: "lilac-co-ord", name: "Lilac Co-ord Set", price: 38000, image: p6, category: "Women", tag: "New" },
-];
+type ProductRowWithCategory = ProductRow & {
+  category?: { name: string } | null;
+  image_url?: string | null;
+};
 
+const normalizeProduct = (product: ProductRowWithCategory): Product => ({
+  ...product,
+  category: product.category?.name ?? null,
+  image_url: product.image_url ?? null,
+  image: product.image_url ?? product.images?.[0] ?? null,
+});
+
+/**
+ * Fetch all products (READ)
+ */
+export async function getProducts(): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from("products")
+    .select("*, category:categories(name)")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("getProducts error:", error.message);
+    throw new Error(error.message);
+  }
+
+  return (data || []).map(normalizeProduct);
+}
+
+/**
+ * Fetch single product by ID (READ ONE)
+ */
+export async function getProductById(id: string): Promise<Product | null> {
+  const { data, error } = await supabase
+    .from("products")
+    .select("*, category:categories(name)")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    console.error("getProductById error:", error.message);
+    return null;
+  }
+
+  return data ? normalizeProduct(data) : null;
+}
+
+/**
+ * CREATE product (ADMIN ONLY USE)
+ */
+export async function createProduct(product: Database["public"]["Tables"]["products"]["Insert"]) {
+  const { data, error } = await supabase
+    .from("products")
+    .insert([product])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("createProduct error:", error.message);
+    throw new Error(error.message);
+  }
+
+  return normalizeProduct(data);
+}
+
+/**
+ * UPDATE product (ADMIN ONLY USE)
+ */
+export async function updateProduct(
+  id: string,
+  updates: Database["public"]["Tables"]["products"]["Update"]
+) {
+  const { data, error } = await supabase
+    .from("products")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("updateProduct error:", error.message);
+    throw new Error(error.message);
+  }
+
+  return normalizeProduct(data);
+}
+
+/**
+ * DELETE product (ADMIN ONLY USE)
+ */
+export async function deleteProduct(id: string) {
+  const { error } = await supabase
+    .from("products")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("deleteProduct error:", error.message);
+    throw new Error(error.message);
+  }
+
+  return true;
+}
+
+/**
+ * Format currency (NGN)
+ */
 export const formatNaira = (n: number) =>
-  new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
+  new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(n);
