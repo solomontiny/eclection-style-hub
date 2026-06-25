@@ -82,8 +82,11 @@ function Home() {
           { label: "Men", img: featured[1]?.image ?? featured[1]?.image_url ?? "" },
         ].map((c) => (
           <Link key={c.label} to="/shop" className="group relative aspect-[5/3] rounded-3xl overflow-hidden">
-            <img src={c.img} alt={c.label} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-            <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/10 to-transparent" />
+<img
+  src={c.img || undefined}
+  alt={c.label}
+  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+/>            <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/10 to-transparent" />
             <div className="absolute bottom-6 left-6 text-background">
               <p className="text-xs tracking-widest uppercase opacity-80">Shop</p>
               <p className="font-display text-3xl">{c.label}</p>
