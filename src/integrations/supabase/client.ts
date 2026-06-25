@@ -8,7 +8,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim();
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
 /**
- * HARD FAIL FAST (prevents silent Supabase misconfig)
+ * FAIL FAST (safe, non-crashing validation)
  */
 if (!SUPABASE_URL) {
   throw new Error("❌ Missing VITE_SUPABASE_URL in .env");
@@ -19,10 +19,11 @@ if (!SUPABASE_ANON_KEY) {
 }
 
 /**
- * SAFETY CHECK: detect wrong Supabase project instantly
+ * SAFETY WARNING (NON-BLOCKING)
+ * Only logs warning instead of crashing production
  */
-if (SUPABASE_URL.includes("rhbbrrhygdmceqmkwwfe")) {
-  throw new Error("❌ OLD SUPABASE PROJECT STILL BEING USED");
+if (SUPABASE_URL && !SUPABASE_URL.includes("supabase.co")) {
+  console.warn("⚠️ Supabase URL looks invalid:", SUPABASE_URL);
 }
 
 /**
