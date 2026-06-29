@@ -8,34 +8,36 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim();
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
 /**
- * FAIL FAST (safe, non-crashing validation)
+ * FAIL FAST
  */
 if (!SUPABASE_URL) {
-  throw new Error("❌ Missing VITE_SUPABASE_URL in .env");
+  throw new Error("❌ Missing VITE_SUPABASE_URL");
 }
 
 if (!SUPABASE_ANON_KEY) {
-  throw new Error("❌ Missing VITE_SUPABASE_ANON_KEY in .env");
+  throw new Error("❌ Missing VITE_SUPABASE_ANON_KEY");
 }
 
 /**
- * SAFETY WARNING (NON-BLOCKING)
- * Only logs warning instead of crashing production
+ * Validate URL format
  */
-if (SUPABASE_URL && !SUPABASE_URL.includes("supabase.co")) {
+if (!SUPABASE_URL.startsWith("https://")) {
+  console.warn("⚠️ Supabase URL should start with https://");
+}
+
+if (!SUPABASE_URL.includes("supabase.co")) {
   console.warn("⚠️ Supabase URL looks invalid:", SUPABASE_URL);
 }
 
 /**
- * DEBUG (dev only)
+ * DEBUG
+ * Safe for production (does NOT expose the anon key)
  */
-if (import.meta.env.DEV) {
-  console.log("🔗 Supabase URL:", SUPABASE_URL);
-  console.log(
-    "🔑 Supabase Key Loaded:",
-    SUPABASE_ANON_KEY ? "YES" : "NO"
-  );
-}
+console.log("🔗 Supabase URL:", SUPABASE_URL);
+console.log(
+  "🔑 Supabase Anon Key Loaded:",
+  !!SUPABASE_ANON_KEY
+);
 
 /**
  * Supabase client
