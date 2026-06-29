@@ -1,6 +1,7 @@
 name = "supplieraffordable"
 compatibility_date = "2026-01-01"
 
-[build]
-command = "npm run build"
-output_directory = "dist"
+main = "./dist/server/server.js"
+
+[assets]
+directory = "./dist/client"
