@@ -1,0 +1,8 @@
+src/integrations/supabase/auth-middleware.ts:1:import { createClient } from "@supabase/supabase-js";
+src/integrations/supabase/auth-middleware.ts:24:export const supabaseAdmin = createClient<Database>(
+src/integrations/supabase/client.server.ts:1:import { createClient } from "@supabase/supabase-js";
+src/integrations/supabase/client.server.ts:21:export const supabaseAdmin = createClient<Database>(
+src/integrations/supabase/client.ts:1:import { createClient } from "@supabase/supabase-js";
+src/integrations/supabase/client.ts:45:export const supabase = createClient<Database>(
+src/integrations/supabase/types.ts:10:  // Allows to automatically instantiate createClient with right options
+src/integrations/supabase/types.ts:11:  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
