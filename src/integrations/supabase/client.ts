@@ -5,7 +5,10 @@ import type { Database } from "./types";
  * Supabase environment variables (STRICT VITE ONLY)
  */
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim();
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+const SUPABASE_ANON_KEY = (
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+)?.trim();
 
 /**
  * FAIL FAST
@@ -15,7 +18,7 @@ if (!SUPABASE_URL) {
 }
 
 if (!SUPABASE_ANON_KEY) {
-  throw new Error("❌ Missing VITE_SUPABASE_ANON_KEY");
+  throw new Error("❌ Missing VITE_SUPABASE_PUBLISHABLE_KEY");
 }
 
 /**
