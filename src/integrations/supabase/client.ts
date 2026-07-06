@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
 /**
- * Supabase environment variables (STRICT VITE ONLY)
+ * Read ONLY Vite environment variables
  */
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim();
 const SUPABASE_ANON_KEY = (
@@ -11,43 +11,49 @@ const SUPABASE_ANON_KEY = (
 )?.trim();
 
 /**
- * FAIL FAST
+ * Safe validation helper (does NOT crash bundle at import time)
  */
-if (!SUPABASE_URL) {
-  throw new Error("❌ Missing VITE_SUPABASE_URL");
-}
+function validateEnv() {
+  if (typeof SUPABASE_URL !== "string" || SUPABASE_URL.length === 0) {
+    console.error("❌ Missing VITE_SUPABASE_URL");
+    return false;
+  }
 
+<<<<<<< Updated upstream
 if (!SUPABASE_ANON_KEY) {
   throw new Error("❌ Missing VITE_SUPABASE_PUBLISHABLE_KEY");
+=======
+  if (typeof SUPABASE_ANON_KEY !== "string" || SUPABASE_ANON_KEY.length === 0) {
+    console.error("❌ Missing VITE_SUPABASE_ANON_KEY");
+    return false;
+  }
+
+  try {
+    new URL(SUPABASE_URL);
+  } catch {
+    console.error("❌ Invalid Supabase URL:", SUPABASE_URL);
+    return false;
+  }
+
+  return true;
+>>>>>>> Stashed changes
 }
 
 /**
- * Validate URL format
+ * Only run validation in browser
  */
-if (!SUPABASE_URL.startsWith("https://")) {
-  console.warn("⚠️ Supabase URL should start with https://");
-}
+const isValidEnv = typeof window !== "undefined" ? validateEnv() : true;
 
-if (!SUPABASE_URL.includes("supabase.co")) {
-  console.warn("⚠️ Supabase URL looks invalid:", SUPABASE_URL);
+if (!isValidEnv) {
+  console.warn("⚠️ Supabase environment is not properly configured");
 }
-
-/**
- * DEBUG
- * Safe for production (does NOT expose the anon key)
- */
-console.log("🔗 Supabase URL:", SUPABASE_URL);
-console.log(
-  "🔑 Supabase Anon Key Loaded:",
-  !!SUPABASE_ANON_KEY
-);
 
 /**
  * Supabase client
  */
 export const supabase = createClient<Database>(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
+  SUPABASE_URL || "",
+  SUPABASE_ANON_KEY || "",
   {
     auth: {
       persistSession: true,

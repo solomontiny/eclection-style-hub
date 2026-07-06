@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, type ChangeEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Search, Pencil, Trash2, X, Upload } from "lucide-react";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fmtNGN, slugify } from "@/lib/admin-utils";
 
@@ -264,6 +265,44 @@ function ProductDialog({
     setForm((f) => ({ ...f, [k]: v }));
   }
 
+  async function handleImageSelect(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+
+    try {
+      const fileName = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
+      const { data, error } = await supabase.storage.from("products").upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+      if (error) throw error;
+
+      const path = data?.path ?? fileName;
+      const { data: publicData } = supabase.storage.from("products").getPublicUrl(path);
+      const url = publicData.publicUrl;
+
+      setForm((current) => ({
+        ...current,
+        images: [...(current.images ?? []), url],
+      }));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  function removeImage(index: number) {
+    setForm((current) => ({
+      ...current,
+      images: (current.images ?? []).filter((_, i) => i !== index),
+    }));
+  }
+
   async function save() {
     if (!form.name) {
       toast.error("Name required");
@@ -284,14 +323,16 @@ function ProductDialog({
     };
 
     try {
+      let result;
       if (form.id) {
-        await supabase.from("products").update(payload).eq("id", form.id);
+        result = await supabase.from("products").update(payload).eq("id", form.id);
         toast.success("Product updated");
       } else {
-        await supabase.from("products").insert(payload);
+        result = await supabase.from("products").insert(payload);
         toast.success("Product created");
       }
 
+      if (result?.error) throw result.error;
       onSaved();
     } catch (e) {
       toast.error((e as Error).message);
@@ -317,7 +358,7 @@ function ProductDialog({
               <Input
                 type="number"
                 value={form.price ?? ""}
-                onChange={(e) => set("price", e.target.value as any)}
+                onChange={(e) => set("price", Number(e.target.value) as Product["price"])}
               />
             </div>
 
@@ -326,7 +367,7 @@ function ProductDialog({
               <Input
                 type="number"
                 value={form.discount_percent ?? ""}
-                onChange={(e) => set("discount_percent", e.target.value as any)}
+                onChange={(e) => set("discount_percent", Number(e.target.value) as Product["discount_percent"])}
               />
             </div>
 
@@ -335,8 +376,94 @@ function ProductDialog({
               <Input
                 type="number"
                 value={form.stock ?? ""}
-                onChange={(e) => set("stock", e.target.value as any)}
+                onChange={(e) => set("stock", Number(e.target.value) as Product["stock"])}
               />
+            </div>
+          </div>
+
+          <div>
+            <Label>Description</Label>
+            <Textarea
+              value={form.description ?? ""}
+              onChange={(e) => set("description", e.target.value)}
+              rows={4}
+            />
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <Label>Category</Label>
+              <Select
+                value={form.category_id ?? "none"}
+                onValueChange={(value) => set("category_id", value === "none" ? null : (value as Product["category_id"]))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No category</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Status</Label>
+              <Select
+                value={form.status ?? "draft"}
+                onValueChange={(value) => set("status", value as Product["status"])}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={!!form.featured}
+              onCheckedChange={(checked) => set("featured", (checked === true) as Product["featured"])}
+            />
+            <Label className="cursor-pointer">Featured product</Label>
+          </div>
+
+          <div>
+            <Label>Images</Label>
+            <div className="mt-2 flex flex-col gap-3">
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground hover:bg-muted/50">
+                <Upload className="h-4 w-4" />
+                {uploading ? "Uploading…" : "Upload image"}
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+              </label>
+
+              {(form.images ?? []).length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {(form.images ?? []).map((image, index) => (
+                    <div key={`${image}-${index}`} className="relative overflow-hidden rounded-lg border border-border">
+                      <img src={image} alt={`Product ${index + 1}`} className="h-32 w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute right-2 top-2 rounded-full bg-background/80 p-1.5 shadow"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No images yet.</p>
+              )}
             </div>
           </div>
 
