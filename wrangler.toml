@@ -1,4 +1,4 @@
-name = "supplieraffordable"
+name = "supplier-affordable"
 compatibility_date = "2026-01-01"
 
 main = "./dist/server/server.js"
