@@ -5,25 +5,18 @@ import type { Database } from "./types";
  * Read ONLY Vite environment variables
  */
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim();
-const SUPABASE_ANON_KEY = (
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-)?.trim();
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
 /**
- * Safe validation helper (does NOT crash bundle at import time)
+ * Validate environment
  */
 function validateEnv() {
-  if (typeof SUPABASE_URL !== "string" || SUPABASE_URL.length === 0) {
+  if (!SUPABASE_URL) {
     console.error("❌ Missing VITE_SUPABASE_URL");
     return false;
   }
 
-<<<<<<< Updated upstream
-if (!SUPABASE_ANON_KEY) {
-  throw new Error("❌ Missing VITE_SUPABASE_PUBLISHABLE_KEY");
-=======
-  if (typeof SUPABASE_ANON_KEY !== "string" || SUPABASE_ANON_KEY.length === 0) {
+  if (!SUPABASE_ANON_KEY) {
     console.error("❌ Missing VITE_SUPABASE_ANON_KEY");
     return false;
   }
@@ -36,13 +29,13 @@ if (!SUPABASE_ANON_KEY) {
   }
 
   return true;
->>>>>>> Stashed changes
 }
 
 /**
- * Only run validation in browser
+ * Only validate in browser
  */
-const isValidEnv = typeof window !== "undefined" ? validateEnv() : true;
+const isValidEnv =
+  typeof window !== "undefined" ? validateEnv() : true;
 
 if (!isValidEnv) {
   console.warn("⚠️ Supabase environment is not properly configured");

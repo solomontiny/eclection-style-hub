@@ -7,8 +7,8 @@ import { useState } from "react";
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Contact & Payment — E Style Collection" },
-      { name: "description", content: "Reach E Style Collection via WhatsApp, phone, email or visit our Lekki office. Pay securely by Nigerian bank transfer." },
+      { title: "Contact & Payment — SupplierAffordable" },
+      { name: "description", content: "Reach SupplierAffordable via WhatsApp, phone, email or visit our Lekki office. Pay securely by Nigerian bank transfer." },
     ],
   }),
   component: Contact,
@@ -32,7 +32,7 @@ function Contact() {
         <div className="rounded-3xl bg-card p-8 shadow-[var(--shadow-card)] border border-border/60">
           <h2 className="font-display text-2xl">Reach us directly</h2>
           <div className="mt-6 space-y-5 text-sm">
-            <a href={whatsappLink("Hi E Style 👋")} target="_blank" rel="noreferrer" className="flex items-start gap-3 hover:text-primary">
+            <a href={whatsappLink("Hi SupplierAffordable 👋")} target="_blank" rel="noreferrer" className="flex items-start gap-3 hover:text-primary">
               <MessageCircle className="text-primary mt-0.5" size={20} />
               <div>
                 <p className="font-semibold">WhatsApp (preferred)</p>
@@ -71,8 +71,8 @@ function Contact() {
             </div>
             <div className="rounded-2xl overflow-hidden border border-border/60 mt-2">
               <iframe
-                title="E Style Collection location"
-                src={`https://www.google.com/maps?q=${encodeURIComponent(CONTACT.mapQuery)}&output=embed`}
+              title="SupplierAffordable location"
+              src={`https://www.google.com/maps?q=${encodeURIComponent(CONTACT.mapQuery)}&output=embed`}
                 width="100%"
                 height="220"
                 loading="lazy"
@@ -204,7 +204,7 @@ function PaymentSelector({ copied, copyAcct }: { copied: boolean; copyAcct: () =
 
           <a
             href={whatsappLink(
-              `Hi E Style 👋, I've made a bank transfer to ${CONTACT.bank.bankName} (${CONTACT.bank.accountNumber}). My proof of payment is attached.`,
+              `Hi SupplierAffordable 👋, I've made a bank transfer to ${CONTACT.bank.bankName} (${CONTACT.bank.accountNumber}). My proof of payment is attached.`,
             )}
             target="_blank"
             rel="noreferrer"
@@ -254,7 +254,7 @@ function WhatsappOrderForm() {
   const total = subtotal + deliveryFee;
 
   const message =
-    `*New Order — E Style Collection* 🛍️\n` +
+    `*New Order — SupplierAffordable* 🛍️\n` +
     `━━━━━━━━━━━━━━━━━━\n\n` +
     `🧾 *Items*\n` +
     (validItems.length

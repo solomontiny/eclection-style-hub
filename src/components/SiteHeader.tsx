@@ -19,7 +19,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border/60">
       <div className="container-x flex items-center justify-between h-20">
         <Link to="/" className="font-display text-xl tracking-tight">
-          E Style <span className="text-primary">Collection</span>
+          Supplier<span className="text-primary">Affordable</span>
         </Link>
         <nav className="hidden md:flex items-center gap-6">
           {links.map((l) => (

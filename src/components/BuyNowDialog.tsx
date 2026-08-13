@@ -11,9 +11,9 @@ export function BuyNowDialog({ product, trigger }: { product: Product; trigger: 
   const total = product.price * qty;
 
   const message =
-    `*New Order — E Style Collection* 🛍️\n` +
+    `*New Order — SupplierAffordable* 🛍️\n` +
     `━━━━━━━━━━━━━━━━━━\n\n` +
-    `Hi E Style Collection 👋\n` +
+    `Hi SupplierAffordable 👋\n` +
     `I'd like to place the following order:\n\n` +
     `🧾 *Order Details*\n` +
     `• Product   : ${product.name}\n` +

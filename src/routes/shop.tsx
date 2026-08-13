@@ -9,8 +9,8 @@ const TABS = ["All", "Women", "Men", "Accessories"] as const;
 export const Route = createFileRoute("/shop")({
   head: () => ({
     meta: [
-      { title: "Shop — E Style Collection" },
-      { name: "description", content: "Browse women's, men's and accessory collections from E Style Collection, Lagos." },
+      { title: "Shop — SupplierAffordable" },
+      { name: "description", content: "Browse women's, men's and accessory collections from SupplierAffordable, Lagos." },
     ],
   }),
   component: Shop,

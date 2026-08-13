@@ -1,5 +1,5 @@
 export const CONTACT = {
-  brand: "E Style Collection",
+  brand: "SupplierAffordable",
   email: "Meggieakenn@gmail.com",
   phone: "+2348081759542",
   phone2: "+2349165170214",

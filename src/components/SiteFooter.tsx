@@ -7,7 +7,7 @@ export function SiteFooter() {
     <footer className="mt-24 border-t border-border/60 bg-secondary/40">
       <div className="container-x py-16 grid gap-10 md:grid-cols-4">
         <div className="md:col-span-2">
-          <h3 className="font-display text-2xl">E Style Collection</h3>
+          <h3 className="font-display text-2xl">SupplierAffordable</h3>
           <p className="mt-3 text-sm text-muted-foreground max-w-sm">
             Affordable, elevated fashion for women and men — curated and shipped from Lagos.
           </p>
@@ -44,7 +44,7 @@ export function SiteFooter() {
       <div className="container-x pb-12">
         <div className="rounded-2xl overflow-hidden border border-border/60 shadow-sm">
           <iframe
-            title="E Style Collection location"
+            title="SupplierAffordable location"
             src={`https://www.google.com/maps?q=${encodeURIComponent(CONTACT.mapQuery)}&output=embed`}
             width="100%"
             height="320"
@@ -57,7 +57,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-border/60">
         <div className="container-x py-5 text-xs text-muted-foreground flex flex-wrap gap-2 justify-between">
-          <p>© {new Date().getFullYear()} E Style Collection. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} SupplierAffordable. All rights reserved.</p>
           <p>Lagos, Nigeria</p>
         </div>
       </div>
