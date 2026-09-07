@@ -51,7 +51,7 @@ export function ProductCard({ product }: { product: Product }) {
           <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
           <h3 className="font-display text-lg mt-0.5">{product.name}</h3>
         </div>
-        <p className="font-semibold text-primary whitespace-nowrap">{formatNaira(product.price)}</p>
+        <p className="font-semibold text-primary whitespace-nowrap">{formatNaira(product.sale_price ?? product.price)}</p>
       </div>
 
       <div className="mt-3 space-y-2">

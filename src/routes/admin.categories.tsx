@@ -13,7 +13,7 @@ import { slugify } from "@/lib/admin-utils";
 
 export const Route = createFileRoute("/admin/categories")({ component: CategoriesPage });
 
-type Category = { id: string; name: string; slug: string; description: string | null; image_url: string | null };
+type Category = { id: string; name: string; slug: string; description: string | null; image_url: string | null; active: boolean; product_count?: number };
 
 function CategoriesPage() {
   const qc = useQueryClient();
@@ -23,15 +23,15 @@ function CategoriesPage() {
   const { data = [], isLoading } = useQuery({
     queryKey: ["admin-categories-full"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("categories").select("*").order("name");
+      const { data, error } = await supabase.from("categories").select("*, products(count)").order("name");
       if (error) throw error;
-      return data as Category[];
+      return (data ?? []).map((category) => ({ ...category, product_count: (category.products as { count: number }[] | undefined)?.[0]?.count ?? 0 })) as Category[];
     },
   });
 
   const save = useMutation({
     mutationFn: async (c: Partial<Category>) => {
-      const payload = { name: c.name!, slug: c.slug || slugify(c.name!), description: c.description ?? null, image_url: c.image_url ?? null };
+      const payload = { name: c.name!, slug: c.slug || slugify(c.name!), description: c.description ?? null, image_url: c.image_url ?? null, active: c.active ?? true };
       if (c.id) {
         const { error } = await supabase.from("categories").update(payload).eq("id", c.id);
         if (error) throw error;
@@ -45,7 +45,10 @@ function CategoriesPage() {
   });
 
   const del = useMutation({
-    mutationFn: async (id: string) => { const { error } = await supabase.from("categories").delete().eq("id", id); if (error) throw error; },
+    mutationFn: async (category: Category) => {
+      if ((category.product_count ?? 0) > 0) throw new Error("Reassign or remove this category's products before deleting it.");
+      const { error } = await supabase.from("categories").delete().eq("id", category.id); if (error) throw error;
+    },
     onSuccess: () => { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["admin-categories-full"] }); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -64,14 +67,15 @@ function CategoriesPage() {
           <div key={c.id} className="p-4 flex items-center justify-between gap-3">
             <div>
               <p className="font-medium">{c.name}</p>
-              <p className="text-xs text-muted-foreground">{c.slug}{c.description ? ` — ${c.description}` : ""}</p>
+              <p className="text-xs text-muted-foreground">{c.slug} · {c.product_count ?? 0} products{c.description ? ` — ${c.description}` : ""}</p>
             </div>
             <div className="flex gap-1">
               <button onClick={() => { setEditing(c); setOpen(true); }} className="p-2 hover:bg-muted rounded"><Pencil className="h-4 w-4" /></button>
+              <button onClick={() => save.mutate({ ...c, active: !c.active })} className="px-2 text-xs text-muted-foreground">{c.active ? "Active" : "Inactive"}</button>
               <ConfirmDialog
                 trigger={<button className="p-2 hover:bg-muted rounded text-destructive"><Trash2 className="h-4 w-4" /></button>}
                 title={`Delete "${c.name}"?`}
-                onConfirm={() => del.mutateAsync(c.id)}
+                onConfirm={() => del.mutateAsync(c)}
               />
             </div>
           </div>
@@ -85,6 +89,7 @@ function CategoriesPage() {
             <div><Label>Name</Label><Input value={editing?.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
             <div><Label>Slug</Label><Input value={editing?.slug ?? ""} placeholder="auto" onChange={(e) => setEditing({ ...editing, slug: e.target.value })} /></div>
             <div><Label>Description</Label><Textarea value={editing?.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editing?.active ?? true} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> Active in shop</label>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setOpen(false)} className="btn-ghost">Cancel</button>
               <button onClick={() => editing?.name && save.mutate(editing)} className="btn-primary">Save</button>

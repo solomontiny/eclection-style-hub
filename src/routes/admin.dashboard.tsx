@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Package, ShoppingCart, Users, DollarSign, AlertTriangle } from "lucide-react";
+import { Package, ShoppingCart, Users, DollarSign, AlertTriangle, Clock3, CheckCircle2, Truck } from "lucide-react";
 
 export const Route = createFileRoute("/admin/dashboard")({
   component: DashboardPage,
@@ -15,21 +15,30 @@ function DashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-dashboard"],
     queryFn: async () => {
-      const [products, orders, customers, lowStock, recent] = await Promise.all([
+      const [products, orders, customers, lowStock, recent, recentProducts] = await Promise.all([
         supabase.from("products").select("id", { count: "exact", head: true }),
-        supabase.from("orders").select("total, status", { count: "exact" }),
+        supabase.from("orders").select("total, status, payment_status, created_at", { count: "exact" }),
         supabase.from("profiles").select("id", { count: "exact", head: true }),
-        supabase.from("products").select("id, name, stock").lte("stock", 5).limit(5),
+        supabase.from("products").select("id, name, stock, low_stock_threshold").order("stock", { ascending: true }).limit(5),
         supabase.from("orders").select("id, order_number, total, status, created_at, customer_name").order("created_at", { ascending: false }).limit(5),
+        supabase.from("products").select("id, name, price, status, created_at").order("created_at", { ascending: false }).limit(5),
       ]);
-      const revenue = (orders.data ?? []).filter((o: any) => o.status !== "cancelled").reduce((s: number, o: any) => s + Number(o.total ?? 0), 0);
+      const validOrders = (orders.data ?? []).filter((o) => o.status !== "cancelled");
+      const today = new Date().toISOString().slice(0, 10);
+      const revenue = validOrders.reduce((s, o) => s + Number(o.total ?? 0), 0);
+      const todayRevenue = validOrders.filter((o) => o.created_at.slice(0, 10) === today).reduce((s, o) => s + Number(o.total ?? 0), 0);
       return {
         productCount: products.count ?? 0,
         orderCount: orders.count ?? 0,
         customerCount: customers.count ?? 0,
         revenue,
+        todayRevenue,
+        pending: validOrders.filter((o) => o.status === "pending").length,
+        processing: validOrders.filter((o) => o.status === "processing").length,
+        delivered: validOrders.filter((o) => o.status === "delivered").length,
         lowStock: lowStock.data ?? [],
         recent: recent.data ?? [],
+        recentProducts: recentProducts.data ?? [],
       };
     },
   });
@@ -39,6 +48,10 @@ function DashboardPage() {
     { label: "Orders", value: data?.orderCount ?? "—", icon: ShoppingCart },
     { label: "Products", value: data?.productCount ?? "—", icon: Package },
     { label: "Customers", value: data?.customerCount ?? "—", icon: Users },
+    { label: "Today's sales", value: data ? fmtNGN(data.todayRevenue) : "—", icon: Clock3 },
+    { label: "Pending orders", value: data?.pending ?? "—", icon: Clock3 },
+    { label: "Processing", value: data?.processing ?? "—", icon: Truck },
+    { label: "Delivered", value: data?.delivered ?? "—", icon: CheckCircle2 },
   ];
 
   return (
@@ -90,6 +103,19 @@ function DashboardPage() {
               </div>
             ))}
             {!isLoading && (data?.lowStock ?? []).length === 0 && <p className="text-sm text-muted-foreground">All products well stocked</p>}
+          </div>
+        </div>
+
+        <div className="bg-background rounded-2xl border border-border p-6">
+          <h2 className="font-display text-lg mb-4">Recent products</h2>
+          <div className="space-y-3">
+            {(data?.recentProducts ?? []).map((p) => (
+              <div key={p.id} className="flex items-center justify-between text-sm border-b border-border pb-2 last:border-0">
+                <div><p className="font-medium">{p.name}</p><p className="text-xs text-muted-foreground capitalize">{p.status}</p></div>
+                <span>{fmtNGN(Number(p.price))}</span>
+              </div>
+            ))}
+            {!isLoading && (data?.recentProducts ?? []).length === 0 && <p className="text-sm text-muted-foreground">No products yet</p>}
           </div>
         </div>
       </div>

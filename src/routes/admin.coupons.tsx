@@ -16,7 +16,7 @@ type Coupon = {
   id: string; code: string; description: string | null;
   discount_type: "percent" | "fixed"; discount_value: number;
   min_order_amount: number | null; usage_limit: number | null; used_count: number;
-  active: boolean; expires_at: string | null;
+  active: boolean; starts_at: string | null; expires_at: string | null; max_discount: number | null;
 };
 
 function CouponsPage() {
@@ -41,8 +41,10 @@ function CouponsPage() {
         discount_type: c.discount_type ?? "percent",
         discount_value: Number(c.discount_value ?? 0),
         min_order_amount: c.min_order_amount ? Number(c.min_order_amount) : 0,
+        max_discount: c.max_discount ? Number(c.max_discount) : null,
         usage_limit: c.usage_limit ? Number(c.usage_limit) : null,
         active: c.active ?? true,
+        starts_at: c.starts_at || null,
         expires_at: c.expires_at || null,
       };
       if (c.id) { const { error } = await supabase.from("coupons").update(payload).eq("id", c.id); if (error) throw error; }
@@ -69,16 +71,17 @@ function CouponsPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50"><tr className="text-left">
               <th className="p-3">Code</th><th className="p-3">Discount</th>
-              <th className="p-3">Used</th><th className="p-3">Status</th><th className="p-3"></th>
+              <th className="p-3">Used</th><th className="p-3">Window</th><th className="p-3">Status</th><th className="p-3"></th>
             </tr></thead>
             <tbody>
               {isLoading ? <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Loading…</td></tr> :
-               data.length === 0 ? <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No coupons yet.</td></tr> :
+               data.length === 0 ? <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No coupons yet.</td></tr> :
                data.map((c) => (
                 <tr key={c.id} className="border-t border-border">
                   <td className="p-3 font-mono font-medium">{c.code}</td>
                   <td className="p-3">{c.discount_type === "percent" ? `${c.discount_value}%` : `₦${c.discount_value}`}</td>
                   <td className="p-3">{c.used_count}{c.usage_limit ? ` / ${c.usage_limit}` : ""}</td>
+                  <td className="p-3 text-xs text-muted-foreground">{c.starts_at ? new Date(c.starts_at).toLocaleDateString() : "Now"} – {c.expires_at ? new Date(c.expires_at).toLocaleDateString() : "Open"}</td>
                   <td className="p-3">
                     <span className={`text-xs px-2 py-1 rounded-full ${c.active ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"}`}>
                       {c.active ? "Active" : "Inactive"}
@@ -113,6 +116,7 @@ function CouponsPage() {
               </div>
               <div><Label>Value</Label><Input type="number" value={editing?.discount_value ?? 0} onChange={(e) => setEditing({ ...editing, discount_value: Number(e.target.value) })} /></div>
             </div>
+            <div className="grid grid-cols-2 gap-3"><div><Label>Max discount (₦)</Label><Input type="number" min="0" value={editing?.max_discount ?? ""} onChange={(e) => setEditing({ ...editing, max_discount: e.target.value ? Number(e.target.value) : null })} /></div><div><Label>Starts at</Label><Input type="datetime-local" value={editing?.starts_at?.slice(0,16) ?? ""} onChange={(e) => setEditing({ ...editing, starts_at: e.target.value || null })} /></div></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Min order (₦)</Label><Input type="number" value={editing?.min_order_amount ?? 0} onChange={(e) => setEditing({ ...editing, min_order_amount: Number(e.target.value) })} /></div>
               <div><Label>Usage limit</Label><Input type="number" value={editing?.usage_limit ?? ""} placeholder="∞" onChange={(e) => setEditing({ ...editing, usage_limit: e.target.value ? Number(e.target.value) : null })} /></div>

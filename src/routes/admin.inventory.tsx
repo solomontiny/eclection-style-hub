@@ -13,6 +13,7 @@ export const Route = createFileRoute("/admin/inventory")({
 type Row = {
   id: string;
   name: string;
+  sku: string | null;
   stock: number;
   low_stock_threshold: number | null;
   status: string;
@@ -28,7 +29,7 @@ function InventoryPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, stock, low_stock_threshold, status")
+        .select("id, name, sku, stock, low_stock_threshold, status")
         .order("stock", { ascending: true });
 
       if (error) {
@@ -187,7 +188,7 @@ function InventoryPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="text-left">
-                <th className="p-3">Product</th>
+                <th className="p-3">Product</th><th className="p-3">SKU</th>
                 <th className="p-3">Status</th>
                 <th className="p-3">Low-stock threshold</th>
                 <th className="p-3 w-64">Stock</th>
@@ -197,13 +198,13 @@ function InventoryPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="p-6 text-center text-muted-foreground">
+                  <td colSpan={5} className="p-6 text-center text-muted-foreground">
                     Loading…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-6 text-center text-muted-foreground">
+                  <td colSpan={5} className="p-6 text-center text-muted-foreground">
                     No products match
                   </td>
                 </tr>
@@ -230,6 +231,8 @@ function InventoryPage() {
                           </span>
                         )}
                       </td>
+
+                      <td className="p-3 text-xs text-muted-foreground font-mono">{p.sku || "—"}</td>
 
                       <td className="p-3 capitalize text-muted-foreground">
                         {p.status}

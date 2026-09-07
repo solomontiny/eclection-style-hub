@@ -12,6 +12,7 @@ import { fmtNGN, fmtDate } from "@/lib/admin-utils";
 export const Route = createFileRoute("/admin/orders")({ component: OrdersPage });
 
 const STATUSES = ["pending", "processing", "shipped", "delivered", "cancelled"] as const;
+const PAYMENT_STATUSES = ["pending", "paid", "failed", "refunded"] as const;
 type Status = typeof STATUSES[number];
 const statusClass: Record<Status, string> = {
   pending: "bg-amber-100 text-amber-800",
@@ -24,12 +25,14 @@ const statusClass: Record<Status, string> = {
 type Order = {
   id: string; order_number: string; customer_name: string; customer_email: string;
   total: number; status: Status; created_at: string; currency: string;
+  payment_status: typeof PAYMENT_STATUSES[number];
 };
 
 function OrdersPage() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<string>("all");
+  const [paymentFilter, setPaymentFilter] = useState<string>("all");
   const [viewing, setViewing] = useState<string | null>(null);
 
   const { data: orders = [], isLoading } = useQuery({
@@ -43,9 +46,10 @@ function OrdersPage() {
 
   const filtered = useMemo(() => orders.filter(o => {
     if (filter !== "all" && o.status !== filter) return false;
+    if (paymentFilter !== "all" && o.payment_status !== paymentFilter) return false;
     if (q && !(o.order_number.includes(q) || o.customer_name.toLowerCase().includes(q.toLowerCase()) || o.customer_email.toLowerCase().includes(q.toLowerCase()))) return false;
     return true;
-  }), [orders, q, filter]);
+  }), [orders, q, filter, paymentFilter]);
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: Status }) => {
@@ -72,6 +76,7 @@ function OrdersPage() {
             {STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={paymentFilter} onValueChange={setPaymentFilter}><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All payments</SelectItem>{PAYMENT_STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent></Select>
       </div>
 
       <div className="bg-background rounded-2xl border border-border overflow-hidden">
@@ -80,15 +85,16 @@ function OrdersPage() {
             <thead className="bg-muted/50">
               <tr className="text-left">
                 <th className="p-3">Order</th><th className="p-3">Customer</th><th className="p-3">Total</th>
-                <th className="p-3">Date</th><th className="p-3">Status</th><th className="p-3"></th>
+                <th className="p-3">Date</th><th className="p-3">Payment</th><th className="p-3">Status</th><th className="p-3"></th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Loading…</td></tr> :
-               filtered.length === 0 ? <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No orders.</td></tr> :
+               filtered.length === 0 ? <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No orders.</td></tr> :
                filtered.map((o) => (
                 <tr key={o.id} className="border-t border-border">
                   <td className="p-3 font-medium">{o.order_number}</td>
+                  <td className="p-3"><span className="capitalize text-xs">{o.payment_status}</span></td>
                   <td className="p-3">
                     <p>{o.customer_name}</p>
                     <p className="text-xs text-muted-foreground">{o.customer_email}</p>
@@ -137,7 +143,7 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
           <div className="space-y-4 text-sm">
             <div className="grid grid-cols-2 gap-3">
               <div><p className="text-xs text-muted-foreground">Customer</p><p>{data.order.customer_name}</p><p className="text-xs">{data.order.customer_email}</p>{data.order.customer_phone && <p className="text-xs">{data.order.customer_phone}</p>}</div>
-              <div><p className="text-xs text-muted-foreground">Date</p><p>{fmtDate(data.order.created_at)}</p></div>
+              <div><p className="text-xs text-muted-foreground">Date</p><p>{fmtDate(data.order.created_at)}</p><p className="text-xs capitalize">Payment: {data.order.payment_status}</p></div>
             </div>
             {data.order.shipping_address && (
               <div><p className="text-xs text-muted-foreground">Shipping address</p><pre className="text-xs bg-muted p-2 rounded">{JSON.stringify(data.order.shipping_address, null, 2)}</pre></div>

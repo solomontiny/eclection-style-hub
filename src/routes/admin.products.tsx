@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useEffect, type ChangeEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Search, Pencil, Trash2, X, Upload } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Upload, ArrowUp, ArrowDown, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +21,9 @@ type Product = {
   slug: string;
   description: string | null;
   category_id: string | null;
+  sku: string | null;
   price: number;
+  sale_price: number | null;
   discount_percent: number;
   stock: number;
   images: string[];
@@ -33,6 +35,9 @@ function ProductsPage() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [sort, setSort] = useState("newest");
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<Partial<Product> | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -54,7 +59,7 @@ function ProductsPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("categories")
-        .select("id, name")
+        .select("id, name, active")
         .order("name");
 
       return data ?? [];
@@ -64,10 +69,21 @@ function ProductsPage() {
   const filtered = useMemo(() => {
     return products.filter((p) => {
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
+      if (categoryFilter !== "all" && p.category_id !== categoryFilter) return false;
       if (q && !p.name.toLowerCase().includes(q.toLowerCase())) return false;
       return true;
     });
-  }, [products, q, statusFilter]);
+  }, [products, q, statusFilter, categoryFilter]);
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    if (sort === "name") return a.name.localeCompare(b.name);
+    if (sort === "price-low") return Number(a.price) - Number(b.price);
+    if (sort === "price-high") return Number(b.price) - Number(a.price);
+    return 0;
+  }), [filtered, sort]);
+  const pageSize = 10;
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
 
   const del = useMutation({
     mutationFn: async (id: string) => {
@@ -123,7 +139,15 @@ function ProductsPage() {
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value); setPage(1); }}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="All categories" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            {categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPage(1); }}>
           <SelectTrigger className="w-40">
             <SelectValue />
           </SelectTrigger>
@@ -132,6 +156,16 @@ function ProductsPage() {
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
             <SelectItem value="archived">Archived</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={sort} onValueChange={setSort}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Newest</SelectItem>
+            <SelectItem value="name">Name</SelectItem>
+            <SelectItem value="price-low">Price low</SelectItem>
+            <SelectItem value="price-high">Price high</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -163,7 +197,7 @@ function ProductsPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((p) => (
+                paged.map((p) => (
                   <tr key={p.id} className="border-t border-border">
                     <td className="p-3">
                       <div className="flex items-center gap-3">
@@ -175,12 +209,12 @@ function ProductsPage() {
 
                         <div>
                           <p className="font-medium">{p.name}</p>
-                          <p className="text-xs text-muted-foreground">{p.slug}</p>
+                          <p className="text-xs text-muted-foreground">{p.sku || p.slug}</p>
                         </div>
                       </div>
                     </td>
 
-                    <td className="p-3">{fmtNGN(p.price)}</td>
+                    <td className="p-3">{fmtNGN(p.sale_price ?? p.price)}{p.sale_price != null && <span className="ml-1 text-xs text-muted-foreground line-through">{fmtNGN(p.price)}</span>}</td>
 
                     <td className="p-3">
                       <span className={p.stock <= 5 ? "text-amber-600 font-medium" : ""}>
@@ -208,6 +242,10 @@ function ProductsPage() {
                           <Pencil className="h-4 w-4" />
                         </button>
 
+                        <button onClick={() => supabase.from("products").update({ featured: !p.featured }).eq("id", p.id).then(({ error }) => { if (error) toast.error(error.message); else qc.invalidateQueries({ queryKey: ["admin-products"] }); })} className="p-2 hover:bg-muted rounded" title="Toggle featured">
+                          <Star className={`h-4 w-4 ${p.featured ? "fill-primary text-primary" : ""}`} />
+                        </button>
+
                         <ConfirmDialog
                           trigger={
                             <button className="p-2 hover:bg-muted rounded text-destructive">
@@ -226,6 +264,8 @@ function ProductsPage() {
           </table>
         </div>
       </div>
+
+      {pageCount > 1 && <div className="flex items-center justify-between text-sm"><span>Page {page} of {pageCount}</span><div className="flex gap-2"><button className="btn-ghost" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</button><button className="btn-ghost" disabled={page === pageCount} onClick={() => setPage((value) => value + 1)}>Next</button></div></div>}
 
       <ProductDialog
         open={open}
@@ -296,7 +336,17 @@ function ProductDialog({
     }
   }
 
-  function removeImage(index: number) {
+  async function removeImage(index: number) {
+    const image = form.images?.[index];
+    const marker = "/storage/v1/object/public/product-images/";
+    const path = image?.includes(marker) ? decodeURIComponent(image.split(marker)[1]) : "";
+    if (path) {
+      const { error } = await supabase.storage.from("product-images").remove([path]);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+    }
     setForm((current) => ({
       ...current,
       images: (current.images ?? []).filter((_, i) => i !== index),
@@ -314,7 +364,9 @@ function ProductDialog({
       slug: form.slug || slugify(form.name),
       description: form.description ?? null,
       category_id: form.category_id || null,
+      sku: form.sku?.trim() || null,
       price: Number(form.price || 0),
+      sale_price: form.sale_price == null || form.sale_price === 0 ? null : Number(form.sale_price),
       discount_percent: Number(form.discount_percent || 0),
       stock: Number(form.stock || 0),
       images: form.images ?? [],
@@ -354,6 +406,10 @@ function ProductDialog({
 
           <div className="grid sm:grid-cols-3 gap-4">
             <div>
+              <Label>SKU</Label>
+              <Input value={form.sku ?? ""} onChange={(e) => set("sku", e.target.value)} placeholder="Optional SKU" />
+            </div>
+            <div>
               <Label>Price (₦)</Label>
               <Input
                 type="number"
@@ -369,6 +425,11 @@ function ProductDialog({
                 value={form.discount_percent ?? ""}
                 onChange={(e) => set("discount_percent", Number(e.target.value) as Product["discount_percent"])}
               />
+            </div>
+
+            <div>
+              <Label>Sale price (₦)</Label>
+              <Input type="number" min="0" value={form.sale_price ?? ""} onChange={(e) => set("sale_price", e.target.value ? Number(e.target.value) : null)} />
             </div>
 
             <div>
@@ -458,6 +519,10 @@ function ProductDialog({
                       >
                         <X className="h-4 w-4" />
                       </button>
+                      <div className="absolute bottom-2 left-2 flex gap-1">
+                        {index > 0 && <button type="button" onClick={() => setForm((current) => { const images = [...(current.images ?? [])]; [images[index - 1], images[index]] = [images[index], images[index - 1]]; return { ...current, images }; })} className="rounded bg-background/80 p-1.5 shadow"><ArrowUp className="h-4 w-4" /></button>}
+                        {index < (form.images?.length ?? 0) - 1 && <button type="button" onClick={() => setForm((current) => { const images = [...(current.images ?? [])]; [images[index], images[index + 1]] = [images[index + 1], images[index]]; return { ...current, images }; })} className="rounded bg-background/80 p-1.5 shadow"><ArrowDown className="h-4 w-4" /></button>}
+                      </div>
                     </div>
                   ))}
                 </div>

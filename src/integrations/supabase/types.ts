@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -12,10 +12,36 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       categories: {
         Row: {
+          active: boolean
           created_at: string
           description: string | null
           id: string
@@ -25,6 +51,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active?: boolean
           created_at?: string
           description?: string | null
           id?: string
@@ -34,6 +61,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active?: boolean
           created_at?: string
           description?: string | null
           id?: string
@@ -54,7 +82,9 @@ export type Database = {
           discount_value: number
           expires_at: string | null
           id: string
+          max_discount: number | null
           min_order_amount: number | null
+          starts_at: string | null
           updated_at: string
           usage_limit: number | null
           used_count: number
@@ -68,7 +98,9 @@ export type Database = {
           discount_value: number
           expires_at?: string | null
           id?: string
+          max_discount?: number | null
           min_order_amount?: number | null
+          starts_at?: string | null
           updated_at?: string
           usage_limit?: number | null
           used_count?: number
@@ -82,7 +114,9 @@ export type Database = {
           discount_value?: number
           expires_at?: string | null
           id?: string
+          max_discount?: number | null
           min_order_amount?: number | null
+          starts_at?: string | null
           updated_at?: string
           usage_limit?: number | null
           used_count?: number
@@ -149,6 +183,7 @@ export type Database = {
           id: string
           notes: string | null
           order_number: string
+          payment_status: Database["public"]["Enums"]["payment_status"]
           shipping: number
           shipping_address: Json | null
           status: Database["public"]["Enums"]["order_status"]
@@ -168,6 +203,7 @@ export type Database = {
           id?: string
           notes?: string | null
           order_number?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
           shipping?: number
           shipping_address?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -187,6 +223,7 @@ export type Database = {
           id?: string
           notes?: string | null
           order_number?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
           shipping?: number
           shipping_address?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -209,6 +246,8 @@ export type Database = {
           low_stock_threshold: number
           name: string
           price: number
+          sale_price: number | null
+          sku: string | null
           slug: string
           status: Database["public"]["Enums"]["product_status"]
           stock: number
@@ -225,6 +264,8 @@ export type Database = {
           low_stock_threshold?: number
           name: string
           price?: number
+          sale_price?: number | null
+          sku?: string | null
           slug: string
           status?: Database["public"]["Enums"]["product_status"]
           stock?: number
@@ -241,6 +282,8 @@ export type Database = {
           low_stock_threshold?: number
           name?: string
           price?: number
+          sale_price?: number | null
+          sku?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["product_status"]
           stock?: number
@@ -280,6 +323,48 @@ export type Database = {
           phone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      shop_settings: {
+        Row: {
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          currency: string
+          id: string
+          shipping_flat_rate: number
+          store_description: string | null
+          store_name: string
+          store_policies: string | null
+          tax_percent: number
+          updated_at: string
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          shipping_flat_rate?: number
+          store_description?: string | null
+          store_name?: string
+          store_policies?: string | null
+          tax_percent?: number
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          shipping_flat_rate?: number
+          store_description?: string | null
+          store_name?: string
+          store_policies?: string | null
+          tax_percent?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -326,6 +411,7 @@ export type Database = {
         | "shipped"
         | "delivered"
         | "cancelled"
+      payment_status: "pending" | "paid" | "failed" | "refunded"
       product_status: "draft" | "active" | "archived"
     }
     CompositeTypes: {
@@ -342,12 +428,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -371,11 +457,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -396,11 +482,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -421,11 +507,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -438,11 +524,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -452,6 +538,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "customer"],
@@ -463,6 +552,7 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
+      payment_status: ["pending", "paid", "failed", "refunded"],
       product_status: ["draft", "active", "archived"],
     },
   },

@@ -10,7 +10,7 @@ export type Product = ProductRow & {
 };
 
 type ProductRowWithCategory = ProductRow & {
-  category?: { name: string } | null;
+  category?: { name: string; active: boolean } | null;
   image_url?: string | null;
 };
 
@@ -27,7 +27,9 @@ const normalizeProduct = (product: ProductRowWithCategory): Product => ({
 export async function getProducts(): Promise<Product[]> {
   const { data, error } = await supabase
     .from("products")
-    .select("*, category:categories(name)")
+    .select("*, category:categories(name, active)")
+    .eq("status", "active")
+    .eq("categories.active", true)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -44,7 +46,7 @@ export async function getProducts(): Promise<Product[]> {
 export async function getProductById(id: string): Promise<Product | null> {
   const { data, error } = await supabase
     .from("products")
-    .select("*, category:categories(name)")
+    .select("*, category:categories(name, active)")
     .eq("id", id)
     .single();
 
@@ -53,7 +55,7 @@ export async function getProductById(id: string): Promise<Product | null> {
     return null;
   }
 
-  return data ? normalizeProduct(data) : null;
+  return data && data.status === "active" && (data.category_id == null || data.category?.active !== false) ? normalizeProduct(data) : null;
 }
 
 /**
