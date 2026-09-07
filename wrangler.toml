@@ -1,7 +1,7 @@
 name = "supplieraffordable"
 compatibility_date = "2026-01-01"
 
-main = "./dist/server/server.js"
+main = "./.output/server/index.mjs"
 
 [assets]
-directory = "./dist/client"
+directory = "./.output/public"
