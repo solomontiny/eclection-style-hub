@@ -29,7 +29,6 @@ export async function getProducts(): Promise<Product[]> {
     .from("products")
     .select("*, category:categories(name, active)")
     .eq("status", "active")
-    .eq("categories.active", true)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -56,6 +55,24 @@ export async function getProductById(id: string): Promise<Product | null> {
   }
 
   return data && data.status === "active" && (data.category_id == null || data.category?.active !== false) ? normalizeProduct(data) : null;
+}
+
+export async function getProductBySlug(slug: string): Promise<Product | null> {
+  const { data, error } = await supabase
+    .from("products")
+    .select("*, category:categories(name, active)")
+    .eq("slug", slug)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (error) {
+    console.error("getProductBySlug error:", error.message);
+    return null;
+  }
+
+  return data && (data.category_id == null || data.category?.active !== false)
+    ? normalizeProduct(data)
+    : null;
 }
 
 /**

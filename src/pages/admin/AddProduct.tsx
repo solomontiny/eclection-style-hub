@@ -30,7 +30,7 @@ export default function AddProduct() {
         price: Number(price),
         stock: Number(stock),
         images: images,
-        status: "draft",
+        status: "active",
         category_id: null,
         description: null,
         discount_percent: 0,

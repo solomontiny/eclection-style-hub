@@ -99,7 +99,7 @@ function ProductsPage() {
 
   function openNew() {
     setEditing({
-      status: "draft",
+      status: "active",
       price: 0,
       stock: 0,
       discount_percent: 0,

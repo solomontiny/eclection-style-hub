@@ -42,12 +42,7 @@ export function SiteHeader() {
             </Link>
           )}
           {user ? (
-            <button
-              onClick={() => signOut()}
-              className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors"
-            >
-              Sign out
-            </button>
+            <><Link to="/account" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Account</Link><button onClick={() => signOut()} className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Sign out</button></>
           ) : (
             <>
               <Link
@@ -100,9 +95,7 @@ export function SiteHeader() {
               </Link>
             )}
             {user ? (
-              <button onClick={() => { setOpen(false); signOut(); }} className="py-2 text-sm font-medium text-left">
-                Sign out
-              </button>
+              <><Link to="/account" onClick={() => setOpen(false)} className="py-2 text-sm font-medium">Account</Link><button onClick={() => { setOpen(false); signOut(); }} className="py-2 text-sm font-medium text-left">Sign out</button></>
             ) : (
               <Link to="/login" onClick={() => setOpen(false)} className="py-2 text-sm font-medium">
                 Sign in

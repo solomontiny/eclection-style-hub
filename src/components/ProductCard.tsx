@@ -3,6 +3,7 @@ import { ShoppingBag, Plus, Check } from "lucide-react";
 import { useState } from "react";
 import { BuyNowDialog } from "./BuyNowDialog";
 import { useCart } from "@/lib/cart";
+import { Link } from "@tanstack/react-router";
 
 const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
 
@@ -20,14 +21,18 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <div className="group">
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted">
-        <img
-          src={product.image ?? product.image_url ?? ""}
+        <Link to="/product/$slug" params={{ slug: product.slug }} aria-label={`View ${product.name}`}>
+          <img
+          src={product.image ?? product.image_url ?? undefined}
           alt={product.name}
           width={800}
           height={1000}
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-        />
+          onError={(event) => { event.currentTarget.style.display = "none"; }}
+          />
+          {!product.image && !product.image_url && <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">No image</div>}
+        </Link>
         {product.tag && (
           <span className="absolute top-3 left-3 px-3 py-1 text-xs font-semibold rounded-full bg-background/90 text-primary backdrop-blur">
             {product.tag}
@@ -49,7 +54,7 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="mt-4 flex items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
-          <h3 className="font-display text-lg mt-0.5">{product.name}</h3>
+          <Link to="/product/$slug" params={{ slug: product.slug }} className="font-display text-lg mt-0.5 hover:text-primary">{product.name}</Link>
         </div>
         <p className="font-semibold text-primary whitespace-nowrap">{formatNaira(product.sale_price ?? product.price)}</p>
       </div>

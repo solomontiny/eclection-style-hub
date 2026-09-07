@@ -8,7 +8,8 @@ export function BuyNowDialog({ product, trigger }: { product: Product; trigger: 
   const [open, setOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState("M");
-  const total = product.price * qty;
+  const unitPrice = product.sale_price ?? product.price;
+  const total = unitPrice * qty;
 
   const message =
     `*New Order — SupplierAffordable* 🛍️\n` +
@@ -21,7 +22,7 @@ export function BuyNowDialog({ product, trigger }: { product: Product; trigger: 
     `• Size      : ${size}\n` +
     `• Quantity  : ${qty}\n\n` +
     `💰 *Price Breakdown*\n` +
-    `• Unit price : ${formatNaira(product.price)}\n` +
+            `• Unit price : ${formatNaira(unitPrice)}\n` +
     `• Quantity   : x${qty}\n` +
     `• Subtotal   : ${formatNaira(total)}\n\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
@@ -40,7 +41,7 @@ export function BuyNowDialog({ product, trigger }: { product: Product; trigger: 
           <img src={product.image ?? product.image_url ?? ""} alt={product.name} className="h-28 w-24 rounded-xl object-cover" />
           <div className="flex-1">
             <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
-            <p className="mt-1 font-semibold text-primary">{formatNaira(product.price)}</p>
+            <p className="mt-1 font-semibold text-primary">{formatNaira(unitPrice)}</p>
             <div className="mt-3">
               <p className="text-xs font-medium mb-1.5">Size</p>
               <div className="flex gap-1.5">

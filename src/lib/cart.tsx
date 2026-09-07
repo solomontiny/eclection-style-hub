@@ -58,7 +58,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         {
           id: product.id,
           name: product.name,
-          price: product.price,
+          price: product.sale_price ?? product.price,
           image: product.image ?? product.image_url ?? "",
           size,
           qty,
