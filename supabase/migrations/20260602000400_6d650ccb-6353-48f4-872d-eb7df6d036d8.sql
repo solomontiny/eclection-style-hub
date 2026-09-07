@@ -1,7 +1,7 @@
 
 -- ============ CATEGORIES ============
 CREATE TABLE public.categories (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
   description TEXT,
@@ -23,7 +23,7 @@ CREATE TRIGGER trg_categories_updated BEFORE UPDATE ON public.categories
 CREATE TYPE public.product_status AS ENUM ('draft','active','archived');
 
 CREATE TABLE public.products (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
   description TEXT,
@@ -55,8 +55,8 @@ CREATE TRIGGER trg_products_updated BEFORE UPDATE ON public.products
 CREATE TYPE public.order_status AS ENUM ('pending','processing','shipped','delivered','cancelled');
 
 CREATE TABLE public.orders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_number TEXT NOT NULL UNIQUE DEFAULT ('ESC-' || to_char(now(),'YYMMDD') || '-' || substr(gen_random_uuid()::text,1,6)),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+  order_number TEXT NOT NULL UNIQUE DEFAULT ('ESC-' || to_char(now(),'YYMMDD') || '-' || substr(extensions.gen_random_uuid()::text,1,6)),
   user_id UUID,
   customer_name TEXT NOT NULL,
   customer_email TEXT NOT NULL,
@@ -90,7 +90,7 @@ CREATE TRIGGER trg_orders_updated BEFORE UPDATE ON public.orders
 
 -- ============ ORDER ITEMS ============
 CREATE TABLE public.order_items (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   order_id UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
   product_id UUID REFERENCES public.products(id) ON DELETE SET NULL,
   product_name TEXT NOT NULL,
@@ -114,7 +114,7 @@ CREATE POLICY "Admins manage items" ON public.order_items FOR ALL TO authenticat
 CREATE TYPE public.discount_type AS ENUM ('percent','fixed');
 
 CREATE TABLE public.coupons (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   code TEXT NOT NULL UNIQUE,
   description TEXT,
   discount_type public.discount_type NOT NULL DEFAULT 'percent',

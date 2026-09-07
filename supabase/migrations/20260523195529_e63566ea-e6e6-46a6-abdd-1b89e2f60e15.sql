@@ -1,2 +1,3 @@
 
-REVOKE EXECUTE ON FUNCTION public.grant_admin_to_known_email() FROM PUBLIC, anon, authenticated;
+-- The email-based admin trigger was removed. The administrator is provisioned
+-- explicitly through Supabase Auth after the migration chain succeeds.

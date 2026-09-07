@@ -273,7 +273,7 @@ function ProductDialog({
 
     try {
       const fileName = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
-      const { data, error } = await supabase.storage.from("products").upload(fileName, file, {
+      const { data, error } = await supabase.storage.from("product-images").upload(fileName, file, {
         cacheControl: "3600",
         upsert: false,
       });
@@ -281,7 +281,7 @@ function ProductDialog({
       if (error) throw error;
 
       const path = data?.path ?? fileName;
-      const { data: publicData } = supabase.storage.from("products").getPublicUrl(path);
+      const { data: publicData } = supabase.storage.from("product-images").getPublicUrl(path);
       const url = publicData.publicUrl;
 
       setForm((current) => ({
