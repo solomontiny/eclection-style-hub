@@ -21,7 +21,12 @@ function Home() {
     queryKey: ["products"],
     queryFn: getProducts,
   });
-  const featured = products.slice(0, 6);
+
+  const featured = products.filter(p => p.featured).slice(0, 4);
+  const newArrivals = products.slice(0, 4);
+  const bundles = products.filter(p => p.product_type === 'bundle').slice(0, 4);
+  const onSale = products.filter(p => p.sale_price && p.sale_price < p.price).slice(0, 4);
+
   return (
     <>
       {/* Full-bleed hero */}
@@ -57,43 +62,35 @@ function Home() {
         </div>
       </section>
 
-
-
-      {/* Featured grid */}
+      {/* Shop by Category */}
       <section className="container-x py-20">
-        <div className="flex items-end justify-between mb-10">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-primary font-semibold">Featured</p>
-            <h2 className="font-display text-3xl md:text-5xl mt-2">This week's edit</h2>
-          </div>
-          <Link to="/shop" className="hidden sm:inline-flex text-sm font-semibold text-primary hover:underline items-center gap-1">
-            See all <ArrowRight size={14} />
-          </Link>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
-          {featured.map((p) => <ProductCard key={p.id} product={p} />)}
+        <h2 className="font-display text-3xl md:text-5xl mb-10 text-center">Shop by Category</h2>
+        <div className="grid md:grid-cols-2 gap-6">
+          {[
+            { label: "Women", img: featured[0]?.image ?? featured[0]?.image_url ?? "" },
+            { label: "Men", img: featured[1]?.image ?? featured[1]?.image_url ?? "" },
+          ].map((c) => (
+            <Link key={c.label} to="/shop" className="group relative aspect-[5/3] rounded-3xl overflow-hidden">
+              <img
+                src={c.img || undefined}
+                alt={c.label}
+                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/10 to-transparent" />
+              <div className="absolute bottom-6 left-6 text-background">
+                <p className="text-xs tracking-widest uppercase opacity-80">Shop</p>
+                <p className="font-display text-3xl">{c.label}</p>
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
 
-      {/* Categories split */}
-      <section className="container-x pb-20 grid md:grid-cols-2 gap-6">
-        {[
-          { label: "Women", img: featured[2]?.image ?? featured[2]?.image_url ?? "" },
-          { label: "Men", img: featured[1]?.image ?? featured[1]?.image_url ?? "" },
-        ].map((c) => (
-          <Link key={c.label} to="/shop" className="group relative aspect-[5/3] rounded-3xl overflow-hidden">
-<img
-  src={c.img || undefined}
-  alt={c.label}
-  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-/>            <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/10 to-transparent" />
-            <div className="absolute bottom-6 left-6 text-background">
-              <p className="text-xs tracking-widest uppercase opacity-80">Shop</p>
-              <p className="font-display text-3xl">{c.label}</p>
-            </div>
-          </Link>
-        ))}
-      </section>
+      {/* Product Sections */}
+      <ProductSection title="Featured" products={featured} />
+      <ProductSection title="New Arrivals" products={newArrivals} />
+      <ProductSection title="Bundle Deals" products={bundles} />
+      <ProductSection title="On Sale" products={onSale} />
 
       {/* CTA banner */}
       <section className="container-x pb-24">
@@ -110,4 +107,19 @@ function Home() {
       </section>
     </>
   );
+}
+
+function ProductSection({ title, products }: { title: string, products: Product[] }) {
+  if (products.length === 0) return null;
+  return (
+    <section className="container-x py-16">
+        <div className="flex justify-between items-end mb-8">
+            <h2 className="font-display text-3xl">{title}</h2>
+            <Link to="/shop" className="text-sm font-semibold text-primary hover:underline">View All</Link>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {products.map(p => <ProductCard key={p.id} product={p} />)}
+        </div>
+    </section>
+  )
 }

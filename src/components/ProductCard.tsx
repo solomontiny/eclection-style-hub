@@ -18,6 +18,19 @@ export function ProductCard({ product }: { product: Product }) {
     setTimeout(() => setJustAdded(false), 1200);
   };
 
+  // Badge logic
+  const isNew = new Date(product.created_at).getTime() > Date.now() - 1000 * 60 * 60 * 24 * 7; // 7 days
+  const isSale = product.sale_price && product.sale_price < product.price;
+  const isBundle = product.product_type === 'bundle';
+  const isFeatured = product.featured;
+
+  const badges = [
+    isNew && { label: "NEW", className: "bg-blue-600" },
+    isBundle && { label: "BUNDLE", className: "bg-purple-600" },
+    isSale && { label: "SALE", className: "bg-red-600" },
+    isFeatured && { label: "FEATURED", className: "bg-amber-500" },
+  ].filter(Boolean) as { label: string; className: string }[];
+
   return (
     <div className="group">
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted">
@@ -36,20 +49,14 @@ export function ProductCard({ product }: { product: Product }) {
         {product.stock <= 0 && (
           <span className="absolute top-3 left-3 px-3 py-1 text-xs font-semibold rounded-full bg-red-500/90 text-white backdrop-blur">OUT OF STOCK</span>
         )}
-        {product.product_type === 'bundle' && product.stock > 0 && (
-          <span className="absolute top-3 left-3 px-3 py-1 text-xs font-semibold rounded-full bg-blue-500/90 text-white backdrop-blur">BUNDLE</span>
-        )}
-        {product.product_type === 'premium' && product.stock > 0 && (
-          <span className="absolute top-3 left-3 px-3 py-1 text-xs font-semibold rounded-full bg-yellow-500/90 text-white backdrop-blur">PREMIUM</span>
-        )}
-        {product.promotion_status === 'sale' && product.sale_price && product.sale_price < product.price && (
-          <span className="absolute top-3 right-3 px-3 py-1 text-xs font-semibold rounded-full bg-green-500/90 text-white backdrop-blur">
-            {Math.round(((product.price - product.sale_price) / product.price) * 100)}% OFF
-          </span>
-        )}
-        {product.promotion_status === 'flash_sale' && product.stock > 0 && (
-          <span className="absolute top-3 right-3 px-3 py-1 text-xs font-semibold rounded-full bg-red-600/90 text-white backdrop-blur">FLASH SALE</span>
-        )}
+        
+        {/* Intelligent Badges */}
+        <div className="absolute top-3 left-3 flex flex-col gap-2">
+          {badges.slice(0, 2).map((b, i) => (
+             <span key={i} className={`px-3 py-1 text-[10px] font-bold rounded-full text-white backdrop-blur ${b.className}`}>{b.label}</span>
+          ))}
+        </div>
+
         <BuyNowDialog
           product={product}
           trigger={
@@ -68,7 +75,12 @@ export function ProductCard({ product }: { product: Product }) {
           <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
           <Link to="/product/$slug" params={{ slug: product.slug }} className="font-display text-lg mt-0.5 hover:text-primary">{product.name}</Link>
         </div>
-        <p className="font-semibold text-primary whitespace-nowrap">{formatNaira(product.sale_price ?? product.price)}</p>
+        <div className="text-right">
+          <p className="font-semibold text-primary whitespace-nowrap">{formatNaira(product.sale_price ?? product.price)}</p>
+          {isSale && (
+            <p className="text-xs text-muted-foreground line-through">{formatNaira(product.price)}</p>
+          )}
+        </div>
       </div>
 
       <div className="mt-3 space-y-2">

@@ -11,6 +11,23 @@ const links = [
   { to: "/contact", label: "Contact" },
 ] as const;
 
+// Helper to make navigation more accessible and consistent
+const NavLinks = ({ onClick }: { onClick?: () => void }) => (
+  <>
+    {links.map((l) => (
+      <Link
+        key={l.to}
+        to={l.to}
+        onClick={onClick}
+        className="py-2 text-sm font-medium text-foreground/80 hover:text-primary transition-colors"
+        activeProps={{ className: "text-primary" }}
+      >
+        {l.label}
+      </Link>
+    ))}
+  </>
+);
+
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const { user, isAdmin, signOut } = useAuth();
@@ -22,18 +39,9 @@ export function SiteHeader() {
           Supplier<span className="text-primary">Affordable</span>
         </Link>
         <nav className="hidden md:flex items-center gap-6">
-          {links.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors"
-              activeProps={{ className: "text-primary" }}
-            >
-              {l.label}
-            </Link>
-          ))}
+          <NavLinks />
           {isAdmin ? (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 border-l pl-6 border-border/60">
               <Link
                 to="/admin"
                 className="text-sm font-medium text-primary hover:opacity-80 inline-flex items-center gap-1.5"
@@ -72,19 +80,10 @@ export function SiteHeader() {
       </div>
       {open && (
         <div className="md:hidden border-t border-border/60 bg-background">
-          <div className="container-x py-4 flex flex-col gap-3">
-            {links.map((l) => (
-              <Link
-                key={l.to}
-                to={l.to}
-                onClick={() => setOpen(false)}
-                className="py-2 text-sm font-medium"
-              >
-                {l.label}
-              </Link>
-            ))}
+          <div className="container-x py-4 flex flex-col gap-1">
+            <NavLinks onClick={() => setOpen(false)} />
             {isAdmin && (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-border/60">
                 <Link to="/admin" onClick={() => setOpen(false)} className="py-2 text-sm font-medium text-primary">
                   Admin dashboard
                 </Link>
@@ -92,7 +91,7 @@ export function SiteHeader() {
               </div>
             )}
             {!isAdmin && (
-              <Link to="/login" onClick={() => setOpen(false)} className="py-2 text-sm font-medium">
+              <Link to="/login" onClick={() => setOpen(false)} className="py-2 mt-2 pt-2 border-t border-border/60 text-sm font-medium">
                 Admin login
               </Link>
             )}

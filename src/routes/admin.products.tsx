@@ -13,24 +13,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fmtNGN, slugify } from "@/lib/admin-utils";
+import type { Product } from "@/lib/products";
 
-export const Route = createFileRoute("/admin/products")({ component: ProductsPage });
-
-type Product = {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  category_id: string | null;
-  sku: string | null;
-  price: number;
-  sale_price: number | null;
-  discount_percent: number;
-  stock: number;
-  images: string[];
-  status: "draft" | "active" | "archived";
-  featured: boolean;
-};
+export const Route = createFileRoute("/admin/products")({
+  component: ProductsPage,
+});
 
 function ProductsPage() {
   const qc = useQueryClient();
@@ -313,7 +300,7 @@ function ProductDialog({
 
   useEffect(() => {
     if (open) {
-      setForm(initial ?? {
+      setForm({
         status: "active",
         price: 0,
         stock: 0,
@@ -321,7 +308,8 @@ function ProductDialog({
         images: [],
         product_type: "standard",
         promotion_status: "regular",
-        bundle_items: []
+        bundle_items: [],
+        ...initial
       });
       setImages((initial?.images || []).map((url, i) => ({ file: null, url, isPrimary: i === 0 })));
 
@@ -461,7 +449,7 @@ function ProductDialog({
               <Label>Type</Label>
               <Select value={form.product_type ?? "standard"} onValueChange={(v) => set("product_type", v as any)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[100]">
                   <SelectItem value="standard">Standard</SelectItem>
                   <SelectItem value="bundle">Bundle</SelectItem>
                   <SelectItem value="premium">Premium</SelectItem>
@@ -472,7 +460,7 @@ function ProductDialog({
               <Label>Promotion</Label>
               <Select value={form.promotion_status ?? "regular"} onValueChange={(v) => set("promotion_status", v as any)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[100]">
                   <SelectItem value="regular">Regular</SelectItem>
                   <SelectItem value="sale">Sale</SelectItem>
                   <SelectItem value="flash-sale">Flash Sale</SelectItem>
@@ -511,7 +499,7 @@ function ProductDialog({
                         if (p) setForm(prev => ({ ...prev, bundle_items: [...(prev.bundle_items || []), { ...p, quantity: 1 }] }));
                     }}>
                         <SelectTrigger><SelectValue placeholder="Add product" /></SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[100]">
                            {allProducts.filter(p => p.id !== form.id).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
