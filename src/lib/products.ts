@@ -7,6 +7,8 @@ export type Product = ProductRow & {
   image_url?: string | null;
   image?: string | null;
   tag?: string | null;
+  product_type?: 'standard' | 'bundle' | 'premium';
+  promotion_status?: 'regular' | 'sale' | 'flash_sale';
 };
 
 type ProductRowWithCategory = ProductRow & {
@@ -20,6 +22,23 @@ const normalizeProduct = (product: ProductRowWithCategory): Product => ({
   image_url: product.image_url ?? null,
   image: product.image_url ?? product.images?.[0] ?? null,
 });
+
+/**
+ * Fetch all categories
+ */
+export async function getCategories() {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("active", true);
+
+  if (error) {
+    console.error("getCategories error:", error.message);
+    throw new Error(error.message);
+  }
+
+  return data;
+}
 
 /**
  * Fetch all products (READ)

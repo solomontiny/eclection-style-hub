@@ -32,33 +32,27 @@ export function SiteHeader() {
               {l.label}
             </Link>
           ))}
-          {isAdmin && (
-            <Link
-              to="/admin"
-              className="text-sm font-medium text-primary hover:opacity-80 inline-flex items-center gap-1.5"
-              activeProps={{ className: "underline" }}
-            >
-              <LayoutDashboard size={15} /> Admin
-            </Link>
-          )}
-          {user ? (
-            <><Link to="/account" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Account</Link><button onClick={() => signOut()} className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Sign out</button></>
+          {isAdmin ? (
+            <div className="flex items-center gap-4">
+              <Link
+                to="/admin"
+                className="text-sm font-medium text-primary hover:opacity-80 inline-flex items-center gap-1.5"
+                activeProps={{ className: "underline" }}
+              >
+                <LayoutDashboard size={15} /> Admin
+              </Link>
+              <button onClick={async () => await signOut()} className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors disabled:opacity-50">
+                Sign out
+              </button>
+            </div>
           ) : (
-            <>
-              <Link
-                to="/login"
-                className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors inline-flex items-center gap-1.5"
-              >
-                <UserIcon size={15} /> Sign in
-              </Link>
-              <Link
-                to="/login"
-                className="text-xs font-semibold text-primary border border-primary/40 rounded-full px-3 py-1.5 hover:bg-primary hover:text-primary-foreground transition-colors inline-flex items-center gap-1.5"
-                title="Admin sign in"
-              >
-                <LayoutDashboard size={13} /> Admin
-              </Link>
-            </>
+            <Link
+              to="/login"
+              className="text-xs font-semibold text-primary border border-primary/40 rounded-full px-3 py-1.5 hover:bg-primary hover:text-primary-foreground transition-colors inline-flex items-center gap-1.5"
+              title="Admin sign in"
+            >
+              <LayoutDashboard size={13} /> Admin
+            </Link>
           )}
           <Link to="/contact" className="btn-primary !py-2.5 !px-5 text-sm">
             Order Now
@@ -90,15 +84,16 @@ export function SiteHeader() {
               </Link>
             ))}
             {isAdmin && (
-              <Link to="/admin" onClick={() => setOpen(false)} className="py-2 text-sm font-medium text-primary">
-                Admin dashboard
-              </Link>
+              <div className="flex flex-col gap-3">
+                <Link to="/admin" onClick={() => setOpen(false)} className="py-2 text-sm font-medium text-primary">
+                  Admin dashboard
+                </Link>
+                <button onClick={() => { setOpen(false); signOut(); }} className="py-2 text-sm font-medium text-left">Sign out</button>
+              </div>
             )}
-            {user ? (
-              <><Link to="/account" onClick={() => setOpen(false)} className="py-2 text-sm font-medium">Account</Link><button onClick={() => { setOpen(false); signOut(); }} className="py-2 text-sm font-medium text-left">Sign out</button></>
-            ) : (
+            {!isAdmin && (
               <Link to="/login" onClick={() => setOpen(false)} className="py-2 text-sm font-medium">
-                Sign in
+                Admin login
               </Link>
             )}
           </div>

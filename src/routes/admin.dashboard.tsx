@@ -18,7 +18,7 @@ function DashboardPage() {
       const [products, orders, customers, lowStock, recent, recentProducts] = await Promise.all([
         supabase.from("products").select("id", { count: "exact", head: true }),
         supabase.from("orders").select("total, status, payment_status, created_at", { count: "exact" }),
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
+        supabase.from("profiles").select("id", { count: "exact", head: true }).then((res) => res).catch(() => ({ count: 0, error: null, data: [], status: 200, statusText: "" })),
         supabase.from("products").select("id, name, stock, low_stock_threshold").order("stock", { ascending: true }).limit(5),
         supabase.from("orders").select("id, order_number, total, status, created_at, customer_name").order("created_at", { ascending: false }).limit(5),
         supabase.from("products").select("id, name, price, status, created_at").order("created_at", { ascending: false }).limit(5),

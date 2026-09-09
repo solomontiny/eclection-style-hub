@@ -37,23 +37,26 @@ export function AuthProvider({
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   async function refreshAdmin(userId: string) {
     try {
+      console.log("[ADMIN DEBUG] Refreshing admin for user:", userId);
       const { data, error } = await supabase.rpc("has_role", {
         _user_id: userId,
         _role: "admin",
       });
 
       if (error) {
-        console.warn("[ADMIN]", error.message);
+        console.warn("[ADMIN DEBUG] has_role error:", error.message);
         setIsAdmin(false);
         return;
       }
 
+      console.log("[ADMIN DEBUG] has_role response:", data);
       setIsAdmin(Boolean(data));
     } catch (err) {
-      console.error("[ADMIN EXCEPTION]", err);
+      console.error("[ADMIN DEBUG] ADMIN EXCEPTION:", err);
       setIsAdmin(false);
     }
   }
@@ -188,21 +191,31 @@ export function AuthProvider({
       },
 
       async signOut() {
+        if (isSigningOut) return;
+        setIsSigningOut(true);
         try {
           const { error } = await supabase.auth.signOut();
 
           if (error) {
             console.error("[LOGOUT ERROR]", error.message);
+            // On error, do not clear local state
           } else {
             console.log("[LOGOUT SUCCESS]");
+            // Only clear state if signOut succeeds
+            setUser(null);
+            setSession(null);
+            setIsAdmin(false);
           }
         } catch (err) {
           console.error("[LOGOUT EXCEPTION]", err);
+        } finally {
+          setIsSigningOut(false);
         }
       },
     }),
-    [user, session, isAdmin, loading]
+    [user, session, isAdmin, loading, isSigningOut]
   );
+
 
   return (
     <AuthContext.Provider value={value}>

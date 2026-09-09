@@ -39,14 +39,15 @@ function Contact() {
                 <p className="text-muted-foreground">{CONTACT.phone}</p>
               </div>
             </a>
-            <a href={`tel:${CONTACT.phone}`} className="flex items-start gap-3 hover:text-primary">
+            <div className="flex items-start gap-3">
               <Phone className="text-primary mt-0.5" size={20} />
-              <div>
+              <div className="flex-1">
                 <p className="font-semibold">Call</p>
                 <p className="text-muted-foreground">{CONTACT.phone}</p>
-                <a href={`tel:${CONTACT.phone2}`} className="text-muted-foreground hover:text-primary block">{CONTACT.phone2}</a>
+                <span className="text-muted-foreground block">{CONTACT.phone2}</span>
               </div>
-            </a>
+            </div>
+
             <a href={`mailto:${CONTACT.email}`} className="flex items-start gap-3 hover:text-primary">
               <Mail className="text-primary mt-0.5" size={20} />
               <div>

@@ -33,10 +33,22 @@ export function ProductCard({ product }: { product: Product }) {
           />
           {!product.image && !product.image_url && <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">No image</div>}
         </Link>
-        {product.tag && (
-          <span className="absolute top-3 left-3 px-3 py-1 text-xs font-semibold rounded-full bg-background/90 text-primary backdrop-blur">
-            {product.tag}
+        {product.stock <= 0 && (
+          <span className="absolute top-3 left-3 px-3 py-1 text-xs font-semibold rounded-full bg-red-500/90 text-white backdrop-blur">OUT OF STOCK</span>
+        )}
+        {product.product_type === 'bundle' && product.stock > 0 && (
+          <span className="absolute top-3 left-3 px-3 py-1 text-xs font-semibold rounded-full bg-blue-500/90 text-white backdrop-blur">BUNDLE</span>
+        )}
+        {product.product_type === 'premium' && product.stock > 0 && (
+          <span className="absolute top-3 left-3 px-3 py-1 text-xs font-semibold rounded-full bg-yellow-500/90 text-white backdrop-blur">PREMIUM</span>
+        )}
+        {product.promotion_status === 'sale' && product.sale_price && product.sale_price < product.price && (
+          <span className="absolute top-3 right-3 px-3 py-1 text-xs font-semibold rounded-full bg-green-500/90 text-white backdrop-blur">
+            {Math.round(((product.price - product.sale_price) / product.price) * 100)}% OFF
           </span>
+        )}
+        {product.promotion_status === 'flash_sale' && product.stock > 0 && (
+          <span className="absolute top-3 right-3 px-3 py-1 text-xs font-semibold rounded-full bg-red-600/90 text-white backdrop-blur">FLASH SALE</span>
         )}
         <BuyNowDialog
           product={product}

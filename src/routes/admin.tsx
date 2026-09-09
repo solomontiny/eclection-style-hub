@@ -7,10 +7,25 @@ import { Toaster } from "sonner";
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — SupplierAffordable" }, { name: "robots", content: "noindex" }] }),
   beforeLoad: async ({ location }) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw redirect({ to: "/login", search: { redirect: location.href } as never });
-    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
-    if (!isAdmin) throw redirect({ to: "/" });
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+        console.error("[ADMIN DEBUG] Auth check failed:", userError);
+        throw redirect({ to: "/login", search: { redirect: location.href } as never });
+    }
+    
+    const { data: isAdmin, error: rpcError } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+    
+    if (rpcError) {
+        console.error("[ADMIN DEBUG] has_role RPC failed:", rpcError);
+        // If the role check fails, we must not assume admin.
+        throw redirect({ to: "/" });
+    }
+    
+    if (!isAdmin) {
+        console.log("[ADMIN DEBUG] Authorization failed: Not an admin");
+        throw redirect({ to: "/" });
+    }
     // Send /admin to /admin/dashboard
     if (location.pathname === "/admin" || location.pathname === "/admin/") {
       throw redirect({ to: "/admin/dashboard" });

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fmtNGN, slugify } from "@/lib/admin-utils";
 
@@ -281,6 +282,9 @@ function ProductsPage() {
   );
 }
 
+// ... existing imports ...
+// ... existing types ...
+
 function ProductDialog({
   open,
   onOpenChange,
@@ -296,62 +300,64 @@ function ProductDialog({
 }) {
   const [form, setForm] = useState<Partial<Product>>(initial ?? {});
   const [uploading, setUploading] = useState(false);
+  const { data: allProducts = [] } = useQuery({
+    queryKey: ["all-products"],
+    queryFn: async () => {
+        const { data } = await supabase.from("products").select("id, name, images");
+        return data || [];
+    }
+  });
+  const [images, setImages] = useState<{ file: File | null; url: string; isPrimary: boolean }[]>(
+    (initial?.images || []).map((url, i) => ({ file: null, url, isPrimary: i === 0 }))
+  );
 
   useEffect(() => {
-    if (open) setForm(initial ?? {});
+    if (open) {
+      setForm(initial ?? {
+        status: "active",
+        price: 0,
+        stock: 0,
+        discount_percent: 0,
+        images: [],
+        product_type: "standard",
+        promotion_status: "regular",
+        bundle_items: []
+      });
+      setImages((initial?.images || []).map((url, i) => ({ file: null, url, isPrimary: i === 0 })));
+
+      if (initial?.id) {
+        supabase.from("bundles")
+          .select("child_product_id, quantity, products:child_product_id(id, name)")
+          .eq("parent_product_id", initial.id)
+          .then(({ data }) => {
+            if (data) {
+              setForm(prev => ({
+                ...prev,
+                bundle_items: data.map((item: any) => ({
+                    ...item.products,
+                    id: item.child_product_id,
+                    quantity: item.quantity
+                }))
+              }));
+            }
+          });
+      }
+    }
   }, [open, initial]);
 
   function set<K extends keyof Product>(k: K, v: Product[K]) {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
-  async function handleImageSelect(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-
-    try {
-      const fileName = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
-      const { data, error } = await supabase.storage.from("product-images").upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-
-      if (error) throw error;
-
-      const path = data?.path ?? fileName;
-      const { data: publicData } = supabase.storage.from("product-images").getPublicUrl(path);
-      const url = publicData.publicUrl;
-
-      setForm((current) => ({
-        ...current,
-        images: [...(current.images ?? []), url],
-      }));
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setUploading(false);
-      e.target.value = "";
+  // Auto discount calc
+  useEffect(() => {
+    if (form.price && form.sale_price && form.sale_price < form.price) {
+      const discount = Math.round(((form.price - form.sale_price) / form.price) * 100);
+      set("discount_percent", discount);
+    } else {
+      set("discount_percent", 0);
     }
-  }
-
-  async function removeImage(index: number) {
-    const image = form.images?.[index];
-    const marker = "/storage/v1/object/public/product-images/";
-    const path = image?.includes(marker) ? decodeURIComponent(image.split(marker)[1]) : "";
-    if (path) {
-      const { error } = await supabase.storage.from("product-images").remove([path]);
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-    }
-    setForm((current) => ({
-      ...current,
-      images: (current.images ?? []).filter((_, i) => i !== index),
-    }));
-  }
+  }, [form.price, form.sale_price]);
 
   async function save() {
     if (!form.name) {
@@ -359,35 +365,81 @@ function ProductDialog({
       return;
     }
 
-    const payload = {
-      name: form.name,
-      slug: form.slug || slugify(form.name),
-      description: form.description ?? null,
-      category_id: form.category_id || null,
-      sku: form.sku?.trim() || null,
-      price: Number(form.price || 0),
-      sale_price: form.sale_price == null || form.sale_price === 0 ? null : Number(form.sale_price),
-      discount_percent: Number(form.discount_percent || 0),
-      stock: Number(form.stock || 0),
-      images: form.images ?? [],
-      status: form.status ?? "draft",
-      featured: !!form.featured,
-    };
-
+    setUploading(true);
+    const uploadedUrls: string[] = [];
+    
     try {
-      let result;
-      if (form.id) {
-        result = await supabase.from("products").update(payload).eq("id", form.id);
-        toast.success("Product updated");
-      } else {
-        result = await supabase.from("products").insert(payload);
-        toast.success("Product created");
-      }
+        // Upload new images
+        for (const img of images) {
+            if (img.file) {
+                const fileName = `${Date.now()}-${crypto.randomUUID()}-${img.file.name.replace(/\s+/g, "-")}`;
+                const { data: uploadData, error } = await supabase.storage
+                  .from("product-images")
+                  .upload(fileName, img.file);
+                if (error) throw error;
+                const { data: publicData } = supabase.storage.from("product-images").getPublicUrl(uploadData.path);
+                uploadedUrls.push(publicData.publicUrl);
+            } else {
+                uploadedUrls.push(img.url);
+            }
+        }
 
-      if (result?.error) throw result.error;
-      onSaved();
+        const payload = {
+            name: form.name,
+            slug: form.slug || slugify(form.name),
+            description: form.description ?? null,
+            category_id: form.category_id || null,
+            sku: form.sku?.trim() || null,
+            price: Number(form.price || 0),
+            sale_price: form.sale_price == null || form.sale_price === 0 ? null : Number(form.sale_price),
+            discount_percent: Number(form.discount_percent || 0),
+            stock: Number(form.stock || 0),
+            images: uploadedUrls,
+            status: form.status ?? "draft",
+            featured: !!form.featured,
+            product_type: form.product_type || "standard",
+            promotion_status: form.promotion_status || "regular"
+        };
+
+        let result;
+        if (form.id) {
+            result = await supabase.from("products").update(payload).eq("id", form.id);
+        } else {
+            result = await supabase.from("products").insert(payload);
+        }
+
+        if (result?.error) throw result.error;
+        
+        // Storage cleanup
+        const removedImages = (initial?.images || []).filter(oldUrl => !uploadedUrls.includes(oldUrl));
+        if (removedImages.length > 0) {
+            const paths = removedImages.map(url => {
+                const marker = "/storage/v1/object/public/product-images/";
+                return url.includes(marker) ? decodeURIComponent(url.split(marker)[1]) : "";
+            }).filter(Boolean);
+            if (paths.length > 0) await supabase.storage.from("product-images").remove(paths);
+        }
+
+        // Bundle persistence
+        if (form.product_type === 'bundle' && form.bundle_items) {
+            await supabase.from("bundles").delete().eq("parent_product_id", form.id);
+            await supabase.from("bundles").insert(
+                form.bundle_items.map((item: any) => ({
+                    parent_product_id: form.id,
+                    child_product_id: item.id,
+                    quantity: item.quantity
+                }))
+            );
+        } else if (form.id) {
+            await supabase.from("bundles").delete().eq("parent_product_id", form.id);
+        }
+
+        toast.success(form.id ? "Product updated" : "Product created");
+        onSaved();
     } catch (e) {
-      toast.error((e as Error).message);
+        toast.error((e as Error).message);
+    } finally {
+        setUploading(false);
     }
   }
 
@@ -406,140 +458,95 @@ function ProductDialog({
 
           <div className="grid sm:grid-cols-3 gap-4">
             <div>
+              <Label>Type</Label>
+              <Select value={form.product_type ?? "standard"} onValueChange={(v) => set("product_type", v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">Standard</SelectItem>
+                  <SelectItem value="bundle">Bundle</SelectItem>
+                  <SelectItem value="premium">Premium</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Promotion</Label>
+              <Select value={form.promotion_status ?? "regular"} onValueChange={(v) => set("promotion_status", v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="regular">Regular</SelectItem>
+                  <SelectItem value="sale">Sale</SelectItem>
+                  <SelectItem value="flash-sale">Flash Sale</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>SKU</Label>
-              <Input value={form.sku ?? ""} onChange={(e) => set("sku", e.target.value)} placeholder="Optional SKU" />
-            </div>
-            <div>
-              <Label>Price (₦)</Label>
-              <Input
-                type="number"
-                value={form.price ?? ""}
-                onChange={(e) => set("price", Number(e.target.value) as Product["price"])}
-              />
-            </div>
-
-            <div>
-              <Label>Discount %</Label>
-              <Input
-                type="number"
-                value={form.discount_percent ?? ""}
-                onChange={(e) => set("discount_percent", Number(e.target.value) as Product["discount_percent"])}
-              />
-            </div>
-
-            <div>
-              <Label>Sale price (₦)</Label>
-              <Input type="number" min="0" value={form.sale_price ?? ""} onChange={(e) => set("sale_price", e.target.value ? Number(e.target.value) : null)} />
-            </div>
-
-            <div>
-              <Label>Stock</Label>
-              <Input
-                type="number"
-                value={form.stock ?? ""}
-                onChange={(e) => set("stock", Number(e.target.value) as Product["stock"])}
-              />
+              <Input value={form.sku ?? ""} onChange={(e) => set("sku", e.target.value)} />
             </div>
           </div>
+
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div>
+              <Label>Price (₦)</Label>
+              <Input type="number" value={form.price ?? ""} onChange={(e) => set("price", Number(e.target.value) as any)} />
+            </div>
+            <div>
+              <Label>Sale price (₦)</Label>
+              <Input type="number" value={form.sale_price ?? ""} onChange={(e) => set("sale_price", e.target.value ? Number(e.target.value) : null)} />
+            </div>
+            <div>
+              <Label>Stock</Label>
+              <Input type="number" value={form.stock ?? ""} onChange={(e) => set("stock", Number(e.target.value) as any)} />
+            </div>
+          </div>
+
+// ... inside ProductDialog:
+          {form.product_type === 'bundle' && (
+             <div className="p-4 border rounded space-y-4">
+                <Label>Bundle Items</Label>
+                {/* Simplified Bundle logic */}
+                <div className="flex gap-2">
+                    <Select onValueChange={(v) => {
+                        const p = allProducts.find(x => x.id === v);
+                        if (p) setForm(prev => ({ ...prev, bundle_items: [...(prev.bundle_items || []), { ...p, quantity: 1 }] }));
+                    }}>
+                        <SelectTrigger><SelectValue placeholder="Add product" /></SelectTrigger>
+                        <SelectContent>
+                           {allProducts.filter(p => p.id !== form.id).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                {(form.bundle_items || []).map((item: any, i: number) => (
+                    <div key={i} className="flex justify-between items-center text-sm">
+                        <div className="flex items-center gap-2">
+                            <span>{item.name}</span>
+                            <Input 
+                                type="number" 
+                                className="w-16 h-8"
+                                value={item.quantity} 
+                                onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 1;
+                                    setForm(prev => ({
+                                        ...prev,
+                                        bundle_items: prev.bundle_items?.map((it, idx) => idx === i ? { ...it, quantity: val } : it)
+                                    }));
+                                }}
+                            />
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => setForm(prev => ({ ...prev, bundle_items: prev.bundle_items?.filter((_, idx) => idx !== i) }))}>Remove</Button>
+                    </div>
+                ))}
+             </div>
+          )}
 
           <div>
             <Label>Description</Label>
-            <Textarea
-              value={form.description ?? ""}
-              onChange={(e) => set("description", e.target.value)}
-              rows={4}
-            />
+            <Textarea value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
           </div>
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <Label>Category</Label>
-              <Select
-                value={form.category_id ?? "none"}
-                onValueChange={(value) => set("category_id", value === "none" ? null : (value as Product["category_id"]))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No category</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Status</Label>
-              <Select
-                value={form.status ?? "draft"}
-                onValueChange={(value) => set("status", value as Product["status"])}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              checked={!!form.featured}
-              onCheckedChange={(checked) => set("featured", (checked === true) as Product["featured"])}
-            />
-            <Label className="cursor-pointer">Featured product</Label>
-          </div>
-
-          <div>
-            <Label>Images</Label>
-            <div className="mt-2 flex flex-col gap-3">
-              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground hover:bg-muted/50">
-                <Upload className="h-4 w-4" />
-                {uploading ? "Uploading…" : "Upload image"}
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
-              </label>
-
-              {(form.images ?? []).length > 0 ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {(form.images ?? []).map((image, index) => (
-                    <div key={`${image}-${index}`} className="relative overflow-hidden rounded-lg border border-border">
-                      <img src={image} alt={`Product ${index + 1}`} className="h-32 w-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute right-2 top-2 rounded-full bg-background/80 p-1.5 shadow"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                      <div className="absolute bottom-2 left-2 flex gap-1">
-                        {index > 0 && <button type="button" onClick={() => setForm((current) => { const images = [...(current.images ?? [])]; [images[index - 1], images[index]] = [images[index], images[index - 1]]; return { ...current, images }; })} className="rounded bg-background/80 p-1.5 shadow"><ArrowUp className="h-4 w-4" /></button>}
-                        {index < (form.images?.length ?? 0) - 1 && <button type="button" onClick={() => setForm((current) => { const images = [...(current.images ?? [])]; [images[index], images[index + 1]] = [images[index + 1], images[index]]; return { ...current, images }; })} className="rounded bg-background/80 p-1.5 shadow"><ArrowDown className="h-4 w-4" /></button>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No images yet.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button onClick={() => onOpenChange(false)} className="btn-ghost">
-              Cancel
-            </button>
-            <button onClick={save} className="btn-primary">
-              Save
-            </button>
-          </div>
+        </div>
+        <div className="flex justify-end gap-3 mt-4">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button onClick={save} disabled={uploading}>{uploading ? "Saving..." : "Save Changes"}</Button>
         </div>
       </DialogContent>
     </Dialog>
