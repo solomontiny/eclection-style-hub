@@ -1,7 +1,0 @@
-name = "supplieraffordable"
-compatibility_date = "2026-01-01"
-
-main = "./.output/server/index.mjs"
-
-[assets]
-directory = "./.output/public"
