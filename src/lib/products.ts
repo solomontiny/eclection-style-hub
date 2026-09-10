@@ -7,8 +7,7 @@ export type Product = ProductRow & {
   image_url?: string | null;
   image?: string | null;
   tag?: string | null;
-  product_type?: 'standard' | 'bundle' | 'premium';
-  promotion_status?: 'regular' | 'sale' | 'flash_sale';
+  bundle_items?: { id: string; name?: string; quantity: number }[];
 };
 
 type ProductRowWithCategory = ProductRow & {

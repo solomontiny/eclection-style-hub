@@ -13,7 +13,7 @@ type Product = {
   stock: number;
   images: string[];
   created_at: string;
-  status: "active" | "draft";
+  status: "active" | "draft" | "archived";
   category_id: string | null;
 };
 
