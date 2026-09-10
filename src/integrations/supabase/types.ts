@@ -349,6 +349,48 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_settings: {
+        Row: {
+          contact_email: string
+          contact_phone: string
+          created_at: string
+          currency: string
+          id: string
+          shipping_flat_rate: number
+          store_description: string
+          store_name: string
+          store_policies: string
+          tax_percent: number
+          updated_at: string
+        }
+        Insert: {
+          contact_email?: string
+          contact_phone?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          shipping_flat_rate?: number
+          store_description?: string
+          store_name?: string
+          store_policies?: string
+          tax_percent?: number
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string
+          contact_phone?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          shipping_flat_rate?: number
+          store_description?: string
+          store_name?: string
+          store_policies?: string
+          tax_percent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
