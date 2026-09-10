@@ -4,7 +4,7 @@ import hero from "@/assets/hero.jpg";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "About — SupplierAffordable" },
+      { title: "About — Supplier Affordable" },
       { name: "description", content: "Lagos-based fashion label curating affordable, elevated styles for women and men." },
     ],
   }),
@@ -18,7 +18,7 @@ function About() {
         <p className="text-xs uppercase tracking-widest text-primary font-semibold">Our story</p>
         <h1 className="font-display text-4xl md:text-6xl mt-2">Style that's accessible — and unmistakably you.</h1>
         <p className="mt-5 text-muted-foreground">
-          SupplierAffordable is a Lagos-based fashion label founded on a simple idea: beautiful clothes shouldn't be out of reach. We curate fresh women's and men's pieces every week — from everyday essentials to standout occasion wear.
+          Supplier Affordable is a Lagos-based fashion label founded on a simple idea: beautiful clothes shouldn't be out of reach. We curate fresh women's and men's pieces every week — from everyday essentials to standout occasion wear.
         </p>
         <p className="mt-4 text-muted-foreground">
           Every order is personal. We chat with you, confirm fit and availability, and ship across Lagos and Nigeria with care.
@@ -37,7 +37,7 @@ function About() {
         </div>
       </div>
       <div className="aspect-[4/5] rounded-3xl overflow-hidden shadow-[var(--shadow-card)]">
-        <img src={hero} alt="SupplierAffordable" className="h-full w-full object-cover" />
+        <img src={hero} alt="Supplier Affordable" className="h-full w-full object-cover" />
       </div>
     </section>
   );

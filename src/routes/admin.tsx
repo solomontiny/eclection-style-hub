@@ -5,7 +5,7 @@ import { LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Ticket, Boxe
 import { Toaster } from "sonner";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Admin — SupplierAffordable" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({ meta: [{ title: "Admin — Supplier Affordable" }, { name: "robots", content: "noindex" }] }),
   beforeLoad: async ({ location }) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
@@ -54,7 +54,7 @@ function AdminLayout() {
       <aside className="hidden md:flex w-64 flex-col bg-background border-r border-border sticky top-0 h-screen">
         <div className="px-6 py-5 border-b border-border">
           <p className="text-[10px] uppercase tracking-widest text-primary font-semibold">Admin</p>
-          <h2 className="font-display text-xl mt-1">SupplierAffordable</h2>
+          <h2 className="font-display text-xl mt-1">Supplier Affordable</h2>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {

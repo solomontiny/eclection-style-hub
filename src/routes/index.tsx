@@ -9,7 +9,7 @@ import { whatsappLink } from "@/lib/contact";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SupplierAffordable — Affordable Fashion for Women & Men" },
+      { title: "Supplier Affordable — Affordable Fashion for Women & Men" },
       { name: "description", content: "Curated women's and men's fashion in Lagos. Order via WhatsApp or bank transfer." },
     ],
   }),
@@ -100,7 +100,7 @@ function Home() {
             Order directly through WhatsApp — fast, simple, and personal. Pay securely by bank transfer on confirmation.
           </p>
           <div className="mt-7 flex flex-wrap gap-3 justify-center">
-            <a href={whatsappLink("Hi SupplierAffordable 👋, I'd like to place an order.")} target="_blank" rel="noreferrer" className="btn-primary">Message us on WhatsApp</a>
+            <a href={whatsappLink("Hi Supplier Affordable 👋, I'd like to place an order.")} target="_blank" rel="noreferrer" className="btn-primary">Message us on WhatsApp</a>
             <Link to="/contact" className="btn-outline">View payment details</Link>
           </div>
         </div>
