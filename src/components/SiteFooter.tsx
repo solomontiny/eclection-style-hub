@@ -8,7 +8,7 @@ export function SiteFooter() {
     <footer className="mt-24 border-t border-border/60 bg-secondary/40">
       <div className="container-x py-16 grid gap-10 md:grid-cols-4">
         <div className="md:col-span-2">
-          <Link to="/" className="inline-flex items-center gap-4" aria-label="E Style Collection home">
+          <Link to="/" className="inline-flex items-center gap-4" aria-label="Supplier Affordable home">
             <img
               src={officialLogo}
               alt="Supplier Affordable official logo"
@@ -17,7 +17,7 @@ export function SiteFooter() {
               loading="lazy"
               className="size-24 shrink-0 object-contain sm:size-28"
             />
-            <span className="font-display text-2xl">E Style Collection</span>
+            <span className="font-display text-2xl">Supplier Affordable</span>
           </Link>
           <p className="mt-3 text-sm text-muted-foreground max-w-sm">
             Affordable, elevated fashion for women and men — curated and shipped from Lagos.
@@ -55,7 +55,7 @@ export function SiteFooter() {
       <div className="container-x pb-12">
         <div className="rounded-2xl overflow-hidden border border-border/60 shadow-sm">
           <iframe
-            title="SupplierAffordable location"
+            title="Supplier Affordable location"
             src={`https://www.google.com/maps?q=${encodeURIComponent(CONTACT.mapQuery)}&output=embed`}
             width="100%"
             height="320"
@@ -68,7 +68,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-border/60">
         <div className="container-x py-5 text-xs text-muted-foreground flex flex-wrap gap-2 justify-between">
-          <p>© {new Date().getFullYear()} SupplierAffordable. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Supplier Affordable. All rights reserved.</p>
           <p>Lagos, Nigeria</p>
         </div>
       </div>

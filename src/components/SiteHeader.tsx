@@ -36,7 +36,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border/60">
       <div className="container-x flex items-center justify-between h-20">
-        <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="E Style Collection home">
+        <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Supplier Affordable home">
           <img
             src={officialLogo}
             alt="Supplier Affordable official logo"
@@ -44,7 +44,7 @@ export function SiteHeader() {
             height={1024}
             className="size-14 object-contain md:size-16"
           />
-          <span className="hidden font-display text-lg sm:inline">E Style Collection</span>
+          <span className="hidden font-display text-lg sm:inline">Supplier Affordable</span>
         </Link>
         <nav className="hidden md:flex items-center gap-6">
           <NavLinks />

@@ -7,7 +7,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/shop")({
-  head: () => ({ meta: [{ title: "Shop — SupplierAffordable" }, { name: "description", content: "Browse the latest SupplierAffordable collection." }] }),
+  head: () => ({ meta: [{ title: "Shop — Supplier Affordable" }, { name: "description", content: "Browse the latest Supplier Affordable collection." }] }),
   component: Shop,
 });
 
@@ -37,7 +37,7 @@ function Shop() {
 
   return <section className="container-x py-12 md:py-16">
     <p className="text-xs uppercase tracking-widest text-primary font-semibold">Collection</p>
-    <div className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="font-display text-4xl md:text-6xl mt-2">Shop everything</h1><p className="mt-3 text-muted-foreground max-w-lg">Discover active pieces from the current SupplierAffordable collection.</p></div><p className="text-sm text-muted-foreground">{filtered.length} products</p></div>
+    <div className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="font-display text-4xl md:text-6xl mt-2">Shop everything</h1><p className="mt-3 text-muted-foreground max-w-lg">Discover active pieces from the current Supplier Affordable collection.</p></div><p className="text-sm text-muted-foreground">{filtered.length} products</p></div>
     <div className="mt-8 grid gap-3 lg:grid-cols-[1fr_auto_auto_auto]">
       <label className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search products, descriptions or SKU" className="input w-full pl-9" /></label>
       <select value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }} className="input"><option value="all">All categories</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>

@@ -61,7 +61,7 @@ function buildEmailHtml(args: {
   const firstName = (s.customer.name.split(" ")[0] || "there");
   const greeting =
     audience === "customer"
-      ? `Hi ${esc(firstName)}, thank you for shopping with SupplierAffordable!`
+      ? `Hi ${esc(firstName)}, thank you for shopping with Supplier Affordable!`
       : `New paid order received from ${esc(s.customer.name)}.`;
 
   const rows = s.items
@@ -167,7 +167,7 @@ export const sendOrderReceipt = createServerFn({ method: "POST" })
         };
       }
 
-      const subject = `Order #${snapshot.orderRef} — SupplierAffordable`;
+      const subject = `Order #${snapshot.orderRef} — Supplier Affordable`;
 
       // Build (and log server-side only) the receipt HTML. Email delivery is
       // currently disabled — do NOT include these payloads in the response.
