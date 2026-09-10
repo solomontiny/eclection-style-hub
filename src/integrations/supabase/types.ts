@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      bundles: {
+        Row: {
+          child_product_id: string
+          created_at: string
+          id: string
+          parent_product_id: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          child_product_id: string
+          created_at?: string
+          id?: string
+          parent_product_id: string
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          child_product_id?: string
+          created_at?: string
+          id?: string
+          parent_product_id?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bundles_child_product_id_fkey"
+            columns: ["child_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bundles_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           active: boolean
@@ -57,7 +99,9 @@ export type Database = {
           discount_value: number
           expires_at: string | null
           id: string
+          max_discount: number | null
           min_order_amount: number | null
+          starts_at: string | null
           updated_at: string
           usage_limit: number | null
           used_count: number
@@ -71,7 +115,9 @@ export type Database = {
           discount_value: number
           expires_at?: string | null
           id?: string
+          max_discount?: number | null
           min_order_amount?: number | null
+          starts_at?: string | null
           updated_at?: string
           usage_limit?: number | null
           used_count?: number
@@ -85,7 +131,9 @@ export type Database = {
           discount_value?: number
           expires_at?: string | null
           id?: string
+          max_discount?: number | null
           min_order_amount?: number | null
+          starts_at?: string | null
           updated_at?: string
           usage_limit?: number | null
           used_count?: number
@@ -215,7 +263,10 @@ export type Database = {
           low_stock_threshold: number
           name: string
           price: number
+          product_type: string
+          promotion_status: string
           sale_price: number | null
+          sku: string | null
           slug: string
           status: Database["public"]["Enums"]["product_status"]
           stock: number
@@ -232,7 +283,10 @@ export type Database = {
           low_stock_threshold?: number
           name: string
           price?: number
+          product_type?: string
+          promotion_status?: string
           sale_price?: number | null
+          sku?: string | null
           slug: string
           status?: Database["public"]["Enums"]["product_status"]
           stock?: number
@@ -249,7 +303,10 @@ export type Database = {
           low_stock_threshold?: number
           name?: string
           price?: number
+          product_type?: string
+          promotion_status?: string
           sale_price?: number | null
+          sku?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["product_status"]
           stock?: number
