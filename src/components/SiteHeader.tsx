@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Menu, X, User as UserIcon, LayoutDashboard } from "lucide-react";
+import { Menu, X, LayoutDashboard } from "lucide-react";
 import { CartDrawer } from "./CartDrawer";
 import { useAuth } from "@/lib/auth";
+import officialLogo from "@/assets/supplier-affordable-logo.png";
 
 const links = [
   { to: "/", label: "Home" },
@@ -35,8 +36,15 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border/60">
       <div className="container-x flex items-center justify-between h-20">
-        <Link to="/" className="font-display text-xl tracking-tight">
-          Supplier<span className="text-primary">Affordable</span>
+        <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="E Style Collection home">
+          <img
+            src={officialLogo}
+            alt="Supplier Affordable official logo"
+            width={1024}
+            height={1024}
+            className="size-14 object-contain md:size-16"
+          />
+          <span className="hidden font-display text-lg sm:inline">E Style Collection</span>
         </Link>
         <nav className="hidden md:flex items-center gap-6">
           <NavLinks />
