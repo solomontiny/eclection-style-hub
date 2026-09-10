@@ -410,10 +410,10 @@ function ProductDialog({
 
         // Bundle persistence
         if (form.product_type === 'bundle' && form.bundle_items) {
-            await supabase.from("bundles").delete().eq("parent_product_id", form.id);
+            await supabase.from("bundles").delete().eq("parent_product_id", form.id!);
             await supabase.from("bundles").insert(
                 form.bundle_items.map((item: any) => ({
-                    parent_product_id: form.id,
+                    parent_product_id: form.id!,
                     child_product_id: item.id,
                     quantity: item.quantity
                 }))
