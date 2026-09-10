@@ -1,13 +1,24 @@
 import { Link } from "@tanstack/react-router";
 import { Instagram, Facebook, Mail, Phone, MapPin } from "lucide-react";
 import { CONTACT } from "@/lib/contact";
+import officialLogo from "@/assets/supplier-affordable-logo.png";
 
 export function SiteFooter() {
   return (
     <footer className="mt-24 border-t border-border/60 bg-secondary/40">
       <div className="container-x py-16 grid gap-10 md:grid-cols-4">
         <div className="md:col-span-2">
-          <h3 className="font-display text-2xl">SupplierAffordable</h3>
+          <Link to="/" className="inline-flex items-center gap-4" aria-label="E Style Collection home">
+            <img
+              src={officialLogo}
+              alt="Supplier Affordable official logo"
+              width={1024}
+              height={1024}
+              loading="lazy"
+              className="size-24 shrink-0 object-contain sm:size-28"
+            />
+            <span className="font-display text-2xl">E Style Collection</span>
+          </Link>
           <p className="mt-3 text-sm text-muted-foreground max-w-sm">
             Affordable, elevated fashion for women and men — curated and shipped from Lagos.
           </p>
