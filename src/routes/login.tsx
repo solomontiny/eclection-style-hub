@@ -21,6 +21,7 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -38,15 +39,7 @@ function LoginPage() {
       const res = mode === "signin"
         ? await signIn(email.trim(), password)
         : await signUp(email.trim(), password, displayName.trim() || undefined);
-      if (res.error) { setErr(res.error); return; }
-      if (mode === "signin") {
-        // Resolve admin status immediately to avoid a redirect race.
-        const { data: { user: u } } = await supabase.auth.getUser();
-        if (u) {
-          const { data: admin } = await supabase.rpc("has_role", { _user_id: u.id, _role: "admin" });
-          navigate({ to: admin ? "/admin/dashboard" : "/" });
-        }
-      }
+      if (res.error) { setErr(res.error); }
     } finally {
       setBusy(false);
     }
@@ -94,17 +87,26 @@ function LoginPage() {
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">Password</span>
-            <input
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="input"
-              placeholder="At least 8 characters"
-              autoComplete={mode === "signin" ? "current-password" : "new-password"}
-              maxLength={120}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input w-full"
+                placeholder="At least 8 characters"
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                maxLength={120}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </label>
 
           {err && (

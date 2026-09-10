@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Minus, Plus, ShoppingBag } from "lucide-react";
+import { Minus, Plus, ShoppingBag, MessageCircle } from "lucide-react";
 import { type Product, formatNaira } from "@/lib/products";
-import { whatsappLink } from "@/lib/contact";
+import { whatsappLink, CONTACT } from "@/lib/contact";
+import { PENDING_ORDER_KEY } from "@/components/CartDrawer";
 
 export function BuyNowDialog({ product, trigger }: { product: Product; trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -29,6 +30,22 @@ export function BuyNowDialog({ product, trigger }: { product: Product; trigger: 
     `*TOTAL: ${formatNaira(total)}*\n` +
     `━━━━━━━━━━━━━━━━━━\n\n` +
     `Please confirm availability and delivery details. Thank you! 💕`;
+
+  const handlePayNow = () => {
+    const orderRef = `ESC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    const snapshot = {
+      orderRef,
+      createdAt: Date.now(),
+      items: [{ id: product.id, name: product.name, size, qty, price: unitPrice, image: product.image ?? product.image_url ?? "" }],
+      subtotal: total,
+      total: total,
+    };
+    try {
+      localStorage.setItem(PENDING_ORDER_KEY, JSON.stringify(snapshot));
+    } catch {}
+    window.location.href = CONTACT.paystackUrl;
+    setOpen(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -75,18 +92,20 @@ export function BuyNowDialog({ product, trigger }: { product: Product; trigger: 
             <p className="font-display text-2xl text-primary">{formatNaira(total)}</p>
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-col gap-2">
+          <button type="button" onClick={handlePayNow} className="btn-primary w-full justify-center">
+            <ShoppingBag size={16} /> Pay now
+          </button>
           <a
             href={whatsappLink(message)}
             target="_blank"
             rel="noreferrer"
             onClick={() => setOpen(false)}
-            className="btn-primary w-full justify-center"
+            className="btn-outline w-full justify-center flex items-center gap-2"
           >
-            <ShoppingBag size={16} /> Checkout on WhatsApp
+            <MessageCircle size={16} /> Order on WhatsApp
           </a>
         </DialogFooter>
-        <p className="text-xs text-muted-foreground text-center">You'll be redirected to WhatsApp to confirm and pay via bank transfer.</p>
       </DialogContent>
     </Dialog>
   );

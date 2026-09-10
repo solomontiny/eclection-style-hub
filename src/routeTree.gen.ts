@@ -20,6 +20,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ProductSlugRouteImport } from './routes/product.$slug'
+import { Route as ApiPaystackWebhookRouteImport } from './routes/api/paystack-webhook'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
@@ -84,6 +85,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const ProductSlugRoute = ProductSlugRouteImport.update({
   id: '/product/$slug',
   path: '/product/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPaystackWebhookRoute = ApiPaystackWebhookRouteImport.update({
+  id: '/api/paystack-webhook',
+  path: '/api/paystack-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
@@ -156,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
   '/product/$slug': typeof ProductSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/edit-product/$id': typeof AdminEditProductIdRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
   '/product/$slug': typeof ProductSlugRoute
   '/admin': typeof AdminIndexRoute
   '/admin/edit-product/$id': typeof AdminEditProductIdRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
   '/product/$slug': typeof ProductSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/edit-product/$id': typeof AdminEditProductIdRoute
@@ -227,6 +236,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
+    | '/api/paystack-webhook'
     | '/product/$slug'
     | '/admin/'
     | '/admin/edit-product/$id'
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
+    | '/api/paystack-webhook'
     | '/product/$slug'
     | '/admin'
     | '/admin/edit-product/$id'
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
+    | '/api/paystack-webhook'
     | '/product/$slug'
     | '/admin/'
     | '/admin/edit-product/$id'
@@ -287,6 +299,7 @@ export interface RootRouteChildren {
   ShopRoute: typeof ShopRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ThankYouRoute: typeof ThankYouRoute
+  ApiPaystackWebhookRoute: typeof ApiPaystackWebhookRoute
   ProductSlugRoute: typeof ProductSlugRoute
 }
 
@@ -367,6 +380,13 @@ declare module '@tanstack/react-router' {
       path: '/product/$slug'
       fullPath: '/product/$slug'
       preLoaderRoute: typeof ProductSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paystack-webhook': {
+      id: '/api/paystack-webhook'
+      path: '/api/paystack-webhook'
+      fullPath: '/api/paystack-webhook'
+      preLoaderRoute: typeof ApiPaystackWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/settings': {
@@ -482,6 +502,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShopRoute: ShopRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ThankYouRoute: ThankYouRoute,
+  ApiPaystackWebhookRoute: ApiPaystackWebhookRoute,
   ProductSlugRoute: ProductSlugRoute,
 }
 export const routeTree = rootRouteImport

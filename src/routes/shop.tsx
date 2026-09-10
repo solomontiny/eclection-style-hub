@@ -24,7 +24,7 @@ function Shop() {
   const filtered = useMemo(() => {
     const result = products.filter((product) => {
       const matchesSearch = !search.trim() || `${product.name} ${product.description ?? ""} ${product.sku ?? ""}`.toLowerCase().includes(search.trim().toLowerCase());
-      const matchesCategory = category === "all" || product.category_id === category;
+      const matchesCategory = category === "all" || product.category === category;
       const matchesSale = !saleOnly || product.sale_price != null;
       const matchesAvailability = !availableOnly || product.stock > 0;
       return matchesSearch && matchesCategory && matchesSale && matchesAvailability;
@@ -40,7 +40,7 @@ function Shop() {
     <div className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="font-display text-4xl md:text-6xl mt-2">Shop everything</h1><p className="mt-3 text-muted-foreground max-w-lg">Discover active pieces from the current Supplier Affordable collection.</p></div><p className="text-sm text-muted-foreground">{filtered.length} products</p></div>
     <div className="mt-8 grid gap-3 lg:grid-cols-[1fr_auto_auto_auto]">
       <label className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search products, descriptions or SKU" className="input w-full pl-9" /></label>
-      <select value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }} className="input"><option value="all">All categories</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+      <select value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }} className="input"><option value="all">All categories</option>{categories.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select>
       <select value={sort} onChange={(event) => setSort(event.target.value)} className="input"><option value="newest">Newest</option><option value="name">Name</option><option value="price-low">Price low</option><option value="price-high">Price high</option></select>
       <button type="button" onClick={() => { setSaleOnly((value) => !value); setPage(1); }} className={`btn-outline ${saleOnly ? "!bg-primary !text-primary-foreground" : ""}`}><SlidersHorizontal size={15} /> {saleOnly ? "Sale only" : "Filters"}</button>
     </div>
