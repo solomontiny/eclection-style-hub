@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       categories: {
         Row: {
+          active: boolean
           created_at: string
           description: string | null
           id: string
@@ -25,6 +26,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active?: boolean
           created_at?: string
           description?: string | null
           id?: string
@@ -34,6 +36,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active?: boolean
           created_at?: string
           description?: string | null
           id?: string
@@ -149,6 +152,7 @@ export type Database = {
           id: string
           notes: string | null
           order_number: string
+          payment_status: Database["public"]["Enums"]["payment_status"]
           shipping: number
           shipping_address: Json | null
           status: Database["public"]["Enums"]["order_status"]
@@ -168,6 +172,7 @@ export type Database = {
           id?: string
           notes?: string | null
           order_number?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
           shipping?: number
           shipping_address?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -187,6 +192,7 @@ export type Database = {
           id?: string
           notes?: string | null
           order_number?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
           shipping?: number
           shipping_address?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -209,6 +215,7 @@ export type Database = {
           low_stock_threshold: number
           name: string
           price: number
+          sale_price: number | null
           slug: string
           status: Database["public"]["Enums"]["product_status"]
           stock: number
@@ -225,6 +232,7 @@ export type Database = {
           low_stock_threshold?: number
           name: string
           price?: number
+          sale_price?: number | null
           slug: string
           status?: Database["public"]["Enums"]["product_status"]
           stock?: number
@@ -241,6 +249,7 @@ export type Database = {
           low_stock_threshold?: number
           name?: string
           price?: number
+          sale_price?: number | null
           slug?: string
           status?: Database["public"]["Enums"]["product_status"]
           stock?: number
@@ -326,6 +335,7 @@ export type Database = {
         | "shipped"
         | "delivered"
         | "cancelled"
+      payment_status: "pending" | "paid" | "failed" | "refunded"
       product_status: "draft" | "active" | "archived"
     }
     CompositeTypes: {
@@ -463,6 +473,7 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
+      payment_status: ["pending", "paid", "failed", "refunded"],
       product_status: ["draft", "active", "archived"],
     },
   },
