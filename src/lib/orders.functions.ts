@@ -130,35 +130,26 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({
     items: z.array(z.object({ id: z.string(), qty: z.number().int().min(1) })),
     customer: z.object({ name: z.string(), email: z.string().email(), phone: z.string().optional() }),
+    callbackUrl: z.string().url().optional(),
   }))
   .handler(async ({ data }) => {
-    const { items, customer } = data;
+    const { items, customer, callbackUrl } = data;
 
     // 1. Fetch products
-    console.log("[DEBUG] Fetching products for items:", JSON.stringify(items, null, 2));
     const { data: products, error: productError } = await supabaseAdmin
       .from("products")
       .select("id, name, price, discount_percent")
       .in("id", items.map(i => i.id));
 
-    if (productError) {
-      console.error("[DEBUG] Product fetch error:", JSON.stringify(productError, null, 2));
-      throw new Error(`Failed to fetch product data: ${productError.message}`);
-    }
-    if (!products) {
-      console.error("[DEBUG] No products found");
-      throw new Error("No products found");
+    if (productError || !products) {
+      throw new Error("Failed to fetch product data");
     }
 
     // 2. Calculate totals
-    console.log("[DEBUG] Calculating totals");
     let subtotal = 0;
     const orderItems = items.map(item => {
       const product = products.find(p => p.id === item.id);
-      if (!product) {
-        console.error(`[DEBUG] Product not found: ${item.id}`);
-        throw new Error(`Product not found: ${item.id}`);
-      }
+      if (!product) throw new Error(`Product not found: ${item.id}`);
 
       const price = Number(product.price) * (1 - Number(product.discount_percent) / 100);
       const itemSubtotal = price * item.qty;
@@ -173,14 +164,18 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       };
     });
 
+    const total = Math.round(subtotal * 100) / 100;
+    const reference = `ESC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
     // 3. Insert order
     const orderData = {
       customer_name: customer.name,
       customer_email: customer.email,
       customer_phone: customer.phone && customer.phone.trim() !== "" ? customer.phone : null,
-      subtotal,
-      total: subtotal,
+      subtotal: total,
+      total,
       payment_status: 'pending' as const,
+      paystack_reference: reference,
     };
 
     const { data: order, error: orderError } = await supabaseAdmin
@@ -190,73 +185,135 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       .single();
 
     if (orderError) {
-      console.error("Failed to create order:", JSON.stringify(orderError, null, 2));
-      throw new Error(`Failed to create order: ${orderError.message}`);
+      console.error("Failed to create order:", orderError.code, orderError.message);
+      throw new Error("Failed to create order");
     }
-    if (!order) throw new Error("Failed to create order: No data returned");
-
-    // 4. Update order with reference
-    const ref = `REF-${order.id}`;
-    const { error: updateError } = await supabaseAdmin
-      .from("orders")
-      .update({ paystack_reference: ref })
-      .eq("id", order.id);
-    if (updateError) {
-      console.error("Failed to update order reference:", updateError);
-      throw new Error("Failed to update order reference.");
+    if (!order) {
+      throw new Error("Failed to create order: No data returned");
     }
 
-    // 5. Insert items
+    // 4. Insert items
     const { error: itemsError } = await supabaseAdmin
       .from("order_items")
       .insert(orderItems.map(item => ({ ...item, order_id: order.id })));
 
-    if (itemsError) throw new Error("Failed to create order items");
-
-    // 6. Initialize Paystack transaction
-    const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
-    if (!paystackSecret) {
-      console.error("[PAYSTACK] Error: PAYSTACK_SECRET_KEY is undefined in process.env");
-      throw new Error("Payment configuration error.");
+    if (itemsError) {
+      console.error("Failed to create order items:", itemsError.message);
+      throw new Error("Failed to create order items");
     }
 
-    const ref = `REF-${order.id}`;
-    
+    // 5. Initialize Paystack transaction (server-side, secret never leaves the server)
+    const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecret) {
+      console.error("PAYSTACK_SECRET_KEY is not configured");
+      return {
+        success: false as const,
+        orderId: order.id,
+        reference,
+        total,
+        message: "Payment is not configured yet. Please contact support.",
+      };
+    }
+
     try {
-      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+      const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${paystackSecret}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount: Math.round(subtotal * 100),
           email: customer.email,
-          reference: ref,
+          amount: Math.round(total * 100),
+          currency: "NGN",
+          reference,
+          ...(callbackUrl ? { callback_url: callbackUrl } : {}),
+          metadata: { order_id: order.id, customer_name: customer.name },
         }),
       });
+      const initJson: any = await initRes.json().catch(() => ({}));
 
-      const paystackData = await paystackRes.json();
-      
-      if (!paystackRes.ok) {
-        console.error("[PAYSTACK] API Error:", {
-          status: paystackRes.status,
-          data: paystackData
-        });
-        throw new Error(`Payment init failed: ${paystackData.message || "API error"}`);
+      if (!initRes.ok || !initJson?.status || !initJson?.data?.authorization_url) {
+        console.error("Paystack initialize failed", initRes.status, initJson?.message);
+        return {
+          success: false as const,
+          orderId: order.id,
+          reference,
+          total,
+          message: "Could not start the payment. Please try again.",
+        };
       }
 
-      return { 
-        success: true, 
-        orderId: order.id, 
-        total: subtotal,
-        access_code: paystackData.data.access_code
+      return {
+        success: true as const,
+        orderId: order.id,
+        reference,
+        total,
+        authorization_url: initJson.data.authorization_url as string,
+        access_code: initJson.data.access_code as string,
       };
     } catch (err: any) {
-      console.error("[PAYSTACK] Fetch Error:", err);
-      throw new Error(`Payment network error: ${err.message}`);
+      console.error("Paystack initialize error:", err?.message);
+      return {
+        success: false as const,
+        orderId: order.id,
+        reference,
+        total,
+        message: "Could not reach the payment provider. Please try again.",
+      };
     }
   });
+
+/**
+ * Verifies a Paystack transaction and marks the matching order as paid.
+ */
+export const confirmPaystackPayment = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ reference: z.string().min(3).max(80).regex(/^[A-Za-z0-9_.-]+$/) }))
+  .handler(async ({ data }) => {
+    const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecret) {
+      return { status: "error" as const, message: "Payment verification is not configured." };
+    }
+
+    try {
+      const res = await fetch(
+        `https://api.paystack.co/transaction/verify/${encodeURIComponent(data.reference)}`,
+        { headers: { Authorization: `Bearer ${paystackSecret}` } },
+      );
+      const json: any = await res.json().catch(() => ({}));
+      const txn = json?.data;
+
+      const { data: order } = await supabaseAdmin
+        .from("orders")
+        .select("id, order_number, total, payment_status")
+        .eq("paystack_reference", data.reference)
+        .maybeSingle();
+
+      if (!order) {
+        return { status: "error" as const, message: "We could not find this order." };
+      }
+      if (order.payment_status === "paid") {
+        return { status: "paid" as const, orderNumber: order.order_number, total: Number(order.total) };
+      }
+      if (!res.ok || txn?.status !== "success") {
+        return { status: "pending" as const, message: "Payment not confirmed yet." };
+      }
+      if (Math.abs(Number(txn.amount ?? 0) - Math.round(Number(order.total) * 100)) > 100) {
+        return { status: "error" as const, message: "Payment amount does not match this order." };
+      }
+
+      await supabaseAdmin
+        .from("orders")
+        .update({ payment_status: "paid" })
+        .eq("id", order.id);
+
+      return { status: "paid" as const, orderNumber: order.order_number, total: Number(order.total) };
+    } catch (err: any) {
+      console.error("confirmPaystackPayment failed:", err?.message);
+      return { status: "error" as const, message: "Could not verify the payment right now." };
+    }
+  });
+
 
 export const sendOrderReceipt = createServerFn({ method: "POST" })
   .inputValidator((data) => InputSchema.parse(data))
