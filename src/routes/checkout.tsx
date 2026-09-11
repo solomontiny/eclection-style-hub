@@ -23,22 +23,8 @@ export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
 });
 
-function loadPaystackScript(): Promise<any> {
-  return new Promise((resolve, reject) => {
-    if ((window as any).PaystackPop) {
-      resolve((window as any).PaystackPop);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://js.paystack.co/v2/inline.js";
-    script.onload = () => resolve((window as any).PaystackPop);
-    script.onerror = reject;
-    document.body.appendChild(script);
-  });
-}
-
 function CheckoutPage() {
-  const { items, subtotal, clearCart } = useCart();
+  const { items, subtotal, clear } = useCart();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const form = useForm<CustomerForm>({
@@ -47,79 +33,32 @@ function CheckoutPage() {
   });
 
   const handleCheckout = async (data: CustomerForm) => {
-    if (items.length === 0) return;
+    if (items.length === 0 || loading) return;
     setLoading(true);
     try {
-      // 1. Create order server-side
       const order = await createOrderServerFn({
         data: {
-          items: items.map(i => ({ id: i.id, qty: i.qty })),
+          items: items.map((i) => ({ id: i.id, qty: i.qty })),
           customer: data,
+          callbackUrl: `${window.location.origin}/thank-you`,
         },
       });
 
-      // 2. Initiate Paystack
-      try {
-        const PaystackPop = await loadPaystackScript();
-        const popup = new PaystackPop();
-        popup.newTransaction({
-          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-          amount: order.total * 100, // kobo
-          email: data.email,
-          currency: "NGN",
-          ref: `REF-${order.orderId}`,
-          onSuccess: async (transaction: any) => {
-            // 3. Verify server-side
-            try {
-              const result = await sendOrderReceipt({
-                data: {
-                  snapshot: {
-                    orderRef: order.orderId,
-                    createdAt: Date.now(),
-                    customer: data,
-                    items: items.map(i => ({
-                      id: i.id,
-                      name: i.name,
-                      size: i.size || "N/A",
-                      qty: i.qty,
-                      price: i.price,
-                    })),
-                    delivery: { label: "Standard", fee: 0, eta: "3-5 days" },
-                    subtotal: order.total,
-                    total: order.total,
-                  },
-                  paystackRef: transaction.reference,
-                },
-              });
-
-              if (result.status === "sent") {
-                clearCart();
-                navigate({ to: "/thank-you" });
-              } else {
-                toast.error(result.message);
-                setLoading(false);
-              }
-            } catch (e: any) {
-              toast.error("Failed to verify payment. Please contact support.");
-              setLoading(false);
-            }
-          },
-          onCancel: () => {
-            setLoading(false);
-            toast.error("Payment cancelled.");
-          },
-        });
-      } catch (e: any) {
-        toast.error("Failed to open payment gateway. Please try again.");
+      if (!order.success || !("authorization_url" in order) || !order.authorization_url) {
+        toast.error(("message" in order && order.message) || "Could not start the payment.");
         setLoading(false);
+        return;
       }
 
+      clear();
+      window.location.href = order.authorization_url;
     } catch (e: any) {
       console.error(e);
-      toast.error(e.message || "Checkout failed. Please try again.");
+      toast.error(e?.message || "Checkout failed. Please try again.");
       setLoading(false);
     }
   };
+
 
   return (
     <section className="container-x py-12">
