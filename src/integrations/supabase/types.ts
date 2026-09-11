@@ -201,6 +201,7 @@ export type Database = {
           notes: string | null
           order_number: string
           payment_status: Database["public"]["Enums"]["payment_status"]
+          paystack_reference: string | null
           shipping: number
           shipping_address: Json | null
           status: Database["public"]["Enums"]["order_status"]
@@ -221,6 +222,7 @@ export type Database = {
           notes?: string | null
           order_number?: string
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          paystack_reference?: string | null
           shipping?: number
           shipping_address?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -241,6 +243,7 @@ export type Database = {
           notes?: string | null
           order_number?: string
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          paystack_reference?: string | null
           shipping?: number
           shipping_address?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
