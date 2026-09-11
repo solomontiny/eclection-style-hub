@@ -135,20 +135,30 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     const { items, customer } = data;
 
     // 1. Fetch products
+    console.log("[DEBUG] Fetching products for items:", JSON.stringify(items, null, 2));
     const { data: products, error: productError } = await supabaseAdmin
       .from("products")
       .select("id, name, price, discount_percent")
       .in("id", items.map(i => i.id));
 
-    if (productError || !products) {
-      throw new Error("Failed to fetch product data");
+    if (productError) {
+      console.error("[DEBUG] Product fetch error:", JSON.stringify(productError, null, 2));
+      throw new Error(`Failed to fetch product data: ${productError.message}`);
+    }
+    if (!products) {
+      console.error("[DEBUG] No products found");
+      throw new Error("No products found");
     }
 
     // 2. Calculate totals
+    console.log("[DEBUG] Calculating totals");
     let subtotal = 0;
     const orderItems = items.map(item => {
       const product = products.find(p => p.id === item.id);
-      if (!product) throw new Error(`Product not found: ${item.id}`);
+      if (!product) {
+        console.error(`[DEBUG] Product not found: ${item.id}`);
+        throw new Error(`Product not found: ${item.id}`);
+      }
 
       const price = Number(product.price) * (1 - Number(product.discount_percent) / 100);
       const itemSubtotal = price * item.qty;
@@ -169,11 +179,9 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       customer_email: customer.email,
       customer_phone: customer.phone && customer.phone.trim() !== "" ? customer.phone : null,
       subtotal,
-      total: subtotal, // Assuming no shipping/discount for now
+      total: subtotal,
       payment_status: 'pending' as const,
     };
-
-    console.log("[DEBUG] Inserting order data:", JSON.stringify(orderData, null, 2));
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
@@ -183,24 +191,71 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
 
     if (orderError) {
       console.error("Failed to create order:", JSON.stringify(orderError, null, 2));
-      throw new Error(`Failed to create order: ${orderError.message} (Code: ${orderError.code})`);
+      throw new Error(`Failed to create order: ${orderError.message}`);
     }
-    if (!order) {
-      console.error("Order creation returned no data");
-      throw new Error("Failed to create order: No data returned");
+    if (!order) throw new Error("Failed to create order: No data returned");
+
+    // 4. Update order with reference
+    const ref = `REF-${order.id}`;
+    const { error: updateError } = await supabaseAdmin
+      .from("orders")
+      .update({ paystack_reference: ref })
+      .eq("id", order.id);
+    if (updateError) {
+      console.error("Failed to update order reference:", updateError);
+      throw new Error("Failed to update order reference.");
     }
 
-    // 4. Insert items
+    // 5. Insert items
     const { error: itemsError } = await supabaseAdmin
       .from("order_items")
       .insert(orderItems.map(item => ({ ...item, order_id: order.id })));
 
-    if (itemsError) {
-      console.error("Failed to create order items:", itemsError);
-      throw new Error("Failed to create order items");
+    if (itemsError) throw new Error("Failed to create order items");
+
+    // 6. Initialize Paystack transaction
+    const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecret) {
+      console.error("[PAYSTACK] Error: PAYSTACK_SECRET_KEY is undefined in process.env");
+      throw new Error("Payment configuration error.");
     }
 
-    return { success: true, orderId: order.id, total: subtotal };
+    const ref = `REF-${order.id}`;
+    
+    try {
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${paystackSecret}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: Math.round(subtotal * 100),
+          email: customer.email,
+          reference: ref,
+        }),
+      });
+
+      const paystackData = await paystackRes.json();
+      
+      if (!paystackRes.ok) {
+        console.error("[PAYSTACK] API Error:", {
+          status: paystackRes.status,
+          data: paystackData
+        });
+        throw new Error(`Payment init failed: ${paystackData.message || "API error"}`);
+      }
+
+      return { 
+        success: true, 
+        orderId: order.id, 
+        total: subtotal,
+        access_code: paystackData.data.access_code
+      };
+    } catch (err: any) {
+      console.error("[PAYSTACK] Fetch Error:", err);
+      throw new Error(`Payment network error: ${err.message}`);
+    }
   });
 
 export const sendOrderReceipt = createServerFn({ method: "POST" })

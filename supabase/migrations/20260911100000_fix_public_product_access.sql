@@ -10,3 +10,7 @@ CREATE POLICY "Active products viewable by all" ON public.products FOR SELECT
 CREATE POLICY "Admins manage products" ON public.products FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
+
+-- Allow anonymous users to execute has_role
+-- This is necessary for RLS policies that might be checked even for anonymous users.
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) TO anon;

@@ -64,10 +64,7 @@ function CheckoutPage() {
         const popup = new PaystackPop();
         popup.newTransaction({
           key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-          amount: order.total * 100, // kobo
-          email: data.email,
-          currency: "NGN",
-          ref: `REF-${order.orderId}`,
+          access_code: order.access_code,
           onSuccess: async (transaction: any) => {
             // 3. Verify server-side
             try {
