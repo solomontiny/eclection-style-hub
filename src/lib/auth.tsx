@@ -76,16 +76,16 @@ export function AuthProvider({
 
         setSession(data.session);
         setUser(data.session?.user ?? null);
+        
+        // Mark loading as false BEFORE fetching admin rights to prevent blocking
+        setLoading(false);
 
         if (data.session?.user) {
           await refreshAdmin(data.session.user.id);
         }
       } catch (err) {
         console.error("[SESSION EXCEPTION]", err);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
 

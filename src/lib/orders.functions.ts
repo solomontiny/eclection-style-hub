@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { CONTACT } from "./contact";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const SnapshotSchema = z.object({
   orderRef: z.string().min(3).max(64),
@@ -41,7 +42,6 @@ function naira(n: number) {
   return "₦" + n.toLocaleString("en-NG");
 }
 
-// HTML-escape user-supplied values before interpolating into email HTML.
 function esc(s: string | number | undefined | null) {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
@@ -132,16 +132,66 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     customer: z.object({ name: z.string(), email: z.string().email(), phone: z.string().optional() }),
   }))
   .handler(async ({ data }) => {
-    // 1. Fetch prices from database for authoritative total calculation
-    // 2. Create order in database
-    // 3. Return order ID and total
-    return { success: true, orderId: "TODO", total: 0 };
+    const { items, customer } = data;
+    
+    // 1. Fetch products
+    const { data: products, error: productError } = await supabaseAdmin
+      .from("products")
+      .select("id, name, price, discount_percent")
+      .in("id", items.map(i => i.id));
+      
+    if (productError || !products) {
+      throw new Error("Failed to fetch product data");
+    }
+
+    // 2. Calculate totals
+    let subtotal = 0;
+    const orderItems = items.map(item => {
+      const product = products.find(p => p.id === item.id);
+      if (!product) throw new Error(`Product not found: ${item.id}`);
+      
+      const price = Number(product.price) * (1 - Number(product.discount_percent) / 100);
+      const itemSubtotal = price * item.qty;
+      subtotal += itemSubtotal;
+      
+      return {
+        product_id: product.id,
+        product_name: product.name,
+        unit_price: price,
+        quantity: item.qty,
+        subtotal: itemSubtotal
+      };
+    });
+
+    // 3. Insert order
+    const { data: order, error: orderError } = await supabaseAdmin
+      .from("orders")
+      .insert({
+        customer_name: customer.name,
+        customer_email: customer.email,
+        customer_phone: customer.phone,
+        subtotal,
+        total: subtotal, // Assuming no shipping/discount for now
+      })
+      .select("id")
+      .single();
+
+    if (orderError || !order) {
+      throw new Error("Failed to create order");
+    }
+
+    // 4. Insert items
+    const { error: itemsError } = await supabaseAdmin
+      .from("order_items")
+      .insert(orderItems.map(item => ({ ...item, order_id: order.id })));
+
+    if (itemsError) {
+      throw new Error("Failed to create order items");
+    }
+
+    return { success: true, orderId: order.id, total: subtotal };
   });
 
-/**
- * Sends order receipt. Verifies Paystack reference server-side before
- * accepting the order to prevent forged "paid" confirmations.
- */
 export const sendOrderReceipt = createServerFn({ method: "POST" })
   .inputValidator((data) => InputSchema.parse(data))
   .handler(async ({ data }) => {

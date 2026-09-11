@@ -6,8 +6,6 @@ export const CONTACT = {
   whatsappNumber: "2348081759542",
   address: "5 Path Akachukwu Drive, Majek, Lekki–Epe Expressway, Lagos",
   mapQuery: "5 Path Akachukwu Drive, Majek, Lekki-Epe Expressway, Lagos, Nigeria",
-  // Paystack payment page (replace with your real Paystack page link)
-  paystackUrl: "https://paystack.shop/estylecollection",
   instagram: "e_style_wears_collection",
   facebook: "Supplier Affordable",
   tiktokHandle: "supplier.affordable",

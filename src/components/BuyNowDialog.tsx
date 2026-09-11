@@ -1,50 +1,24 @@
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
 import { type Product, formatNaira } from "@/lib/products";
-import { PENDING_ORDER_KEY } from "@/components/CartDrawer";
-import { CONTACT } from "@/lib/contact";
+import { useCart } from "@/lib/cart";
 
 export function BuyNowDialog({ product, trigger }: { product: Product; trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState("M");
+  const { addItem } = useCart();
+  const navigate = useNavigate();
+  
   const unitPrice = product.sale_price ?? product.price;
   const total = unitPrice * qty;
 
-  const message =
-    `*New Order — Supplier Affordable* 🛍️\n` +
-    `━━━━━━━━━━━━━━━━━━\n\n` +
-    `Hi Supplier Affordable 👋\n` +
-    `I'd like to place the following order:\n\n` +
-    `🧾 *Order Details*\n` +
-    `• Product   : ${product.name}\n` +
-    `• Category  : ${product.category ?? "Uncategorized"}\n` +
-    `• Size      : ${size}\n` +
-    `• Quantity  : ${qty}\n\n` +
-    `💰 *Price Breakdown*\n` +
-            `• Unit price : ${formatNaira(unitPrice)}\n` +
-    `• Quantity   : x${qty}\n` +
-    `• Subtotal   : ${formatNaira(total)}\n\n` +
-    `━━━━━━━━━━━━━━━━━━\n` +
-    `*TOTAL: ${formatNaira(total)}*\n` +
-    `━━━━━━━━━━━━━━━━━━\n\n` +
-    `Please confirm availability and delivery details. Thank you! 💕`;
-
   const handlePayNow = () => {
-    const orderRef = `ESC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    const snapshot = {
-      orderRef,
-      createdAt: Date.now(),
-      items: [{ id: product.id, name: product.name, size, qty, price: unitPrice, image: product.image ?? product.image_url ?? "" }],
-      subtotal: total,
-      total: total,
-    };
-    try {
-      localStorage.setItem(PENDING_ORDER_KEY, JSON.stringify(snapshot));
-    } catch {}
-    window.location.href = CONTACT.paystackUrl;
+    addItem(product, size, qty);
     setOpen(false);
+    navigate({ to: "/checkout" });
   };
 
   return (

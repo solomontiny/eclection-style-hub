@@ -66,7 +66,7 @@ function ProductDetails() {
         <p className="mt-6 whitespace-pre-line text-muted-foreground leading-7">{product.description || "A carefully selected piece from our current collection."}</p>
         <p className={`mt-6 text-sm font-semibold ${product.stock > 0 ? "text-emerald-700" : "text-amber-700"}`}>{product.stock > 0 ? `${product.stock} available` : "Currently out of stock"}</p>
         <div className="mt-6 flex items-center gap-4"><div className="flex items-center rounded-full border border-border"><button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-3"><Minus size={16} /></button><span className="w-8 text-center">{quantity}</span><button type="button" onClick={() => setQuantity((value) => value + 1)} className="p-3"><Plus size={16} /></button></div><button type="button" disabled={product.stock === 0} onClick={() => addItem(product, "M", quantity)} className="btn-primary flex-1 justify-center disabled:opacity-50"><ShoppingBag size={16} /> Add to cart</button></div>
-        <div className="mt-3"><BuyNowDialog product={product} trigger={<button type="button" className="btn-outline w-full justify-center">Buy now on WhatsApp</button>} /></div>
+        <div className="mt-3"><BuyNowDialog product={product} trigger={<button type="button" className="btn-outline w-full justify-center">Buy now</button>} /></div>
       </div>
     </div>
     {related.length > 0 && <div className="mt-20"><h2 className="font-display text-3xl">You may also like</h2><div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">{related.map((item) => <ProductCard key={item.id} product={item as never} />)}</div></div>}
