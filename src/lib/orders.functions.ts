@@ -133,13 +133,13 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data }) => {
     const { items, customer } = data;
-    
+
     // 1. Fetch products
     const { data: products, error: productError } = await supabaseAdmin
       .from("products")
       .select("id, name, price, discount_percent")
       .in("id", items.map(i => i.id));
-      
+
     if (productError || !products) {
       throw new Error("Failed to fetch product data");
     }
@@ -149,11 +149,11 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     const orderItems = items.map(item => {
       const product = products.find(p => p.id === item.id);
       if (!product) throw new Error(`Product not found: ${item.id}`);
-      
+
       const price = Number(product.price) * (1 - Number(product.discount_percent) / 100);
       const itemSubtotal = price * item.qty;
       subtotal += itemSubtotal;
-      
+
       return {
         product_id: product.id,
         product_name: product.name,
@@ -164,20 +164,30 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     });
 
     // 3. Insert order
+    const orderData = {
+      customer_name: customer.name,
+      customer_email: customer.email,
+      customer_phone: customer.phone && customer.phone.trim() !== "" ? customer.phone : null,
+      subtotal,
+      total: subtotal, // Assuming no shipping/discount for now
+      payment_status: 'pending' as const,
+    };
+
+    console.log("[DEBUG] Inserting order data:", JSON.stringify(orderData, null, 2));
+
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
-      .insert({
-        customer_name: customer.name,
-        customer_email: customer.email,
-        customer_phone: customer.phone,
-        subtotal,
-        total: subtotal, // Assuming no shipping/discount for now
-      })
+      .insert(orderData)
       .select("id")
       .single();
 
-    if (orderError || !order) {
-      throw new Error("Failed to create order");
+    if (orderError) {
+      console.error("Failed to create order:", JSON.stringify(orderError, null, 2));
+      throw new Error(`Failed to create order: ${orderError.message} (Code: ${orderError.code})`);
+    }
+    if (!order) {
+      console.error("Order creation returned no data");
+      throw new Error("Failed to create order: No data returned");
     }
 
     // 4. Insert items
@@ -186,6 +196,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       .insert(orderItems.map(item => ({ ...item, order_id: order.id })));
 
     if (itemsError) {
+      console.error("Failed to create order items:", itemsError);
       throw new Error("Failed to create order items");
     }
 

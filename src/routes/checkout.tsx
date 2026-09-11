@@ -59,49 +59,61 @@ function CheckoutPage() {
       });
 
       // 2. Initiate Paystack
-      const PaystackPop = await loadPaystackScript();
-      const popup = new PaystackPop();
-      popup.newTransaction({
-        key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-        amount: order.total * 100, // kobo
-        email: data.email,
-        currency: "NGN",
-        ref: `REF-${order.orderId}`,
-        onSuccess: async (transaction: any) => {
-          // 3. Verify server-side
-          const result = await sendOrderReceipt({
-            data: {
-              snapshot: {
-                orderRef: order.orderId,
-                createdAt: Date.now(),
-                customer: data,
-                items: items.map(i => ({
-                  id: i.id,
-                  name: i.name,
-                  size: i.size || "N/A",
-                  qty: i.qty,
-                  price: i.price,
-                })),
-                delivery: { label: "Standard", fee: 0, eta: "3-5 days" },
-                subtotal: order.total,
-                total: order.total,
-              },
-              paystackRef: transaction.reference,
-            },
-          });
+      try {
+        const PaystackPop = await loadPaystackScript();
+        const popup = new PaystackPop();
+        popup.newTransaction({
+          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+          amount: order.total * 100, // kobo
+          email: data.email,
+          currency: "NGN",
+          ref: `REF-${order.orderId}`,
+          onSuccess: async (transaction: any) => {
+            // 3. Verify server-side
+            try {
+              const result = await sendOrderReceipt({
+                data: {
+                  snapshot: {
+                    orderRef: order.orderId,
+                    createdAt: Date.now(),
+                    customer: data,
+                    items: items.map(i => ({
+                      id: i.id,
+                      name: i.name,
+                      size: i.size || "N/A",
+                      qty: i.qty,
+                      price: i.price,
+                    })),
+                    delivery: { label: "Standard", fee: 0, eta: "3-5 days" },
+                    subtotal: order.total,
+                    total: order.total,
+                  },
+                  paystackRef: transaction.reference,
+                },
+              });
 
-          if (result.status === "sent") {
-            clearCart();
-            navigate({ to: "/thank-you" });
-          } else {
-            toast.error(result.message);
-          }
-        },
-        onCancel: () => {
-          setLoading(false);
-          toast.error("Payment cancelled.");
-        },
-      });
+              if (result.status === "sent") {
+                clearCart();
+                navigate({ to: "/thank-you" });
+              } else {
+                toast.error(result.message);
+                setLoading(false);
+              }
+            } catch (e: any) {
+              toast.error("Failed to verify payment. Please contact support.");
+              setLoading(false);
+            }
+          },
+          onCancel: () => {
+            setLoading(false);
+            toast.error("Payment cancelled.");
+          },
+        });
+      } catch (e: any) {
+        toast.error("Failed to open payment gateway. Please try again.");
+        setLoading(false);
+      }
+
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || "Checkout failed. Please try again.");

@@ -22,6 +22,7 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true); // New state
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -37,7 +38,7 @@ function LoginPage() {
     setBusy(true);
     try {
       const res = mode === "signin"
-        ? await signIn(email.trim(), password)
+        ? await signIn(email.trim(), password, rememberMe)
         : await signUp(email.trim(), password, displayName.trim() || undefined);
       if (res.error) { setErr(res.error); }
     } finally {
@@ -108,6 +109,18 @@ function LoginPage() {
               </button>
             </div>
           </label>
+
+          {mode === "signin" && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="accent-primary"
+              />
+              <span>Remember me</span>
+            </label>
+          )}
 
           {err && (
             <div className="rounded-lg bg-destructive/10 text-destructive text-sm px-3 py-2">

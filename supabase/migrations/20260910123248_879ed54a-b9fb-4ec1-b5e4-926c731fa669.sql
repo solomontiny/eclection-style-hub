@@ -17,6 +17,23 @@ GRANT SELECT ON public.bundles TO anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.bundles TO authenticated;
 GRANT ALL ON public.bundles TO service_role;
 ALTER TABLE public.bundles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Bundles viewable by all" ON public.bundles FOR SELECT USING (true);
-CREATE POLICY "Admins manage bundles" ON public.bundles FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'::app_role)) WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
-CREATE TRIGGER update_bundles_updated_at BEFORE UPDATE ON public.bundles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Bundles viewable by all' AND tablename = 'bundles') THEN
+    CREATE POLICY "Bundles viewable by all" ON public.bundles FOR SELECT USING (true);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admins manage bundles' AND tablename = 'bundles') THEN
+    CREATE POLICY "Admins manage bundles" ON public.bundles FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'::app_role)) WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_bundles_updated_at') THEN
+        CREATE TRIGGER update_bundles_updated_at BEFORE UPDATE ON public.bundles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+    END IF;
+END
+$$;

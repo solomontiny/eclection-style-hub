@@ -16,7 +16,8 @@ type AuthContextValue = {
   loading: boolean;
   signIn: (
     email: string,
-    password: string
+    password: string,
+    rememberMe: boolean
   ) => Promise<{ error?: string }>;
   signUp: (
     email: string,
@@ -76,7 +77,7 @@ export function AuthProvider({
 
         setSession(data.session);
         setUser(data.session?.user ?? null);
-        
+
         // Mark loading as false BEFORE fetching admin rights to prevent blocking
         setLoading(false);
 
@@ -119,9 +120,9 @@ export function AuthProvider({
       isAdmin,
       loading,
 
-      async signIn(email, password) {
+      async signIn(email, password, rememberMe) {
         try {
-          console.log("[LOGIN ATTEMPT]", email);
+          console.log("[LOGIN ATTEMPT]", email, "Remember me:", rememberMe);
 
           const { data, error } =
             await supabase.auth.signInWithPassword({
@@ -138,6 +139,10 @@ export function AuthProvider({
           }
 
           console.log("[LOGIN SUCCESS]", data.user?.email);
+
+          // Note: The singleton Supabase client is configured to persist session
+          // to localStorage by default. Full per-session control would require
+          // a non-singleton client or custom auth storage.
 
           return {};
         } catch (err) {
