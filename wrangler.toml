@@ -1,9 +1,16 @@
 name = "supplieraffordable"
 compatibility_date = "2026-01-01"
 compatibility_flags = ["nodejs_compat"]
+# Retain the Worker dashboard bindings on deploy. Configure these there:
+# SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, PAYSTACK_SECRET_KEY
+# VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_PAYSTACK_PUBLIC_KEY
+keep_vars = true
 
-main = "./dist/server/index.mjs"
+main = "./.output/server/index.mjs"
+
+[vars]
+SUPABASE_URL = "https://clvxfobvtqwdmuzqbehk.supabase.co"
 
 [assets]
-directory = "./dist/client"
+directory = "./.output/public"
 binding = "ASSETS"

@@ -269,6 +269,7 @@ function ProductsPage() {
   );
 }
 
+import { ImageUploader } from "@/components/admin/ImageUploader";
 // ... existing imports ...
 // ... existing types ...
 
@@ -488,7 +489,11 @@ function ProductDialog({
             </div>
           </div>
 
-// ... inside ProductDialog:
+          <div>
+            <Label>Product Images</Label>
+            <ImageUploader images={images} setImages={setImages} />
+          </div>
+
           {form.product_type === 'bundle' && (
              <div className="p-4 border rounded space-y-4">
                 <Label>Bundle Items</Label>

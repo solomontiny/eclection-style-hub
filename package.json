@@ -8,7 +8,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
-    "deploy": "vite build && wrangler deploy",
+    "deploy": "vite build && nitro deploy --prebuilt",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

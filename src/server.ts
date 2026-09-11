@@ -7,6 +7,27 @@ type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
+type RuntimeBindings = Record<string, unknown>;
+
+// Vite loads .env into process.env for local development. Cloudflare Workers
+// instead provide runtime variables as the `env` argument to fetch, so copy only
+// the server-only bindings before TanStack loads modules that read them.
+function bindServerEnvironment(env: unknown) {
+  if (!env || typeof env !== "object") return;
+
+  const bindings = env as RuntimeBindings;
+  for (const key of [
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "PAYSTACK_SECRET_KEY",
+  ]) {
+    const value = bindings[key];
+    if (typeof value === "string" && value) {
+      process.env[key] = value;
+    }
+  }
+}
+
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
 async function getServerEntry(): Promise<ServerEntry> {
@@ -69,6 +90,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      bindServerEnvironment(env);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
