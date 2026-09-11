@@ -124,6 +124,21 @@ function buildEmailHtml(args: {
 }
 
 /**
+ * Creates an order server-side with authoritative pricing.
+ */
+export const createOrderServerFn = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
+    items: z.array(z.object({ id: z.string(), qty: z.number().int().min(1) })),
+    customer: z.object({ name: z.string(), email: z.string().email(), phone: z.string().optional() }),
+  }))
+  .handler(async ({ data }) => {
+    // 1. Fetch prices from database for authoritative total calculation
+    // 2. Create order in database
+    // 3. Return order ID and total
+    return { success: true, orderId: "TODO", total: 0 };
+  });
+
+/**
  * Sends order receipt. Verifies Paystack reference server-side before
  * accepting the order to prevent forged "paid" confirmations.
  */

@@ -463,7 +463,7 @@ function ProductDialog({
                 <SelectContent className="z-[100]">
                   <SelectItem value="regular">Regular</SelectItem>
                   <SelectItem value="sale">Sale</SelectItem>
-                  <SelectItem value="flash-sale">Flash Sale</SelectItem>
+                  <SelectItem value="flash_sale">Flash Sale</SelectItem>
                 </SelectContent>
               </Select>
             </div>

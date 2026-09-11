@@ -18,7 +18,16 @@ function Shop() {
   const [saleOnly, setSaleOnly] = useState(false);
   const [availableOnly, setAvailableOnly] = useState(false);
   const [page, setPage] = useState(1);
-  const { data: products = [], isLoading, isError, refetch } = useQuery<Product[]>({ queryKey: ["products"], queryFn: getProducts, staleTime: 30_000 });
+  const { data: products = [], isLoading, isError, refetch } = useQuery<Product[]>({ 
+    queryKey: ["products"], 
+    queryFn: async () => {
+      console.log("Fetching products...");
+      const data = await getProducts();
+      console.log("Products fetched:", data.length);
+      return data;
+    },
+    staleTime: 30_000 
+  });
   const { data: categories = [] } = useQuery({ queryKey: ["store-categories"], queryFn: async () => { const { data, error } = await supabase.from("categories").select("id, name").eq("active", true).order("name"); if (error) throw error; return data ?? []; }, staleTime: 60_000 });
 
   const filtered = useMemo(() => {
