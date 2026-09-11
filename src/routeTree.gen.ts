@@ -15,6 +15,7 @@ import { Route as ShopRouteImport } from './routes/shop'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as BulkOrderRouteImport } from './routes/bulk-order'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AboutRouteImport } from './routes/about'
@@ -30,6 +31,7 @@ import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
+import { Route as AdminBulkRequestsRouteImport } from './routes/admin.bulk-requests'
 import { Route as AdminAddProductRouteImport } from './routes/admin.add-product'
 import { Route as AdminEditProductIdRouteImport } from './routes/admin.edit-product.$id'
 
@@ -61,6 +63,11 @@ const ContactRoute = ContactRouteImport.update({
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BulkOrderRoute = BulkOrderRouteImport.update({
+  id: '/bulk-order',
+  path: '/bulk-order',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -138,6 +145,11 @@ const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminBulkRequestsRoute = AdminBulkRequestsRouteImport.update({
+  id: '/bulk-requests',
+  path: '/bulk-requests',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAddProductRoute = AdminAddProductRouteImport.update({
   id: '/add-product',
   path: '/add-product',
@@ -154,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRouteWithChildren
+  '/bulk-order': typeof BulkOrderRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
@@ -161,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/thank-you': typeof ThankYouRoute
   '/admin/add-product': typeof AdminAddProductRoute
+  '/admin/bulk-requests': typeof AdminBulkRequestsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -178,6 +192,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
+  '/bulk-order': typeof BulkOrderRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
@@ -185,6 +200,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/thank-you': typeof ThankYouRoute
   '/admin/add-product': typeof AdminAddProductRoute
+  '/admin/bulk-requests': typeof AdminBulkRequestsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -204,6 +220,7 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRouteWithChildren
+  '/bulk-order': typeof BulkOrderRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
@@ -211,6 +228,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/thank-you': typeof ThankYouRoute
   '/admin/add-product': typeof AdminAddProductRoute
+  '/admin/bulk-requests': typeof AdminBulkRequestsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -231,6 +249,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/account'
     | '/admin'
+    | '/bulk-order'
     | '/checkout'
     | '/contact'
     | '/login'
@@ -238,6 +257,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/thank-you'
     | '/admin/add-product'
+    | '/admin/bulk-requests'
     | '/admin/categories'
     | '/admin/coupons'
     | '/admin/customers'
@@ -255,6 +275,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/account'
+    | '/bulk-order'
     | '/checkout'
     | '/contact'
     | '/login'
@@ -262,6 +283,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/thank-you'
     | '/admin/add-product'
+    | '/admin/bulk-requests'
     | '/admin/categories'
     | '/admin/coupons'
     | '/admin/customers'
@@ -280,6 +302,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/account'
     | '/admin'
+    | '/bulk-order'
     | '/checkout'
     | '/contact'
     | '/login'
@@ -287,6 +310,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/thank-you'
     | '/admin/add-product'
+    | '/admin/bulk-requests'
     | '/admin/categories'
     | '/admin/coupons'
     | '/admin/customers'
@@ -306,6 +330,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRouteWithChildren
+  BulkOrderRoute: typeof BulkOrderRoute
   CheckoutRoute: typeof CheckoutRoute
   ContactRoute: typeof ContactRoute
   LoginRoute: typeof LoginRoute
@@ -358,6 +383,13 @@ declare module '@tanstack/react-router' {
       path: '/checkout'
       fullPath: '/checkout'
       preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bulk-order': {
+      id: '/bulk-order'
+      path: '/bulk-order'
+      fullPath: '/bulk-order'
+      preLoaderRoute: typeof BulkOrderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -465,6 +497,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCategoriesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/bulk-requests': {
+      id: '/admin/bulk-requests'
+      path: '/bulk-requests'
+      fullPath: '/admin/bulk-requests'
+      preLoaderRoute: typeof AdminBulkRequestsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/add-product': {
       id: '/admin/add-product'
       path: '/add-product'
@@ -484,6 +523,7 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminAddProductRoute: typeof AdminAddProductRoute
+  AdminBulkRequestsRoute: typeof AdminBulkRequestsRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCouponsRoute: typeof AdminCouponsRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
@@ -498,6 +538,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAddProductRoute: AdminAddProductRoute,
+  AdminBulkRequestsRoute: AdminBulkRequestsRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCouponsRoute: AdminCouponsRoute,
   AdminCustomersRoute: AdminCustomersRoute,
@@ -517,6 +558,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   AccountRoute: AccountRoute,
   AdminRoute: AdminRouteWithChildren,
+  BulkOrderRoute: BulkOrderRoute,
   CheckoutRoute: CheckoutRoute,
   ContactRoute: ContactRoute,
   LoginRoute: LoginRoute,

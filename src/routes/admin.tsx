@@ -42,6 +42,7 @@ const navItems = [
   { to: "/admin/customers", label: "Customers", icon: Users },
   { to: "/admin/inventory", label: "Inventory", icon: Boxes },
   { to: "/admin/coupons", label: "Coupons", icon: Ticket },
+  { to: "/admin/bulk-requests", label: "Bulk Requests", icon: Store },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

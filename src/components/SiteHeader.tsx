@@ -8,6 +8,7 @@ import officialLogo from "@/assets/supplier-affordable-logo.png";
 const links = [
   { to: "/", label: "Home" },
   { to: "/shop", label: "Shop" },
+  { to: "/bulk-order", label: "Bulk Order" },
   { to: "/about", label: "About" },
   { to: "/contact", label: "Contact" },
 ] as const;
