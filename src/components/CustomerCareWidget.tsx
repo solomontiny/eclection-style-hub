@@ -55,15 +55,16 @@ function autoReply(input: string): Msg {
       text: "🕘 We reply Monday–Saturday, 9am–7pm WAT. Outside those hours? Drop your message and we'll get back as soon as we open. ✨",
       quickReplies: ["Talk to a human"],
     };
+  
   if (/(human|agent|whatsapp|call|chat|talk|person)/.test(q))
     return {
       from: "bot",
-      text: "👋 Tap the button below to chat live with our team on WhatsApp.",
+      text: "👋 You can shop directly on our website and pay online. Need help? Tap the button below to chat with us on WhatsApp.",
     };
   return {
     from: "bot",
     text:
-      "Thanks for your message! 💗 One of these might help — or tap “Talk to a human” to chat with us live on WhatsApp.",
+      "Thanks for your message! 💗 Feel free to browse our shop or tap “Talk to a human” to chat with us on WhatsApp for any support.",
     quickReplies: QUICK_REPLIES,
   };
 }

@@ -51,6 +51,7 @@ function Contact() {
               <p className="text-muted-foreground break-all">{CONTACT.email}</p>
             </div>
           </a>
+<<<<<<< HEAD
 
           <div className="flex items-start gap-3">
             <Truck className="text-primary mt-0.5" size={20} />
@@ -59,6 +60,8 @@ function Contact() {
               <p className="text-muted-foreground">{LAGOS_DELIVERY_NOTE}</p>
             </div>
           </div>
+=======
+>>>>>>> recovery-supplier-ui
         </div>
 
         <div className="mt-8 pt-8 border-t border-border/60">
@@ -67,10 +70,14 @@ function Contact() {
             <a href={`https://instagram.com/${CONTACT.instagram}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground text-sm transition-colors">
               <Instagram size={16} /> @{CONTACT.instagram}
             </a>
+<<<<<<< HEAD
             <a href={`https://www.tiktok.com/@${CONTACT.tiktokHandle}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground text-sm transition-colors">
               TikTok @{CONTACT.tiktokHandle}
             </a>
             <a href="https://www.facebook.com/search/top?q=supplier%20affordable" target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground text-sm transition-colors">
+=======
+            <a href={`https://facebook.com/${CONTACT.facebook.replace(/\s+/g, '.')}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground text-sm transition-colors">
+>>>>>>> recovery-supplier-ui
               <Facebook size={16} /> {CONTACT.facebook}
             </a>
           </div>

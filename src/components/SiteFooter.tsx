@@ -20,13 +20,17 @@ export function SiteFooter() {
             <span className="font-display text-2xl">Supplier Affordable</span>
           </Link>
           <p className="mt-3 text-sm text-muted-foreground max-w-sm">
-            Affordable, elevated fashion for women and men — curated and shipped from Lagos.
+            Supplier Affordable is a Nigerian fashion brand bringing you stylish, quality, and affordable clothing. We make it easy to look good, feel confident, and stay fashionable without breaking the bank.
           </p>
           <div className="flex gap-3 mt-5">
             <a href={`https://instagram.com/${CONTACT.instagram}`} target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Instagram">
               <Instagram size={18} />
             </a>
+<<<<<<< HEAD
             <a href="https://www.facebook.com/search/top?q=supplier%20affordable" target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Facebook">
+=======
+            <a href={`https://facebook.com/${CONTACT.facebook}`} target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Facebook">
+>>>>>>> recovery-supplier-ui
               <Facebook size={18} />
             </a>
             <a href={`https://www.tiktok.com/@${CONTACT.tiktokHandle}`} target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="TikTok">
@@ -56,6 +60,7 @@ export function SiteFooter() {
       <div className="border-t border-border/60">
         <div className="container-x py-5 text-xs text-muted-foreground flex flex-wrap gap-2 justify-between">
           <p>© {new Date().getFullYear()} Supplier Affordable. All rights reserved.</p>
+          <Link to="/admin/login" className="hover:text-primary">Admin Login</Link>
           <p>Lagos, Nigeria</p>
         </div>
       </div>

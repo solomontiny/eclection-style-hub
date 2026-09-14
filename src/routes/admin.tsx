@@ -7,11 +7,14 @@ import { Toaster } from "sonner";
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — Supplier Affordable" }, { name: "robots", content: "noindex" }] }),
   beforeLoad: async ({ location }) => {
+    if (location.pathname === "/admin/login") {
+      return;
+    }
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
         console.error("[ADMIN DEBUG] Auth check failed:", userError);
-        throw redirect({ to: "/login", search: { redirect: location.href } as never });
+        throw redirect({ to: "/admin/login", search: { redirect: location.href } as never });
     }
     
     const { data: isAdmin, error: rpcError } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });

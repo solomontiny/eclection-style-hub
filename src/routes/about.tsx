@@ -5,7 +5,7 @@ export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
       { title: "About — Supplier Affordable" },
-      { name: "description", content: "Lagos-based fashion label curating affordable, elevated styles for women and men." },
+      { name: "description", content: "Supplier Affordable is a Nigerian fashion brand bringing you stylish, quality, and affordable clothing. We make it easy to look good, feel confident, and stay fashionable without breaking the bank." },
     ],
   }),
   component: About,
@@ -24,7 +24,7 @@ function About() {
           {[
             { k: "1k+", v: "Happy customers" },
             { k: "Weekly", v: "New arrivals" },
-            { k: "Lagos", v: "Same-day delivery" },
+            { k: "Lagos", v: "Delivery support" },
           ].map((s) => (
             <div key={s.v} className="rounded-2xl bg-secondary p-4">
               <p className="font-display text-2xl text-primary">{s.k}</p>

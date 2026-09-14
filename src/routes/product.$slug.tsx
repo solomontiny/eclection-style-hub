@@ -20,6 +20,7 @@ function ProductDetails() {
   const { slug } = Route.useParams();
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
+  const [selectedSize, setSelectedSize] = useState("M");
   const [selectedImage, setSelectedImage] = useState(0);
   const [size, setSize] = useState<string>("M");
 
@@ -68,7 +69,25 @@ function ProductDetails() {
         <h1 className="font-display text-4xl md:text-5xl mt-2">{product.name}</h1>
         <div className="mt-5 flex items-baseline gap-3"><span className="font-display text-3xl text-primary">{formatNaira(price)}</span>{product.sale_price != null && <span className="text-muted-foreground line-through">{formatNaira(product.price)}</span>}{discount > 0 && <span className="text-xs font-semibold text-emerald-700">-{discount}%</span>}</div>
         <p className="mt-6 whitespace-pre-line text-muted-foreground leading-7">{product.description || "A carefully selected piece from our current collection."}</p>
+        
+        <div className="mt-6">
+          <label className="text-sm font-medium">Select Size</label>
+          <div className="flex gap-2 mt-2">
+            {["S", "M", "L", "XL", "XXL"].map(size => (
+              <button 
+                key={size}
+                type="button"
+                onClick={() => setSelectedSize(size)}
+                className={`w-12 h-10 border rounded ${selectedSize === size ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary"}`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <p className={`mt-6 text-sm font-semibold ${product.stock > 0 ? "text-emerald-700" : "text-amber-700"}`}>{product.stock > 0 ? `${product.stock} available` : "Currently out of stock"}</p>
+<<<<<<< HEAD
         <div className="mt-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Select size</p>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Select size">
@@ -83,6 +102,11 @@ function ProductDetails() {
           <p><span className="font-semibold text-foreground">Secure payment:</span> pay for your order online with your card, bank transfer or USSD via Paystack. You'll get an order number and a confirmation receipt by email.</p>
           <p>{LAGOS_DELIVERY_NOTE}</p>
         </div>
+=======
+        <div className="mt-6 flex items-center gap-4"><div className="flex items-center rounded-full border border-border"><button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-3"><Minus size={16} /></button><span className="w-8 text-center">{quantity}</span><button type="button" onClick={() => setQuantity((value) => value + 1)} className="p-3"><Plus size={16} /></button></div><button type="button" disabled={product.stock === 0} onClick={() => addItem(product, selectedSize, quantity)} className="btn-primary flex-1 justify-center disabled:opacity-50"><ShoppingBag size={16} /> Add to cart</button></div>
+        <div className="mt-3"><BuyNowDialog product={product} trigger={<button type="button" className="btn-outline w-full justify-center">Buy now</button>} /></div>
+        <p className="mt-4 text-xs text-muted-foreground italic">Lagos delivery: Delivery fee is paid directly to the rider upon arrival. It is separate from your online order payment.</p>
+>>>>>>> recovery-supplier-ui
       </div>
     </div>
     {related.length > 0 && <div className="mt-20"><h2 className="font-display text-3xl">You may also like</h2><div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">{related.map((item) => <ProductCard key={item.id} product={item as never} />)}</div></div>}

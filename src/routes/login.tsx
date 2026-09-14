@@ -1,9 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import * as React from "react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Sign in — Supplier Affordable" },
@@ -15,34 +19,68 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { user, loading, signIn, signUp, isAdmin } = useAuth();
+  const { user, loading, signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true); // New state
+  const [rememberMe, setRememberMe] = useState(true);
   const [busy, setBusy] = useState(false);
+  const busyRef = React.useRef(false);
   const [err, setErr] = useState("");
 
   useEffect(() => {
     if (!loading && user) {
-      navigate({ to: isAdmin ? "/admin/dashboard" : "/" });
+      if (search.redirect) {
+        navigate({ to: search.redirect });
+      } else {
+        navigate({ to: "/account" });
+      }
     }
-  }, [user, loading, isAdmin, navigate]);
+  }, [user, loading, navigate, search.redirect]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (busyRef.current) return;
+    busyRef.current = true;
     setErr("");
     setBusy(true);
     try {
       const res = mode === "signin"
         ? await signIn(email.trim(), password, rememberMe)
         : await signUp(email.trim(), password, displayName.trim() || undefined);
-      if (res.error) { setErr(res.error); }
-    } finally {
+      if (res.error) { 
+        setErr(res.error); 
+        setBusy(false);
+        busyRef.current = false;
+      }
+    } catch (err) {
+      setErr("An unexpected error occurred.");
       setBusy(false);
+      busyRef.current = false;
+    }
+  }
+
+  async function signInWithGoogle() {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setErr("");
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setErr(err.message || "Failed to sign in with Google");
+      setBusy(false);
+      busyRef.current = false;
     }
   }
 
@@ -111,15 +149,20 @@ function LoginPage() {
           </label>
 
           {mode === "signin" && (
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="accent-primary"
-              />
-              <span>Remember me</span>
-            </label>
+            <div className="flex justify-between items-center text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="accent-primary"
+                />
+                <span>Remember me</span>
+              </label>
+              <Link to="/forgot-password" className="text-primary font-medium hover:underline">
+                Forgot password?
+              </Link>
+            </div>
           )}
 
           {err && (
@@ -132,6 +175,22 @@ function LoginPage() {
             {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
           </button>
         </form>
+
+        {mode === "signin" && (
+          <>
+            <div className="relative my-6 text-center text-xs text-muted-foreground before:absolute before:left-0 before:top-1/2 before:w-[40%] before:h-[1px] before:bg-border after:absolute after:right-0 after:top-1/2 after:w-[40%] after:h-[1px] after:bg-border">
+              OR
+            </div>
+            <button
+              type="button"
+              className="w-full flex items-center justify-center gap-2 border border-border rounded-lg py-2 hover:bg-secondary transition"
+              onClick={signInWithGoogle}
+              disabled={busy}
+            >
+              Continue with Google
+            </button>
+          </>
+        )}
 
         <div className="mt-6 text-sm text-muted-foreground text-center">
           {mode === "signin" ? (
@@ -149,10 +208,6 @@ function LoginPage() {
               </button>
             </>
           )}
-        </div>
-
-        <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
-          <strong className="text-primary">Admin access:</strong> sign in with your admin email and password. You'll be redirected to <code>/admin</code> automatically.
         </div>
 
         <div className="mt-6 text-center text-xs text-muted-foreground">

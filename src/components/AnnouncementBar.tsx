@@ -5,7 +5,6 @@ const MESSAGES = [
   "🎁 Use code WELCOME10 for 10% off your first order",
   "🚚 Same-day delivery within Lekki / Ajah",
   "💖 New arrivals every week — shop the latest drops",
-  "📦 Pickup available at our Majek, Lekki location",
 ];
 
 export function AnnouncementBar() {

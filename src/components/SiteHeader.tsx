@@ -32,7 +32,7 @@ const NavLinks = ({ onClick }: { onClick?: () => void }) => (
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, signOut } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border/60">
@@ -49,14 +49,10 @@ export function SiteHeader() {
         </Link>
         <nav className="hidden md:flex items-center gap-6">
           <NavLinks />
-          {isAdmin ? (
-            <div className="flex items-center gap-4 border-l pl-6 border-border/60">
-              <Link
-                to="/admin"
-                className="text-sm font-medium text-primary hover:opacity-80 inline-flex items-center gap-1.5"
-                activeProps={{ className: "underline" }}
-              >
-                <LayoutDashboard size={15} /> Admin
+          {user ? (
+            <div className="flex items-center gap-4">
+              <Link to="/account" className="text-sm font-medium text-foreground/80 hover:text-primary">
+                Account
               </Link>
               <button onClick={async () => await signOut()} className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors disabled:opacity-50">
                 Sign out
@@ -65,10 +61,10 @@ export function SiteHeader() {
           ) : (
             <Link
               to="/login"
-              className="text-xs font-semibold text-primary border border-primary/40 rounded-full px-3 py-1.5 hover:bg-primary hover:text-primary-foreground transition-colors inline-flex items-center gap-1.5"
-              title="Admin sign in"
+              className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors"
+              activeProps={{ className: "text-primary" }}
             >
-              <LayoutDashboard size={13} /> Admin
+              Login
             </Link>
           )}
           <Link to="/contact" className="btn-primary !py-2.5 !px-5 text-sm">
@@ -91,17 +87,17 @@ export function SiteHeader() {
         <div className="md:hidden border-t border-border/60 bg-background">
           <div className="container-x py-4 flex flex-col gap-1">
             <NavLinks onClick={() => setOpen(false)} />
-            {isAdmin && (
+            {user && (
               <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-border/60">
-                <Link to="/admin" onClick={() => setOpen(false)} className="py-2 text-sm font-medium text-primary">
-                  Admin dashboard
+                <Link to="/account" onClick={() => setOpen(false)} className="py-2 text-sm font-medium">
+                  Account
                 </Link>
                 <button onClick={() => { setOpen(false); signOut(); }} className="py-2 text-sm font-medium text-left">Sign out</button>
               </div>
             )}
-            {!isAdmin && (
+            {!user && (
               <Link to="/login" onClick={() => setOpen(false)} className="py-2 mt-2 pt-2 border-t border-border/60 text-sm font-medium">
-                Admin login
+                Login
               </Link>
             )}
           </div>
