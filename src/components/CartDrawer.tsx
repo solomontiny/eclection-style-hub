@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { cartItemKey } from "@/lib/cart";
+import { LAGOS_DELIVERY_NOTE } from "@/lib/contact";
 
 export function CartDrawer() {
   const { items, count, subtotal, open, setOpen, updateQty, removeItem } = useCart();
@@ -41,6 +42,10 @@ export function CartDrawer() {
           <p className="text-sm text-muted-foreground">
             Subtotal: {formatNaira(subtotal)}
           </p>
+          <p className="rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
+            {LAGOS_DELIVERY_NOTE}
+          </p>
+
 
           <button
             disabled={items.length === 0}

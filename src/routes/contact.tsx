@@ -1,12 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Mail, Phone, MapPin, Instagram, Facebook, MessageCircle } from "lucide-react";
-import { CONTACT, whatsappLink } from "@/lib/contact";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Mail, Phone, Instagram, Facebook, MessageCircle, Truck } from "lucide-react";
+import { CONTACT, LAGOS_DELIVERY_NOTE, whatsappLink } from "@/lib/contact";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Contact — Supplier Affordable" },
-      { name: "description", content: "Reach Supplier Affordable via WhatsApp, phone, or email. We're here to help." },
+      { title: "Contact & Customer Care — Supplier Affordable" },
+      { name: "description", content: "Customer care for Supplier Affordable. Shop and pay online — reach us by email, phone or WhatsApp for support." },
+      { property: "og:title", content: "Contact & Customer Care — Supplier Affordable" },
+      { property: "og:description", content: "Customer care for Supplier Affordable. Shop and pay online — reach us for support." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Contact,
@@ -15,15 +19,19 @@ export const Route = createFileRoute("/contact")({
 function Contact() {
   return (
     <section className="container-x py-16">
-      <p className="text-xs uppercase tracking-widest text-primary font-semibold">Get in touch</p>
+      <p className="text-xs uppercase tracking-widest text-primary font-semibold">Customer care</p>
       <h1 className="font-display text-4xl md:text-6xl mt-2 max-w-2xl">We're here to help.</h1>
+      <p className="mt-4 text-muted-foreground max-w-2xl text-sm">
+        You can browse, select your size, add to cart and pay securely online — no message required.
+        Our team is here if you need help before or after your order.
+      </p>
 
-      <div className="mt-12 rounded-3xl bg-card p-8 shadow-[var(--shadow-card)] border border-border/60 max-w-3xl">
+      <div className="mt-10 rounded-3xl bg-card p-6 sm:p-8 shadow-[var(--shadow-card)] border border-border/60 max-w-3xl">
         <div className="space-y-6 text-sm">
-          <a href={whatsappLink("Hi Supplier Affordable 👋")} target="_blank" rel="noreferrer" className="flex items-start gap-3 hover:text-primary">
+          <a href={whatsappLink("Hi Supplier Affordable 👋, I need help with my order.")} target="_blank" rel="noreferrer" className="flex items-start gap-3 hover:text-primary">
             <MessageCircle className="text-primary mt-0.5" size={20} />
             <div>
-              <p className="font-semibold">WhatsApp (preferred)</p>
+              <p className="font-semibold">WhatsApp support</p>
               <p className="text-muted-foreground">{CONTACT.phone}</p>
             </div>
           </a>
@@ -38,39 +46,37 @@ function Contact() {
 
           <a href={`mailto:${CONTACT.email}`} className="flex items-start gap-3 hover:text-primary">
             <Mail className="text-primary mt-0.5" size={20} />
-            <div>
+            <div className="min-w-0">
               <p className="font-semibold">Email</p>
               <p className="text-muted-foreground break-all">{CONTACT.email}</p>
             </div>
           </a>
+
           <div className="flex items-start gap-3">
-            <MapPin className="text-primary mt-0.5" size={20} />
-            <div className="flex-1">
-              <p className="font-semibold">Office</p>
-              <p className="text-muted-foreground">{CONTACT.address}</p>
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CONTACT.mapQuery)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-primary font-semibold hover:underline mt-1 inline-block"
-              >
-                Open in Google Maps →
-              </a>
+            <Truck className="text-primary mt-0.5" size={20} />
+            <div>
+              <p className="font-semibold">Lagos delivery</p>
+              <p className="text-muted-foreground">{LAGOS_DELIVERY_NOTE}</p>
             </div>
           </div>
         </div>
-        
+
         <div className="mt-8 pt-8 border-t border-border/60">
           <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Follow</p>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <a href={`https://instagram.com/${CONTACT.instagram}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground text-sm transition-colors">
               <Instagram size={16} /> @{CONTACT.instagram}
             </a>
-            <a href="https://facebook.com/" target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground text-sm transition-colors">
+            <a href={`https://www.tiktok.com/@${CONTACT.tiktokHandle}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground text-sm transition-colors">
+              TikTok @{CONTACT.tiktokHandle}
+            </a>
+            <a href="https://www.facebook.com/search/top?q=supplier%20affordable" target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground text-sm transition-colors">
               <Facebook size={16} /> {CONTACT.facebook}
             </a>
           </div>
         </div>
+
+        <Link to="/shop" className="btn-primary mt-8 inline-flex">Start shopping</Link>
       </div>
     </section>
   );

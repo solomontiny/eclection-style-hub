@@ -4,13 +4,13 @@ import { ArrowRight } from "lucide-react";
 import hero from "@/assets/hero-forest.jpg";
 import { Product, getProducts } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
-import { whatsappLink } from "@/lib/contact";
+import { LAGOS_DELIVERY_NOTE } from "@/lib/contact";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Supplier Affordable — Affordable Fashion for Women & Men" },
-      { name: "description", content: "Curated women's and men's fashion in Lagos. Order via WhatsApp or bank transfer." },
+      { name: "description", content: "Stylish, quality and affordable clothing for women and men. Shop online and pay securely with card or bank transfer." },
     ],
   }),
   component: Home,
@@ -96,12 +96,13 @@ function Home() {
       <section className="container-x pb-24">
         <div className="rounded-3xl p-10 md:p-16 text-center" style={{ background: "var(--gradient-soft)" }}>
           <h2 className="font-display text-3xl md:text-5xl max-w-2xl mx-auto">Found a piece you love?</h2>
-          <p className="mt-4 text-muted-foreground max-w-lg mx-auto">
-            Order directly through WhatsApp — fast, simple, and personal. Pay securely by bank transfer on confirmation.
+          <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
+            Pick your size, add it to your cart and pay securely online with your card or bank transfer via Paystack — no messaging needed.
           </p>
+          <p className="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">{LAGOS_DELIVERY_NOTE}</p>
           <div className="mt-7 flex flex-wrap gap-3 justify-center">
-            <a href={whatsappLink("Hi Supplier Affordable 👋, I'd like to place an order.")} target="_blank" rel="noreferrer" className="btn-primary">Message us on WhatsApp</a>
-            <Link to="/contact" className="btn-outline">View payment details</Link>
+            <Link to="/shop" className="btn-primary">Shop now</Link>
+            <Link to="/contact" className="btn-outline">Customer care</Link>
           </div>
         </div>
       </section>

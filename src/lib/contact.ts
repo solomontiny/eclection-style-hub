@@ -1,14 +1,12 @@
 export const CONTACT = {
   brand: "Supplier Affordable",
-  email: "Meggieakenn@gmail.com",
+  email: "SupplierAffordable.careline@gmail.com",
   phone: "+2348081759542",
   phone2: "+2349165170214",
   whatsappNumber: "2348081759542",
-  address: "5 Path Akachukwu Drive, Majek, Lekki–Epe Expressway, Lagos",
-  mapQuery: "5 Path Akachukwu Drive, Majek, Lekki-Epe Expressway, Lagos, Nigeria",
-  instagram: "e_style_wears_collection",
-  facebook: "Supplier Affordable",
-  tiktokHandle: "supplier.affordable",
+  instagram: "_supplieraffordable",
+  facebook: "supplier affordable",
+  tiktokHandle: "_supplieraffordable",
   // Bank details — update with real account info
   bank: {
     bankName: "Access Bank",
@@ -16,6 +14,9 @@ export const CONTACT = {
     accountNumber: "0800175647",
   },
 } as const;
+
+export const LAGOS_DELIVERY_NOTE =
+  "Lagos Delivery: Your order will be delivered by a rider. The delivery fee is separate and is paid directly to the rider when you receive your order.";
 
 export function whatsappLink(message: string) {
   return `https://wa.me/${CONTACT.whatsappNumber}?text=${encodeURIComponent(message)}`;
