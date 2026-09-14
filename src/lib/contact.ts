@@ -1,14 +1,14 @@
 export const CONTACT = {
   brand: "Supplier Affordable",
-  email: "Meggieakenn@gmail.com",
+  email: "SupplierAffordable.careline@gmail.com",
   phone: "+2348081759542",
   phone2: "+2349165170214",
   whatsappNumber: "2348081759542",
-  address: "5 Path Akachukwu Drive, Majek, Lekki–Epe Expressway, Lagos",
-  mapQuery: "5 Path Akachukwu Drive, Majek, Lekki-Epe Expressway, Lagos, Nigeria",
-  instagram: "e_style_wears_collection",
-  facebook: "Supplier Affordable",
-  tiktokHandle: "supplier.affordable",
+  address: "",
+  mapQuery: "",
+  instagram: "_supplieraffordable",
+  facebook: "supplier affordable",
+  tiktokHandle: "_supplieraffordable",
   // Bank details — update with real account info
   bank: {
     bankName: "Access Bank",

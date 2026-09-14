@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useCart } from "@/lib/cart";
+import { useAuth } from "@/lib/auth";
+import { useCart, cartItemKey } from "@/lib/cart";
 import { formatNaira } from "@/lib/products";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/checkout")({
 });
 
 function CheckoutPage() {
+  const { user } = useAuth();
   const { items, subtotal, clear } = useCart();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -32,13 +34,25 @@ function CheckoutPage() {
     defaultValues: { name: "", email: "", phone: "" },
   });
 
+  if (!user) {
+    return (
+      <section className="container-x py-16 text-center">
+        <h1 className="text-3xl font-display">Sign in to checkout</h1>
+        <p className="mt-4 text-muted-foreground">Please login or create an account to securely place your order.</p>
+        <div className="mt-8 flex justify-center gap-4">
+          <Button onClick={() => navigate({ to: "/login", search: { redirect: "/checkout" } })}>Login / Signup</Button>
+        </div>
+      </section>
+    );
+  }
+
   const handleCheckout = async (data: CustomerForm) => {
     if (items.length === 0 || loading) return;
     setLoading(true);
     try {
       const order = await createOrderServerFn({
         data: {
-          items: items.map((i) => ({ id: i.id, qty: i.qty })),
+          items: items.map((i) => ({ id: i.id, size: i.size, qty: i.qty })),
           customer: data,
           callbackUrl: `${window.location.origin}/thank-you`,
         },
@@ -87,8 +101,8 @@ function CheckoutPage() {
         <div className="border p-6 rounded-lg">
           <h2 className="text-xl font-bold mb-4">Order Summary</h2>
           {items.map(item => (
-            <div key={item.id} className="flex justify-between py-2">
-              <span>{item.name} x {item.qty}</span>
+            <div key={cartItemKey(item.id, item.size)} className="flex justify-between py-2">
+              <span>{item.name} (Size {item.size}) x {item.qty}</span>
               <span>{formatNaira(item.price * item.qty)}</span>
             </div>
           ))}
@@ -96,6 +110,7 @@ function CheckoutPage() {
             <span>Total</span>
             <span>{formatNaira(subtotal)}</span>
           </div>
+          <p className="mt-4 text-xs text-muted-foreground italic">Lagos delivery: Delivery fee is paid directly to the rider upon arrival. It is separate from your online order payment.</p>
         </div>
       </div>
     </section>

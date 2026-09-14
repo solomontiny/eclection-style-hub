@@ -12,7 +12,6 @@ import { supabase } from "@/integrations/supabase/client";
 type AuthContextValue = {
   user: User | null;
   session: Session |null;
-  isAdmin: boolean;
   loading: boolean;
   signIn: (
     email: string,
@@ -36,31 +35,8 @@ export function AuthProvider({
 }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
-
-  async function refreshAdmin(userId: string) {
-    try {
-      console.log("[ADMIN DEBUG] Refreshing admin for user:", userId);
-      const { data, error } = await supabase.rpc("has_role", {
-        _user_id: userId,
-        _role: "admin",
-      });
-
-      if (error) {
-        console.warn("[ADMIN DEBUG] has_role error:", error.message);
-        setIsAdmin(false);
-        return;
-      }
-
-      console.log("[ADMIN DEBUG] has_role response:", data);
-      setIsAdmin(Boolean(data));
-    } catch (err) {
-      console.error("[ADMIN DEBUG] ADMIN EXCEPTION:", err);
-      setIsAdmin(false);
-    }
-  }
 
   useEffect(() => {
     let mounted = true;
@@ -77,13 +53,7 @@ export function AuthProvider({
 
         setSession(data.session);
         setUser(data.session?.user ?? null);
-
-        // Mark loading as false BEFORE fetching admin rights to prevent blocking
         setLoading(false);
-
-        if (data.session?.user) {
-          await refreshAdmin(data.session.user.id);
-        }
       } catch (err) {
         console.error("[SESSION EXCEPTION]", err);
         if (mounted) setLoading(false);
@@ -99,12 +69,6 @@ export function AuthProvider({
 
       setSession(newSession);
       setUser(newSession?.user ?? null);
-
-      if (newSession?.user) {
-        await refreshAdmin(newSession.user.id);
-      } else {
-        setIsAdmin(false);
-      }
     });
 
     return () => {
@@ -117,37 +81,24 @@ export function AuthProvider({
     () => ({
       user,
       session,
-      isAdmin,
       loading,
 
       async signIn(email, password, rememberMe) {
         try {
-          console.log("[LOGIN ATTEMPT]", email, "Remember me:", rememberMe);
-
-          const { data, error } =
+          const { error } =
             await supabase.auth.signInWithPassword({
               email: email.trim(),
               password,
             });
 
           if (error) {
-            console.error("[LOGIN ERROR]", error);
-
             return {
               error: error.message,
             };
           }
 
-          console.log("[LOGIN SUCCESS]", data.user?.email);
-
-          // Note: The singleton Supabase client is configured to persist session
-          // to localStorage by default. Full per-session control would require
-          // a non-singleton client or custom auth storage.
-
           return {};
         } catch (err) {
-          console.error("[LOGIN EXCEPTION]", err);
-
           return {
             error: "Unexpected login error.",
           };
@@ -203,13 +154,10 @@ export function AuthProvider({
 
           if (error) {
             console.error("[LOGOUT ERROR]", error.message);
-            // On error, do not clear local state
           } else {
             console.log("[LOGOUT SUCCESS]");
-            // Only clear state if signOut succeeds
             setUser(null);
             setSession(null);
-            setIsAdmin(false);
           }
         } catch (err) {
           console.error("[LOGOUT EXCEPTION]", err);
@@ -218,7 +166,7 @@ export function AuthProvider({
         }
       },
     }),
-    [user, session, isAdmin, loading, isSigningOut]
+    [user, session, loading, isSigningOut]
   );
 
 

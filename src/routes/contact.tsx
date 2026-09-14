@@ -43,21 +43,6 @@ function Contact() {
               <p className="text-muted-foreground break-all">{CONTACT.email}</p>
             </div>
           </a>
-          <div className="flex items-start gap-3">
-            <MapPin className="text-primary mt-0.5" size={20} />
-            <div className="flex-1">
-              <p className="font-semibold">Office</p>
-              <p className="text-muted-foreground">{CONTACT.address}</p>
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CONTACT.mapQuery)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-primary font-semibold hover:underline mt-1 inline-block"
-              >
-                Open in Google Maps →
-              </a>
-            </div>
-          </div>
         </div>
         
         <div className="mt-8 pt-8 border-t border-border/60">
@@ -66,7 +51,7 @@ function Contact() {
             <a href={`https://instagram.com/${CONTACT.instagram}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground text-sm transition-colors">
               <Instagram size={16} /> @{CONTACT.instagram}
             </a>
-            <a href="https://facebook.com/" target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground text-sm transition-colors">
+            <a href={`https://facebook.com/${CONTACT.facebook.replace(/\s+/g, '.')}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground text-sm transition-colors">
               <Facebook size={16} /> {CONTACT.facebook}
             </a>
           </div>

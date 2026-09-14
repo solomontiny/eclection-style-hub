@@ -5,7 +5,7 @@ export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
       { title: "About — Supplier Affordable" },
-      { name: "description", content: "Lagos-based fashion label curating affordable, elevated styles for women and men." },
+      { name: "description", content: "Supplier Affordable is a Nigerian fashion brand bringing you stylish, quality, and affordable clothing. We make it easy to look good, feel confident, and stay fashionable without breaking the bank." },
     ],
   }),
   component: About,
@@ -18,16 +18,13 @@ function About() {
         <p className="text-xs uppercase tracking-widest text-primary font-semibold">Our story</p>
         <h1 className="font-display text-4xl md:text-6xl mt-2">Style that's accessible — and unmistakably you.</h1>
         <p className="mt-5 text-muted-foreground">
-          Supplier Affordable is a Lagos-based fashion label founded on a simple idea: beautiful clothes shouldn't be out of reach. We curate fresh women's and men's pieces every week — from everyday essentials to standout occasion wear.
-        </p>
-        <p className="mt-4 text-muted-foreground">
-          Every order is personal. We chat with you, confirm fit and availability, and ship across Lagos and Nigeria with care.
+          Supplier Affordable is a Nigerian fashion brand bringing you stylish, quality, and affordable clothing. We make it easy to look good, feel confident, and stay fashionable without breaking the bank.
         </p>
         <div className="mt-8 grid grid-cols-3 gap-4">
           {[
             { k: "1k+", v: "Happy customers" },
             { k: "Weekly", v: "New arrivals" },
-            { k: "Lagos", v: "Same-day delivery" },
+            { k: "Lagos", v: "Delivery support" },
           ].map((s) => (
             <div key={s.v} className="rounded-2xl bg-secondary p-4">
               <p className="font-display text-2xl text-primary">{s.k}</p>

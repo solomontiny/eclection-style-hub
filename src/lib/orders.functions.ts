@@ -128,7 +128,7 @@ function buildEmailHtml(args: {
  */
 export const createOrderServerFn = createServerFn({ method: "POST" })
   .validator(z.object({
-    items: z.array(z.object({ id: z.string(), qty: z.number().int().min(1) })),
+    items: z.array(z.object({ id: z.string(), size: z.string(), qty: z.number().int().min(1) })),
     customer: z.object({ name: z.string(), email: z.string().email(), phone: z.string().optional() }),
     callbackUrl: z.string().url().optional(),
   }))
@@ -176,6 +176,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       total,
       payment_status: 'pending' as const,
       paystack_reference: reference,
+      notes: items.map(i => `${products.find(p => p.id === i.id)?.name} (Size ${i.size}) x ${i.qty}`).join(", "),
     };
 
     const { data: order, error: orderError } = await supabaseAdmin

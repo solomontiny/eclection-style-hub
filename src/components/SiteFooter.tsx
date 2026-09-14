@@ -20,13 +20,13 @@ export function SiteFooter() {
             <span className="font-display text-2xl">Supplier Affordable</span>
           </Link>
           <p className="mt-3 text-sm text-muted-foreground max-w-sm">
-            Affordable, elevated fashion for women and men — curated and shipped from Lagos.
+            Supplier Affordable is a Nigerian fashion brand bringing you stylish, quality, and affordable clothing. We make it easy to look good, feel confident, and stay fashionable without breaking the bank.
           </p>
           <div className="flex gap-3 mt-5">
             <a href={`https://instagram.com/${CONTACT.instagram}`} target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Instagram">
               <Instagram size={18} />
             </a>
-            <a href="https://facebook.com/" target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Facebook">
+            <a href={`https://facebook.com/${CONTACT.facebook}`} target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Facebook">
               <Facebook size={18} />
             </a>
             <a href={`https://tiktok.com/@${CONTACT.tiktokHandle}`} target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="TikTok">
@@ -46,29 +46,15 @@ export function SiteFooter() {
         <div>
           <h4 className="font-display text-sm uppercase tracking-widest mb-4">Contact</h4>
           <ul className="space-y-3 text-sm text-muted-foreground">
-            <li className="flex gap-2"><MapPin size={16} className="mt-0.5 shrink-0 text-primary" /> {CONTACT.address}</li>
             <li className="flex gap-2"><Phone size={16} className="text-primary" /> <a href={`tel:${CONTACT.phone}`} className="hover:text-primary">{CONTACT.phone}</a></li>
             <li className="flex gap-2"><Mail size={16} className="text-primary" /> <a href={`mailto:${CONTACT.email}`} className="hover:text-primary break-all">{CONTACT.email}</a></li>
           </ul>
         </div>
       </div>
-      <div className="container-x pb-12">
-        <div className="rounded-2xl overflow-hidden border border-border/60 shadow-sm">
-          <iframe
-            title="Supplier Affordable location"
-            src={`https://www.google.com/maps?q=${encodeURIComponent(CONTACT.mapQuery)}&output=embed`}
-            width="100%"
-            height="320"
-            style={{ border: 0 }}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            allowFullScreen
-          />
-        </div>
-      </div>
       <div className="border-t border-border/60">
         <div className="container-x py-5 text-xs text-muted-foreground flex flex-wrap gap-2 justify-between">
           <p>© {new Date().getFullYear()} Supplier Affordable. All rights reserved.</p>
+          <Link to="/admin/login" className="hover:text-primary">Admin Login</Link>
           <p>Lagos, Nigeria</p>
         </div>
       </div>

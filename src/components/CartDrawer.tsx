@@ -41,6 +41,7 @@ export function CartDrawer() {
           <p className="text-sm text-muted-foreground">
             Subtotal: {formatNaira(subtotal)}
           </p>
+          <p className="text-xs text-muted-foreground italic">Lagos delivery: Delivery fee is paid directly to the rider upon arrival. It is separate from your online order payment.</p>
 
           <button
             disabled={items.length === 0}
