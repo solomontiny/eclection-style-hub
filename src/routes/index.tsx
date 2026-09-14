@@ -4,13 +4,13 @@ import { ArrowRight } from "lucide-react";
 import hero from "@/assets/hero-forest.jpg";
 import { Product, getProducts } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
-import { whatsappLink } from "@/lib/contact";
+import { LAGOS_DELIVERY_NOTE } from "@/lib/contact";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Supplier Affordable — Affordable Fashion for Women & Men" },
-      { name: "description", content: "Curated women's and men's fashion in Lagos. Order via WhatsApp or bank transfer." },
+      { name: "description", content: "Stylish, quality and affordable clothing for women and men. Shop online and pay securely with card or bank transfer." },
     ],
   }),
   component: Home,
