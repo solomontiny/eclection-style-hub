@@ -25,14 +25,14 @@ function autoReply(input: string): Msg {
     return {
       from: "bot",
       text:
-        "🚚 We deliver Lagos-wide within 24–48 hours and nationwide within 2–5 working days via GIG / DHL. Delivery fees depend on your location and are confirmed when you place your order.",
+        "🚚 We deliver Lagos-wide within 24–48 hours and nationwide within 2–5 working days.\n\nLagos Delivery: your order is delivered by a rider and the delivery fee is paid directly to the rider when you receive your order — it is not part of your online payment.",
       quickReplies: ["Payment methods", "Talk to a human"],
     };
   if (/(pay|payment|transfer|bank|card)/.test(q))
     return {
       from: "bot",
       text:
-        `💳 We accept bank transfer to:\n${CONTACT.bank.bankName} • ${CONTACT.bank.accountNumber}\n${CONTACT.bank.accountName}\n\nSend your proof of payment on WhatsApp and we'll confirm your order right away.`,
+        "💳 You can pay for your order right here on the website — add items to your cart, go to checkout and pay securely with your card, bank transfer or USSD via Paystack.\n\nYou'll receive an order number and a confirmation receipt by email straight away.",
       quickReplies: ["Talk to a human", "Delivery & shipping"],
     };
   if (/(size|fit|measur)/.test(q))
