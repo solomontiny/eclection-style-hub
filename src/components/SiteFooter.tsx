@@ -46,24 +46,11 @@ export function SiteFooter() {
         <div>
           <h4 className="font-display text-sm uppercase tracking-widest mb-4">Contact</h4>
           <ul className="space-y-3 text-sm text-muted-foreground">
-            <li className="flex gap-2"><MapPin size={16} className="mt-0.5 shrink-0 text-primary" /> {CONTACT.address}</li>
             <li className="flex gap-2"><Phone size={16} className="text-primary" /> <a href={`tel:${CONTACT.phone}`} className="hover:text-primary">{CONTACT.phone}</a></li>
+            <li className="flex gap-2"><Phone size={16} className="text-primary" /> <a href={`tel:${CONTACT.phone2}`} className="hover:text-primary">{CONTACT.phone2}</a></li>
             <li className="flex gap-2"><Mail size={16} className="text-primary" /> <a href={`mailto:${CONTACT.email}`} className="hover:text-primary break-all">{CONTACT.email}</a></li>
+            <li className="flex gap-2"><Truck size={16} className="mt-0.5 shrink-0 text-primary" /> <span>{LAGOS_DELIVERY_NOTE}</span></li>
           </ul>
-        </div>
-      </div>
-      <div className="container-x pb-12">
-        <div className="rounded-2xl overflow-hidden border border-border/60 shadow-sm">
-          <iframe
-            title="Supplier Affordable location"
-            src={`https://www.google.com/maps?q=${encodeURIComponent(CONTACT.mapQuery)}&output=embed`}
-            width="100%"
-            height="320"
-            style={{ border: 0 }}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            allowFullScreen
-          />
         </div>
       </div>
       <div className="border-t border-border/60">
