@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Instagram, Facebook, Mail, Phone, Truck } from "lucide-react";
-import { CONTACT, LAGOS_DELIVERY_NOTE } from "@/lib/contact";
+import { Instagram, Facebook, Mail, Phone, MapPin } from "lucide-react";
+import { CONTACT } from "@/lib/contact";
 import officialLogo from "@/assets/supplier-affordable-logo.png";
 
 export function SiteFooter() {
@@ -26,14 +26,10 @@ export function SiteFooter() {
             <a href={`https://instagram.com/${CONTACT.instagram}`} target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Instagram">
               <Instagram size={18} />
             </a>
-<<<<<<< HEAD
-            <a href="https://www.facebook.com/search/top?q=supplier%20affordable" target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Facebook">
-=======
             <a href={`https://facebook.com/${CONTACT.facebook}`} target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Facebook">
->>>>>>> recovery-supplier-ui
               <Facebook size={18} />
             </a>
-            <a href={`https://www.tiktok.com/@${CONTACT.tiktokHandle}`} target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="TikTok">
+            <a href={`https://tiktok.com/@${CONTACT.tiktokHandle}`} target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="TikTok">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V8.5a8.16 8.16 0 0 0 4.77 1.52V6.6a4.85 4.85 0 0 1-1.84.09Z"/></svg>
             </a>
           </div>
@@ -51,9 +47,7 @@ export function SiteFooter() {
           <h4 className="font-display text-sm uppercase tracking-widest mb-4">Contact</h4>
           <ul className="space-y-3 text-sm text-muted-foreground">
             <li className="flex gap-2"><Phone size={16} className="text-primary" /> <a href={`tel:${CONTACT.phone}`} className="hover:text-primary">{CONTACT.phone}</a></li>
-            <li className="flex gap-2"><Phone size={16} className="text-primary" /> <a href={`tel:${CONTACT.phone2}`} className="hover:text-primary">{CONTACT.phone2}</a></li>
             <li className="flex gap-2"><Mail size={16} className="text-primary" /> <a href={`mailto:${CONTACT.email}`} className="hover:text-primary break-all">{CONTACT.email}</a></li>
-            <li className="flex gap-2"><Truck size={16} className="mt-0.5 shrink-0 text-primary" /> <span>{LAGOS_DELIVERY_NOTE}</span></li>
           </ul>
         </div>
       </div>

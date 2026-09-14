@@ -7,9 +7,6 @@ import { useCart } from "@/lib/cart";
 import { ProductCard } from "@/components/ProductCard";
 import { BuyNowDialog } from "@/components/BuyNowDialog";
 import { supabase } from "@/integrations/supabase/client";
-import { LAGOS_DELIVERY_NOTE } from "@/lib/contact";
-
-const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
 
 export const Route = createFileRoute("/product/$slug")({
   head: ({ params }) => ({ meta: [{ title: `${params.slug} — Supplier Affordable` }] }),
@@ -22,7 +19,6 @@ function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState("M");
   const [selectedImage, setSelectedImage] = useState(0);
-  const [size, setSize] = useState<string>("M");
 
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ["product", slug],
@@ -87,26 +83,9 @@ function ProductDetails() {
         </div>
 
         <p className={`mt-6 text-sm font-semibold ${product.stock > 0 ? "text-emerald-700" : "text-amber-700"}`}>{product.stock > 0 ? `${product.stock} available` : "Currently out of stock"}</p>
-<<<<<<< HEAD
-        <div className="mt-6">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Select size</p>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Select size">
-            {SIZES.map((s) => (
-              <button key={s} type="button" role="radio" aria-checked={size === s} onClick={() => setSize(s)} className={`min-w-11 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${size === s ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary hover:text-primary"}`}>{s}</button>
-            ))}
-          </div>
-        </div>
-        <div className="mt-6 flex flex-wrap items-center gap-4"><div className="flex items-center rounded-full border border-border"><button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-3"><Minus size={16} /></button><span className="w-8 text-center">{quantity}</span><button type="button" onClick={() => setQuantity((value) => value + 1)} className="p-3"><Plus size={16} /></button></div><button type="button" disabled={product.stock === 0} onClick={() => addItem(product, size, quantity)} className="btn-primary flex-1 justify-center disabled:opacity-50"><ShoppingBag size={16} /> Add to cart</button></div>
-        <div className="mt-3"><BuyNowDialog product={product} trigger={<button type="button" className="btn-outline w-full justify-center">Buy now</button>} /></div>
-        <div className="mt-6 rounded-2xl bg-secondary/60 p-4 text-sm text-muted-foreground space-y-2">
-          <p><span className="font-semibold text-foreground">Secure payment:</span> pay for your order online with your card, bank transfer or USSD via Paystack. You'll get an order number and a confirmation receipt by email.</p>
-          <p>{LAGOS_DELIVERY_NOTE}</p>
-        </div>
-=======
         <div className="mt-6 flex items-center gap-4"><div className="flex items-center rounded-full border border-border"><button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-3"><Minus size={16} /></button><span className="w-8 text-center">{quantity}</span><button type="button" onClick={() => setQuantity((value) => value + 1)} className="p-3"><Plus size={16} /></button></div><button type="button" disabled={product.stock === 0} onClick={() => addItem(product, selectedSize, quantity)} className="btn-primary flex-1 justify-center disabled:opacity-50"><ShoppingBag size={16} /> Add to cart</button></div>
         <div className="mt-3"><BuyNowDialog product={product} trigger={<button type="button" className="btn-outline w-full justify-center">Buy now</button>} /></div>
         <p className="mt-4 text-xs text-muted-foreground italic">Lagos delivery: Delivery fee is paid directly to the rider upon arrival. It is separate from your online order payment.</p>
->>>>>>> recovery-supplier-ui
       </div>
     </div>
     {related.length > 0 && <div className="mt-20"><h2 className="font-display text-3xl">You may also like</h2><div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">{related.map((item) => <ProductCard key={item.id} product={item as never} />)}</div></div>}

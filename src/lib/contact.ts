@@ -4,11 +4,8 @@ export const CONTACT = {
   phone: "+2348081759542",
   phone2: "+2349165170214",
   whatsappNumber: "2348081759542",
-<<<<<<< HEAD
-=======
   address: "",
   mapQuery: "",
->>>>>>> recovery-supplier-ui
   instagram: "_supplieraffordable",
   facebook: "supplier affordable",
   tiktokHandle: "_supplieraffordable",
@@ -19,9 +16,6 @@ export const CONTACT = {
     accountNumber: "0800175647",
   },
 } as const;
-
-export const LAGOS_DELIVERY_NOTE =
-  "Lagos Delivery: Your order will be delivered by a rider. The delivery fee is separate and is paid directly to the rider when you receive your order.";
 
 export function whatsappLink(message: string) {
   return `https://wa.me/${CONTACT.whatsappNumber}?text=${encodeURIComponent(message)}`;

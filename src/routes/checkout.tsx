@@ -11,7 +11,6 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { LAGOS_DELIVERY_NOTE } from "@/lib/contact";
 
 const CustomerSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -108,19 +107,10 @@ function CheckoutPage() {
             </div>
           ))}
           <div className="border-t mt-4 pt-4 font-bold flex justify-between">
-            <span>Total to pay now</span>
+            <span>Total</span>
             <span>{formatNaira(subtotal)}</span>
           </div>
-<<<<<<< HEAD
-          <p className="mt-4 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
-            {LAGOS_DELIVERY_NOTE} The amount above covers your items only.
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Pay securely with card, bank transfer or USSD via Paystack. Your order number and confirmation receipt are sent to your email.
-          </p>
-=======
           <p className="mt-4 text-xs text-muted-foreground italic">Lagos delivery: Delivery fee is paid directly to the rider upon arrival. It is separate from your online order payment.</p>
->>>>>>> recovery-supplier-ui
         </div>
       </div>
     </section>
