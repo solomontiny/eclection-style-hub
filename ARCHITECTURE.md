@@ -1,4 +1,4 @@
-# E Style Collection — Admin Architecture Overview
+# Supplier Affordable — Admin Architecture Overview
 
 ## System Architecture
 

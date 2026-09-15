@@ -110,7 +110,9 @@ function CheckoutPage() {
             <span>Total</span>
             <span>{formatNaira(subtotal)}</span>
           </div>
-          <p className="mt-4 text-xs text-muted-foreground italic">Lagos delivery: Delivery fee is paid directly to the rider upon arrival. It is separate from your online order payment.</p>
+          <div className="mt-4 p-3 bg-secondary/30 rounded text-xs text-muted-foreground">
+            <p><strong>Delivery Disclaimer:</strong> Delivery fees are separate from your order total and are paid directly to the dispatch rider upon delivery. Supplier Affordable currently uses third-party dispatch services, so delivery fees may vary depending on your location and dispatch provider.</p>
+          </div>
         </div>
       </div>
     </section>

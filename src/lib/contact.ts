@@ -2,7 +2,6 @@ export const CONTACT = {
   brand: "Supplier Affordable",
   email: "SupplierAffordable.careline@gmail.com",
   phone: "+2348081759542",
-  phone2: "+2349165170214",
   whatsappNumber: "2348081759542",
   instagram: "_supplieraffordable",
   facebook: "supplier affordable",

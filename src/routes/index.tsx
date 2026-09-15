@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ShieldCheck, Truck, Sparkles, CreditCard, ShoppingBag, Package } from "lucide-react";
-import heroAsset from "@/assets/supplier-affordable-hero.jpeg.asset.json";
+import heroImg from "@/assets/supplier-affordable-hero.png";
 import { Product, getProducts } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
 import { LAGOS_DELIVERY_NOTE } from "@/lib/contact";
@@ -32,7 +32,7 @@ function Home() {
       {/* Premium hero section */}
       <section className="relative h-[85vh] min-h-[600px] w-full overflow-hidden">
         <img
-          src={heroAsset.url}
+          src={heroImg}
           alt="Supplier Affordable fashion collection"
           width={1280}
           height={853}
