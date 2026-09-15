@@ -35,7 +35,7 @@ export function SiteHeader() {
   const { user, signOut } = useAuth();
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border/60">
+    <header className="sticky top-0 z-50 backdrop-blur-md bg-background/90 border-b border-border/50 shadow-sm">
       <div className="container-x flex items-center justify-between h-20">
         <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Supplier Affordable home">
           <img
@@ -43,15 +43,16 @@ export function SiteHeader() {
             alt="Supplier Affordable official logo"
             width={1024}
             height={1024}
-            className="size-14 object-contain md:size-16"
+            className="size-12 object-contain md:size-14"
           />
-          <span className="hidden font-display text-lg sm:inline">Supplier Affordable</span>
+          <span className="hidden font-display text-xl font-bold tracking-tight sm:inline">Supplier Affordable</span>
         </Link>
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-8">
           <NavLinks />
+          <div className="h-6 w-px bg-border/60" />
           {user ? (
             <div className="flex items-center gap-4">
-              <Link to="/account" className="text-sm font-medium text-foreground/80 hover:text-primary">
+              <Link to="/account" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">
                 Account
               </Link>
               <button onClick={async () => await signOut()} className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors disabled:opacity-50">
@@ -68,19 +69,19 @@ export function SiteHeader() {
               Login
             </Link>
           )}
-          <Link to="/contact" className="btn-primary !py-2.5 !px-5 text-sm">
+          <Link to="/contact" className="btn-primary !py-2 !px-6 text-sm">
             Order Now
           </Link>
           <CartDrawer />
         </nav>
-        <div className="md:hidden flex items-center gap-1">
+        <div className="md:hidden flex items-center gap-2">
           <CartDrawer />
           <button
-            className="p-2"
+            className="p-2 -mr-2"
             onClick={() => setOpen(!open)}
             aria-label="Menu"
           >
-            {open ? <X size={22} /> : <Menu size={22} />}
+            {open ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </div>

@@ -44,16 +44,22 @@ function Shop() {
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  return <section className="container-x py-12 md:py-16">
-    <p className="text-xs uppercase tracking-widest text-primary font-semibold">Collection</p>
-    <div className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="font-display text-4xl md:text-6xl mt-2">Shop everything</h1><p className="mt-3 text-muted-foreground max-w-lg">Discover active pieces from the current Supplier Affordable collection.</p></div><p className="text-sm text-muted-foreground">{filtered.length} products</p></div>
-    <div className="mt-8 grid gap-3 lg:grid-cols-[1fr_auto_auto_auto]">
-      <label className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search products, descriptions or SKU" className="input w-full pl-9" /></label>
-      <select value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }} className="input"><option value="all">All categories</option>{categories.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select>
-      <select value={sort} onChange={(event) => setSort(event.target.value)} className="input"><option value="newest">Newest</option><option value="name">Name</option><option value="price-low">Price low</option><option value="price-high">Price high</option></select>
-      <button type="button" onClick={() => { setSaleOnly((value) => !value); setPage(1); }} className={`btn-outline ${saleOnly ? "!bg-primary !text-primary-foreground" : ""}`}><SlidersHorizontal size={15} /> {saleOnly ? "Sale only" : "Filters"}</button>
+  return <section className="container-x py-16 md:py-24">
+    <div className="flex flex-col items-center text-center max-w-2xl mx-auto mb-16">
+        <span className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">Collection</span>
+        <h1 className="font-display text-4xl md:text-6xl mt-4">Shop Everything</h1>
+        <p className="mt-4 text-muted-foreground">Discover curated pieces from the current Supplier Affordable collection.</p>
     </div>
-    <label className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground"><input type="checkbox" checked={availableOnly} onChange={(event) => { setAvailableOnly(event.target.checked); setPage(1); }} /> In stock only</label>
+    
+    <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-card p-4 rounded-2xl border border-border shadow-sm mb-12">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full">
+        <label className="relative col-span-2 md:col-span-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search..." className="input pl-9" /></label>
+        <select value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }} className="input"><option value="all">All categories</option>{categories.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select>
+        <select value={sort} onChange={(event) => setSort(event.target.value)} className="input"><option value="newest">Newest</option><option value="name">Name</option><option value="price-low">Price low</option><option value="price-high">Price high</option></select>
+        <button type="button" onClick={() => { setSaleOnly((value) => !value); setPage(1); }} className={`input flex items-center justify-center gap-2 ${saleOnly ? "!bg-primary !text-primary-foreground" : ""}`}><SlidersHorizontal size={15} /> {saleOnly ? "Sale only" : "Filters"}</button>
+      </div>
+      <label className="inline-flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap px-2"><input type="checkbox" checked={availableOnly} onChange={(event) => { setAvailableOnly(event.target.checked); setPage(1); }} /> In stock</label>
+    </div>
     {isLoading && <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="animate-pulse"><div className="aspect-[4/5] rounded-2xl bg-muted" /><div className="mt-4 h-5 w-2/3 rounded bg-muted" /></div>)}</div>}
     {isError && <div className="mt-12 rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center"><p>We couldn&apos;t load the collection.</p><button type="button" onClick={() => refetch()} className="btn-outline mt-4">Try again</button></div>}
     {!isLoading && !isError && visible.length === 0 && <div className="mt-12 rounded-2xl border border-border p-12 text-center"><h2 className="font-display text-2xl">No products found</h2><p className="mt-2 text-muted-foreground">Try clearing a filter or searching for something else.</p><button type="button" onClick={() => { setSearch(""); setCategory("all"); setSaleOnly(false); setAvailableOnly(false); }} className="btn-outline mt-5">Clear filters</button></div>}

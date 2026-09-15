@@ -4,8 +4,6 @@ export const CONTACT = {
   phone: "+2348081759542",
   phone2: "+2349165170214",
   whatsappNumber: "2348081759542",
-  address: "",
-  mapQuery: "",
   instagram: "_supplieraffordable",
   facebook: "supplier affordable",
   tiktokHandle: "_supplieraffordable",

@@ -5,9 +5,9 @@ import officialLogo from "@/assets/supplier-affordable-logo.png";
 
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t border-border/60 bg-secondary/40">
-      <div className="container-x py-16 grid gap-10 md:grid-cols-4">
-        <div className="md:col-span-2">
+    <footer className="mt-24 border-t border-border bg-secondary/30">
+      <div className="container-x py-20 grid gap-12 md:grid-cols-4">
+        <div className="md:col-span-2 space-y-4">
           <Link to="/" className="inline-flex items-center gap-4" aria-label="Supplier Affordable home">
             <img
               src={officialLogo}
@@ -15,47 +15,46 @@ export function SiteFooter() {
               width={1024}
               height={1024}
               loading="lazy"
-              className="size-24 shrink-0 object-contain sm:size-28"
+              className="size-20 shrink-0 object-contain"
             />
-            <span className="font-display text-2xl">Supplier Affordable</span>
+            <span className="font-display text-2xl font-bold">Supplier Affordable</span>
           </Link>
-          <p className="mt-3 text-sm text-muted-foreground max-w-sm">
+          <p className="text-sm text-muted-foreground max-w-sm">
             Supplier Affordable is a Nigerian fashion brand bringing you stylish, quality, and affordable clothing. We make it easy to look good, feel confident, and stay fashionable without breaking the bank.
           </p>
-          <div className="flex gap-3 mt-5">
-            <a href={`https://instagram.com/${CONTACT.instagram}`} target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Instagram">
-              <Instagram size={18} />
+          <div className="flex gap-4 pt-2">
+            <a href={`https://instagram.com/${CONTACT.instagram}`} target="_blank" rel="noreferrer" className="p-3 rounded-full bg-background border border-border hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Instagram">
+              <Instagram size={20} />
             </a>
-            <a href={`https://facebook.com/${CONTACT.facebook}`} target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Facebook">
-              <Facebook size={18} />
-            </a>
-            <a href={`https://tiktok.com/@${CONTACT.tiktokHandle}`} target="_blank" rel="noreferrer" className="p-2.5 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="TikTok">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V8.5a8.16 8.16 0 0 0 4.77 1.52V6.6a4.85 4.85 0 0 1-1.84.09Z"/></svg>
+            <a href={`https://facebook.com/${CONTACT.facebook}`} target="_blank" rel="noreferrer" className="p-3 rounded-full bg-background border border-border hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Facebook">
+              <Facebook size={20} />
             </a>
           </div>
         </div>
         <div>
-          <h4 className="font-display text-sm uppercase tracking-widest mb-4">Shop</h4>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li><Link to="/shop" className="hover:text-primary">All</Link></li>
-            <li><Link to="/shop" className="hover:text-primary">Women</Link></li>
-            <li><Link to="/shop" className="hover:text-primary">Men</Link></li>
-            <li><Link to="/about" className="hover:text-primary">About</Link></li>
+          <h4 className="font-display font-bold text-sm uppercase tracking-wider mb-6">Shop</h4>
+          <ul className="space-y-4 text-sm text-muted-foreground">
+            <li><Link to="/shop" className="hover:text-primary transition-colors">All Products</Link></li>
+            <li><Link to="/shop" className="hover:text-primary transition-colors">Women's Collection</Link></li>
+            <li><Link to="/shop" className="hover:text-primary transition-colors">Men's Collection</Link></li>
+            <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
           </ul>
         </div>
         <div>
-          <h4 className="font-display text-sm uppercase tracking-widest mb-4">Contact</h4>
-          <ul className="space-y-3 text-sm text-muted-foreground">
-            <li className="flex gap-2"><Phone size={16} className="text-primary" /> <a href={`tel:${CONTACT.phone}`} className="hover:text-primary">{CONTACT.phone}</a></li>
-            <li className="flex gap-2"><Mail size={16} className="text-primary" /> <a href={`mailto:${CONTACT.email}`} className="hover:text-primary break-all">{CONTACT.email}</a></li>
+          <h4 className="font-display font-bold text-sm uppercase tracking-wider mb-6">Contact</h4>
+          <ul className="space-y-4 text-sm text-muted-foreground">
+            <li className="flex gap-3"><Phone size={18} className="text-primary" /> <a href={`tel:${CONTACT.phone}`} className="hover:text-primary transition-colors">{CONTACT.phone}</a></li>
+            <li className="flex gap-3"><Mail size={18} className="text-primary" /> <a href={`mailto:${CONTACT.email}`} className="hover:text-primary transition-colors break-all">{CONTACT.email}</a></li>
           </ul>
         </div>
       </div>
-      <div className="border-t border-border/60">
-        <div className="container-x py-5 text-xs text-muted-foreground flex flex-wrap gap-2 justify-between">
+      <div className="border-t border-border">
+        <div className="container-x py-8 text-xs text-muted-foreground flex flex-wrap gap-4 justify-between items-center">
           <p>© {new Date().getFullYear()} Supplier Affordable. All rights reserved.</p>
-          <Link to="/admin/login" className="hover:text-primary">Admin Login</Link>
-          <p>Lagos, Nigeria</p>
+          <div className="flex gap-6">
+            <Link to="/admin/login" className="hover:text-primary transition-colors">Admin Login</Link>
+            <span>Lagos, Nigeria</span>
+          </div>
         </div>
       </div>
     </footer>

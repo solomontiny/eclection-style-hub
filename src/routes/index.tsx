@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ShieldCheck, Truck, Sparkles, CreditCard, ShoppingBag, Package } from "lucide-react";
 import heroAsset from "@/assets/supplier-affordable-hero.jpeg.asset.json";
 import { Product, getProducts } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
@@ -29,8 +29,8 @@ function Home() {
 
   return (
     <>
-      {/* Full-bleed hero */}
-      <section className="relative -mt-20 h-[100vh] min-h-[640px] w-full overflow-hidden">
+      {/* Premium hero section */}
+      <section className="relative h-[85vh] min-h-[600px] w-full overflow-hidden">
         <img
           src={heroAsset.url}
           alt="Supplier Affordable fashion collection"
@@ -38,25 +38,20 @@ function Home() {
           height={853}
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-foreground/30 via-foreground/20 to-foreground/50" />
-        <div className="relative h-full flex flex-col items-center justify-center text-center px-6 pt-20">
-          <p className="text-primary text-xs md:text-sm font-semibold tracking-[0.3em] uppercase mb-6">
-            ✦ Affordable Fashion for Everyone ✦
-          </p>
-          <h1 className="font-display text-white text-6xl md:text-7xl lg:text-8xl leading-[1] tracking-tight drop-shadow-lg">
-            Supplier
-            <br />
-            <em className="italic font-normal">Affordable</em>
+        <div className="absolute inset-0 bg-black/20" />
+        <div className="container-x relative h-full flex flex-col justify-center items-start text-left">
+          <span className="text-white/80 font-medium tracking-[0.2em] uppercase text-xs mb-4">
+            ✦ Premium Nigerian Fashion ✦
+          </span>
+          <h1 className="font-display text-white text-5xl md:text-7xl lg:text-8xl leading-tight tracking-tight mb-6">
+            Elegance Made <span className="italic font-normal">Affordable</span>
           </h1>
-          <p className="mt-6 text-white/90 text-base md:text-lg max-w-md">
-            Premium fashion for women & men. Elegance meets affordability.
+          <p className="text-white/90 text-lg md:text-xl max-w-lg mb-10">
+            Discover curated fashion for every occasion. Quality clothing, styled for you.
           </p>
-          <div className="mt-9 flex flex-wrap gap-4 justify-center">
-            <Link to="/shop" className="btn-primary !rounded-none !px-8 !py-3.5 text-xs tracking-[0.2em] uppercase">
-              Shop Now <ArrowRight size={14} />
-            </Link>
-            <Link to="/about" className="btn-outline !rounded-none !px-8 !py-3.5 text-xs tracking-[0.2em] uppercase !border-white !text-white hover:!bg-white hover:!text-foreground">
-              Learn More
+          <div className="flex flex-wrap gap-4 justify-center">
+            <Link to="/shop" className="btn-primary !bg-white !text-foreground hover:!bg-white/90 !px-10">
+              Shop Collection
             </Link>
           </div>
         </div>
@@ -91,6 +86,47 @@ function Home() {
       <ProductSection title="New Arrivals" products={newArrivals} />
       <ProductSection title="Bundle Deals" products={bundles} />
       <ProductSection title="On Sale" products={onSale} />
+
+      {/* Trust Section */}
+      <section className="container-x py-20 bg-secondary/30">
+        <div className="grid md:grid-cols-3 gap-10">
+            {[
+                { icon: ShieldCheck, title: "Secure Payment", text: "Shop with peace of mind using Paystack" },
+                { icon: Truck, title: "Fast Delivery", text: "Reliable shipping within Lagos and beyond" },
+                { icon: Sparkles, title: "Premium Quality", text: "Carefully curated fashion for you" },
+            ].map((i, idx) => (
+                <div key={idx} className="text-center flex flex-col items-center">
+                    <div className="mb-4 p-4 rounded-full bg-primary/10 text-primary">
+                        <i.icon size={28} />
+                    </div>
+                    <h3 className="font-display text-xl mb-2">{i.title}</h3>
+                    <p className="text-sm text-muted-foreground">{i.text}</p>
+                </div>
+            ))}
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="container-x py-20">
+        <h2 className="font-display text-3xl text-center mb-16">How it works</h2>
+        <div className="grid md:grid-cols-4 gap-8">
+            {[
+                { icon: Sparkles, title: "Browse", text: "Explore our latest collections" },
+                { icon: ShoppingBag, title: "Select", text: "Pick your favorite pieces" },
+                { icon: CreditCard, title: "Pay", text: "Secure checkout via Paystack" },
+                { icon: Package, title: "Receive", text: "Get your order delivered" },
+            ].map((i, idx) => (
+                <div key={idx} className="text-center relative">
+                    <div className="mb-6 mx-auto w-16 h-16 rounded-full bg-background border flex items-center justify-center text-primary shadow-sm">
+                        <i.icon size={24} />
+                    </div>
+                    <h3 className="font-display text-lg mb-1">{i.title}</h3>
+                    <p className="text-sm text-muted-foreground">{i.text}</p>
+                    {idx < 3 && <div className="hidden md:block absolute top-8 left-[60%] w-[80%] border-t border-dashed border-border" />}
+                </div>
+            ))}
+        </div>
+      </section>
 
       {/* CTA banner */}
       <section className="container-x pb-24">

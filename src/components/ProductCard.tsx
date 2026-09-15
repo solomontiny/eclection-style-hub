@@ -32,8 +32,8 @@ export function ProductCard({ product }: { product: Product }) {
   ].filter(Boolean) as { label: string; className: string }[];
 
   return (
-    <div className="group">
-      <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted">
+    <div className="group transition-all duration-300 hover:-translate-y-1">
+      <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted shadow-sm group-hover:shadow-xl transition-shadow duration-300">
         <Link to="/product/$slug" params={{ slug: product.slug }} aria-label={`View ${product.name}`}>
           <img
           src={product.image ?? product.image_url ?? undefined}

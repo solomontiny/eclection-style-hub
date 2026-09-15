@@ -51,30 +51,31 @@ function ProductDetails() {
   const price = product.sale_price ?? product.price;
   const discount = product.sale_price && product.price > 0 ? Math.round((1 - product.sale_price / product.price) * 100) : product.discount_percent;
 
-  return <section className="container-x py-10 md:py-16">
-    <Link to="/shop" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"><ArrowLeft size={16} /> Back to shop</Link>
-    <div className="mt-8 grid lg:grid-cols-2 gap-10 lg:gap-16">
-      <div className="space-y-3">
-        <div className="aspect-[4/5] rounded-2xl overflow-hidden bg-muted grid place-items-center">
+  return <section className="container-x py-16 md:py-24">
+    <Link to="/shop" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"><ArrowLeft size={16} /> Back to shop</Link>
+    <div className="mt-10 grid lg:grid-cols-2 gap-12 lg:gap-20">
+      <div className="space-y-4">
+        <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-muted shadow-sm">
           {images[selectedImage] ? <img src={images[selectedImage]} alt={product.name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <span className="text-sm text-muted-foreground">No image available</span>}
         </div>
-        {images.length > 1 && <div className="grid grid-cols-5 gap-2">{images.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setSelectedImage(index)} className={`aspect-square overflow-hidden rounded-lg border ${selectedImage === index ? "border-primary" : "border-border"}`}>{image ? <img src={image} alt={`${product.name} ${index + 1}`} className="h-full w-full object-cover" /> : <span className="text-xs text-muted-foreground">No image</span>}</button>)}</div>}
+        {images.length > 1 && <div className="grid grid-cols-5 gap-3">{images.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setSelectedImage(index)} className={`aspect-square overflow-hidden rounded-xl border-2 transition-all ${selectedImage === index ? "border-primary shadow-sm" : "border-border hover:border-border/80"}`}>{image ? <img src={image} alt={`${product.name} ${index + 1}`} className="h-full w-full object-cover" /> : <span className="text-xs text-muted-foreground">No image</span>}</button>)}</div>}
       </div>
-      <div className="max-w-xl">
-        <p className="text-xs uppercase tracking-widest text-primary font-semibold">{product.category ?? "Collection"}</p>
-        <h1 className="font-display text-4xl md:text-5xl mt-2">{product.name}</h1>
-        <div className="mt-5 flex items-baseline gap-3"><span className="font-display text-3xl text-primary">{formatNaira(price)}</span>{product.sale_price != null && <span className="text-muted-foreground line-through">{formatNaira(product.price)}</span>}{discount > 0 && <span className="text-xs font-semibold text-emerald-700">-{discount}%</span>}</div>
-        <p className="mt-6 whitespace-pre-line text-muted-foreground leading-7">{product.description || "A carefully selected piece from our current collection."}</p>
+      <div className="flex flex-col">
+        <p className="text-xs uppercase tracking-[0.2em] text-primary font-bold">{product.category ?? "Collection"}</p>
+        <h1 className="font-display text-4xl md:text-6xl mt-3 leading-tight">{product.name}</h1>
+        <div className="mt-6 flex items-baseline gap-4"><span className="font-display text-4xl">{formatNaira(price)}</span>{product.sale_price != null && <span className="text-lg text-muted-foreground line-through">{formatNaira(product.price)}</span>}{discount > 0 && <span className="text-sm font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">-{discount}%</span>}</div>
+        <div className="h-px bg-border my-8" />
+        <p className="text-muted-foreground leading-8 text-lg">{product.description || "A carefully selected piece from our current collection."}</p>
         
-        <div className="mt-6">
-          <label className="text-sm font-medium">Select Size</label>
-          <div className="flex gap-2 mt-2">
+        <div className="mt-8">
+          <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Select Size</label>
+          <div className="flex gap-3 mt-3">
             {["S", "M", "L", "XL", "XXL"].map(size => (
               <button 
                 key={size}
                 type="button"
                 onClick={() => setSelectedSize(size)}
-                className={`w-12 h-10 border rounded ${selectedSize === size ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary"}`}
+                className={`w-14 h-14 border-2 rounded-xl font-bold transition-all ${selectedSize === size ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary"}`}
               >
                 {size}
               </button>
@@ -82,12 +83,23 @@ function ProductDetails() {
           </div>
         </div>
 
-        <p className={`mt-6 text-sm font-semibold ${product.stock > 0 ? "text-emerald-700" : "text-amber-700"}`}>{product.stock > 0 ? `${product.stock} available` : "Currently out of stock"}</p>
-        <div className="mt-6 flex items-center gap-4"><div className="flex items-center rounded-full border border-border"><button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-3"><Minus size={16} /></button><span className="w-8 text-center">{quantity}</span><button type="button" onClick={() => setQuantity((value) => value + 1)} className="p-3"><Plus size={16} /></button></div><button type="button" disabled={product.stock === 0} onClick={() => addItem(product, selectedSize, quantity)} className="btn-primary flex-1 justify-center disabled:opacity-50"><ShoppingBag size={16} /> Add to cart</button></div>
-        <div className="mt-3"><BuyNowDialog product={product} trigger={<button type="button" className="btn-outline w-full justify-center">Buy now</button>} /></div>
-        <p className="mt-4 text-xs text-muted-foreground italic">Lagos delivery: Delivery fee is paid directly to the rider upon arrival. It is separate from your online order payment.</p>
+        <p className={`mt-8 text-sm font-semibold flex items-center gap-2 ${product.stock > 0 ? "text-emerald-700" : "text-amber-700"}`}>
+            <span className={`size-2 rounded-full ${product.stock > 0 ? "bg-emerald-600" : "bg-amber-600"}`} />
+            {product.stock > 0 ? `${product.stock} items available` : "Currently out of stock"}
+        </p>
+
+        <div className="mt-8 flex flex-col sm:flex-row gap-4">
+            <div className="flex items-center rounded-full border border-border">
+                <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-4 hover:text-primary"><Minus size={18} /></button>
+                <span className="w-12 text-center font-bold">{quantity}</span>
+                <button type="button" onClick={() => setQuantity((value) => value + 1)} className="p-4 hover:text-primary"><Plus size={18} /></button>
+            </div>
+            <button type="button" disabled={product.stock === 0} onClick={() => addItem(product, selectedSize, quantity)} className="btn-primary flex-1 justify-center disabled:opacity-50 !py-4 !text-base">Add to cart</button>
+        </div>
+        <div className="mt-4"><BuyNowDialog product={product} trigger={<button type="button" className="btn-outline w-full justify-center !py-4 !text-base">Buy now</button>} /></div>
+        <p className="mt-8 text-sm text-muted-foreground border-t pt-6">Lagos delivery: Delivery fee is paid directly to the rider upon arrival. It is separate from your online order payment.</p>
       </div>
     </div>
-    {related.length > 0 && <div className="mt-20"><h2 className="font-display text-3xl">You may also like</h2><div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">{related.map((item) => <ProductCard key={item.id} product={item as never} />)}</div></div>}
+    {related.length > 0 && <div className="mt-24 border-t pt-20"><h2 className="font-display text-4xl text-center">You may also like</h2><div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">{related.map((item) => <ProductCard key={item.id} product={item as never} />)}</div></div>}
   </section>;
 }
