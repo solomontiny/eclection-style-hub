@@ -61,6 +61,7 @@ export function SiteHeader() {
           ) : (
             <Link
               to="/login"
+              search={{ redirect: undefined }}
               className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors"
               activeProps={{ className: "text-primary" }}
             >
@@ -96,7 +97,7 @@ export function SiteHeader() {
               </div>
             )}
             {!user && (
-              <Link to="/login" onClick={() => setOpen(false)} className="py-2 mt-2 pt-2 border-t border-border/60 text-sm font-medium">
+              <Link to="/login" search={{ redirect: undefined }} onClick={() => setOpen(false)} className="py-2 mt-2 pt-2 border-t border-border/60 text-sm font-medium">
                 Login
               </Link>
             )}

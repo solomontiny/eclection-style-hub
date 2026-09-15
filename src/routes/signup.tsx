@@ -93,7 +93,7 @@ function SignupPage() {
         </form>
         <p className="mt-4 text-sm text-center">
           Already have an account?{" "}
-          <Link to="/login" className="text-primary font-medium">Sign in</Link>
+          <Link to="/login" search={{ redirect: undefined }} className="text-primary font-medium">Sign in</Link>
         </p>
       </div>
     </section>

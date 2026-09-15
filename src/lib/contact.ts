@@ -17,6 +17,8 @@ export const CONTACT = {
   },
 } as const;
 
+export const LAGOS_DELIVERY_NOTE = "Lagos Delivery: Your order will be delivered by a rider. Delivery fee is paid directly to the rider when you receive your order.";
+
 export function whatsappLink(message: string) {
   return `https://wa.me/${CONTACT.whatsappNumber}?text=${encodeURIComponent(message)}`;
 }

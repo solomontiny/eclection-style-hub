@@ -127,7 +127,7 @@ function buildEmailHtml(args: {
  * Creates an order server-side with authoritative pricing.
  */
 export const createOrderServerFn = createServerFn({ method: "POST" })
-  .validator(z.object({
+  .inputValidator(z.object({
     items: z.array(z.object({ id: z.string(), size: z.string(), qty: z.number().int().min(1) })),
     customer: z.object({ name: z.string(), email: z.string().email(), phone: z.string().optional() }),
     callbackUrl: z.string().url().optional(),
@@ -269,7 +269,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
  * Verifies a Paystack transaction and marks the matching order as paid.
  */
 export const confirmPaystackPayment = createServerFn({ method: "POST" })
-  .validator(z.object({ reference: z.string().min(3).max(80).regex(/^[A-Za-z0-9_.-]+$/) }))
+  .inputValidator(z.object({ reference: z.string().min(3).max(80).regex(/^[A-Za-z0-9_.-]+$/) }))
   .handler(async ({ data }) => {
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
     if (!paystackSecret) {
@@ -317,7 +317,7 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
 
 
 export const sendOrderReceipt = createServerFn({ method: "POST" })
-  .validator((data) => InputSchema.parse(data))
+  .inputValidator((data) => InputSchema.parse(data))
   .handler(async ({ data }) => {
     const { snapshot, paystackRef } = data;
 

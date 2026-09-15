@@ -1,5 +1,4 @@
 import {
-  createCsrfMiddleware,
   createMiddleware,
   createStart,
 } from "@tanstack/react-start";
@@ -22,11 +21,7 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
   }
 });
 
-const csrfMiddleware = createCsrfMiddleware({
-  filter: (ctx) => ctx.handlerType === "serverFn",
-});
-
 export const startInstance = createStart(() => ({
   functionMiddleware: [attachSupabaseAuth],
-  requestMiddleware: [csrfMiddleware, errorMiddleware],
+  requestMiddleware: [errorMiddleware],
 }));
