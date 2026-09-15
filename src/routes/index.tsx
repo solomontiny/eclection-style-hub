@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
-import hero from "@/assets/hero-forest.jpg";
+import heroAsset from "@/assets/supplier-affordable-hero.jpeg.asset.json";
 import { Product, getProducts } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
 import { LAGOS_DELIVERY_NOTE } from "@/lib/contact";
@@ -32,11 +32,11 @@ function Home() {
       {/* Full-bleed hero */}
       <section className="relative -mt-20 h-[100vh] min-h-[640px] w-full overflow-hidden">
         <img
-          src={hero}
-          alt="Woman in straw hat walking through sunlit pine forest"
-          width={1920}
-          height={1280}
-          className="absolute inset-0 h-full w-full object-cover"
+          src={heroAsset.url}
+          alt="Supplier Affordable fashion collection"
+          width={1280}
+          height={853}
+          className="absolute inset-0 h-full w-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-foreground/30 via-foreground/20 to-foreground/50" />
         <div className="relative h-full flex flex-col items-center justify-center text-center px-6 pt-20">

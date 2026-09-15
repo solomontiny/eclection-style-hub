@@ -57,7 +57,7 @@ function ResetPasswordPage() {
         {status === "success" ? (
           <div className="text-center">
             <p className="text-muted-foreground mb-4">{message}</p>
-            <Link to="/login" className="text-primary font-medium hover:underline">Return to login</Link>
+            <Link to="/login" search={{ redirect: undefined }} className="text-primary font-medium hover:underline">Return to login</Link>
           </div>
         ) : (
           <form onSubmit={onSubmit} className="flex flex-col gap-4">

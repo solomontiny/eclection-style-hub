@@ -8,7 +8,7 @@ import { fmtDate, fmtNGN } from "@/lib/admin-utils";
 export const Route = createFileRoute("/account")({
   beforeLoad: async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw redirect({ to: "/login" });
+    if (!user) throw redirect({ to: "/login", search: { redirect: "/account" } });
   },
   component: AccountPage,
 });

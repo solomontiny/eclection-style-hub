@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Mail, Phone, MapPin, Instagram, Facebook, MessageCircle } from "lucide-react";
+import { Mail, Instagram, Facebook, MessageCircle } from "lucide-react";
 import { CONTACT, whatsappLink } from "@/lib/contact";
 
 export const Route = createFileRoute("/contact")({
@@ -24,17 +24,8 @@ function Contact() {
             <MessageCircle className="text-primary mt-0.5" size={20} />
             <div>
               <p className="font-semibold">WhatsApp (preferred)</p>
-              <p className="text-muted-foreground">{CONTACT.phone}</p>
             </div>
           </a>
-          <div className="flex items-start gap-3">
-            <Phone className="text-primary mt-0.5" size={20} />
-            <div className="flex-1">
-              <p className="font-semibold">Call</p>
-              <p className="text-muted-foreground">{CONTACT.phone}</p>
-              <span className="text-muted-foreground block">{CONTACT.phone2}</span>
-            </div>
-          </div>
 
           <a href={`mailto:${CONTACT.email}`} className="flex items-start gap-3 hover:text-primary">
             <Mail className="text-primary mt-0.5" size={20} />

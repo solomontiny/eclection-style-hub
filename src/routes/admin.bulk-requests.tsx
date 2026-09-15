@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -11,21 +10,33 @@ export const Route = createFileRoute("/admin/bulk-requests")({ component: BulkRe
 
 const STATUSES = ["New", "Contacted", "In Discussion", "Confirmed", "Completed", "Cancelled"] as const;
 type Status = typeof STATUSES[number];
+type BulkRequest = {
+  id: string;
+  customer_name: string;
+  whatsapp_number: string;
+  country: string;
+  quantity: number;
+  created_at: string;
+  status: Status;
+};
+
+const bulkRequestsTable = () =>
+  (supabase.from as unknown as (table: string) => any)("bulk_requests");
 
 function BulkRequestsPage() {
   const qc = useQueryClient();
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ["admin-bulk-requests"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("bulk_requests").select("*").order("created_at", { ascending: false });
+      const { data, error } = await bulkRequestsTable().select("*").order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return (data ?? []) as BulkRequest[];
     },
   });
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: Status }) => {
-      const { error } = await supabase.from("bulk_requests").update({ status }).eq("id", id);
+      const { error } = await bulkRequestsTable().update({ status }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Status updated"); qc.invalidateQueries({ queryKey: ["admin-bulk-requests"] }); },
