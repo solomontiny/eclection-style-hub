@@ -38,13 +38,27 @@ function SignupPage() {
     busyRef.current = true;
     setErr("");
     setBusy(true);
-    const res = await signUp(email.trim(), password, displayName.trim());
-    if (res.error) {
-      setErr(res.error);
-      setBusy(false);
+
+    try {
+      const res = await signUp(email.trim(), password, displayName.trim());
+      if (res.error) {
+        setErr(res.error);
+        busyRef.current = false;
+      } else {
+        // If the user has a session, they are automatically logged in.
+        // If not, it means email confirmation is probably required.
+        if (res.data?.session) {
+          navigate({ to: "/account" });
+        } else {
+          setErr("Account created successfully! Please check your email to confirm your account.");
+          // We can't navigate to /account yet as they aren't logged in.
+        }
+      }
+    } catch (err) {
+      setErr("An unexpected error occurred.");
       busyRef.current = false;
-    } else {
-      navigate({ to: "/account" });
+    } finally {
+      setBusy(false);
     }
   }
 

@@ -22,7 +22,7 @@ type AuthContextValue = {
     email: string,
     password: string,
     displayName?: string
-  ) => Promise<{ error?: string }>;
+  ) => Promise<{ error?: string; data?: any }>;
   signOut: () => Promise<void>;
 };
 
@@ -136,7 +136,7 @@ export function AuthProvider({
 
           console.log("[SIGNUP SUCCESS]", data.user?.email);
 
-          return {};
+          return { data };
         } catch (err) {
           console.error("[SIGNUP EXCEPTION]", err);
 
