@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Instagram, Facebook, Mail, Phone, MapPin } from "lucide-react";
-import { CONTACT } from "@/lib/contact";
+import { Instagram, Facebook, Mail, Clock } from "lucide-react";
+import { CONTACT, SUPPORT_HOURS } from "@/lib/contact";
 import officialLogo from "@/assets/supplier-affordable-logo.png";
 
 export function SiteFooter() {
@@ -36,15 +36,14 @@ export function SiteFooter() {
           <ul className="space-y-4 text-sm text-muted-foreground">
             <li><Link to="/shop" className="hover:text-primary transition-colors">All Products</Link></li>
             <li><Link to="/shop" className="hover:text-primary transition-colors">Women's Collection</Link></li>
-            <li><Link to="/shop" className="hover:text-primary transition-colors">Men's Collection</Link></li>
             <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
           </ul>
         </div>
         <div>
           <h4 className="font-display font-bold text-sm uppercase tracking-wider mb-6">Contact</h4>
           <ul className="space-y-4 text-sm text-muted-foreground">
-            <li className="flex gap-3"><Phone size={18} className="text-primary" /> <a href={`tel:${CONTACT.phone}`} className="hover:text-primary transition-colors">{CONTACT.phone}</a></li>
             <li className="flex gap-3"><Mail size={18} className="text-primary" /> <a href={`mailto:${CONTACT.email}`} className="hover:text-primary transition-colors break-all">{CONTACT.email}</a></li>
+            <li className="flex gap-3"><Clock size={18} className="text-primary" /> <span>{SUPPORT_HOURS}</span></li>
           </ul>
         </div>
       </div>

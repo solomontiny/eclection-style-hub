@@ -114,7 +114,7 @@ function buildEmailHtml(args: {
 
       <p style="margin:18px 0 0;font-size:12px;color:#888;">
         ${audience === "customer"
-          ? `Questions? Reply to this email or WhatsApp us at ${esc(CONTACT.phone)}.`
+          ? `Questions? Reply to this email or write to ${esc(CONTACT.email)}.`
           : `Reply to the customer at ${esc(s.customer.email)} or call ${esc(s.customer.phone || "—")}.`}
       </p>
     </td></tr>
