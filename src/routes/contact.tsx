@@ -5,8 +5,8 @@ import { CONTACT, whatsappLink } from "@/lib/contact";
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Contact — Supplier Affordable" },
-      { name: "description", content: "Reach Supplier Affordable via WhatsApp, phone, or email. We're here to help." },
+      { title: "Contact — SupplierAffordable" },
+      { name: "description", content: "Reach SupplierAffordable via WhatsApp, phone, or email. We're here to help." },
     ],
   }),
   component: Contact,
@@ -20,7 +20,7 @@ function Contact() {
 
       <div className="mt-12 rounded-3xl bg-card p-8 shadow-[var(--shadow-card)] border border-border/60 max-w-3xl">
         <div className="space-y-6 text-sm">
-          <a href={whatsappLink("Hi Supplier Affordable 👋")} target="_blank" rel="noreferrer" className="flex items-start gap-3 hover:text-primary">
+          <a href={whatsappLink("Hi SupplierAffordable 👋")} target="_blank" rel="noreferrer" className="flex items-start gap-3 hover:text-primary">
             <MessageCircle className="text-primary mt-0.5" size={20} />
             <div>
               <p className="font-semibold">WhatsApp (preferred)</p>

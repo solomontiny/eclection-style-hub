@@ -4,8 +4,8 @@ import hero from "@/assets/hero.jpg";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "About — Supplier Affordable" },
-      { name: "description", content: "Supplier Affordable is a Nigerian fashion brand bringing you stylish, quality, and affordable clothing. We make it easy to look good, feel confident, and stay fashionable without breaking the bank." },
+      { title: "About — SupplierAffordable" },
+      { name: "description", content: "SupplierAffordable is a Nigerian fashion brand bringing you stylish, quality, and affordable clothing. We make it easy to look good, feel confident, and stay fashionable without breaking the bank." },
     ],
   }),
   component: About,
@@ -18,7 +18,7 @@ function About() {
         <p className="text-xs uppercase tracking-widest text-primary font-semibold">Our story</p>
         <h1 className="font-display text-4xl md:text-6xl mt-2">Style that's accessible — and unmistakably you.</h1>
         <p className="mt-5 text-muted-foreground">
-          Supplier Affordable is a Nigerian fashion brand bringing you stylish, quality, and affordable clothing. We make it easy to look good, feel confident, and stay fashionable without breaking the bank.
+          SupplierAffordable is a Nigerian fashion brand bringing you stylish, quality, and affordable clothing. We make it easy to look good, feel confident, and stay fashionable without breaking the bank.
         </p>
         <div className="mt-8 grid grid-cols-3 gap-4">
           {[
@@ -34,7 +34,7 @@ function About() {
         </div>
       </div>
       <div className="aspect-[4/5] rounded-3xl overflow-hidden shadow-[var(--shadow-card)]">
-        <img src={hero} alt="Supplier Affordable" className="h-full w-full object-cover" />
+        <img src={hero} alt="SupplierAffordable" className="h-full w-full object-cover" />
       </div>
     </section>
   );

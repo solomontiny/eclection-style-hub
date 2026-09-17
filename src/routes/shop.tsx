@@ -7,7 +7,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/shop")({
-  head: () => ({ meta: [{ title: "Shop — Supplier Affordable" }, { name: "description", content: "Browse the latest Supplier Affordable collection." }] }),
+  head: () => ({ meta: [{ title: "Shop — SupplierAffordable" }, { name: "description", content: "Browse the latest SupplierAffordable collection." }] }),
   component: Shop,
 });
 
@@ -48,7 +48,7 @@ function Shop() {
     <div className="flex flex-col items-center text-center max-w-2xl mx-auto mb-16">
         <span className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">Collection</span>
         <h1 className="font-display text-4xl md:text-6xl mt-4">Shop Everything</h1>
-        <p className="mt-4 text-muted-foreground">Discover curated pieces from the current Supplier Affordable collection.</p>
+        <p className="mt-4 text-muted-foreground">Discover curated pieces from the current SupplierAffordable collection.</p>
     </div>
     
     <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-card p-4 rounded-2xl border border-border shadow-sm mb-12">

@@ -8,19 +8,19 @@ export function SiteFooter() {
     <footer className="mt-24 border-t border-border bg-secondary/30">
       <div className="container-x py-20 grid gap-12 md:grid-cols-4">
         <div className="md:col-span-2 space-y-4">
-          <Link to="/" className="inline-flex items-center gap-4" aria-label="Supplier Affordable home">
+          <Link to="/" className="inline-flex items-center gap-4" aria-label="SupplierAffordable home">
             <img
               src={officialLogo}
-              alt="Supplier Affordable official logo"
+              alt="SupplierAffordable official logo"
               width={1024}
               height={1024}
               loading="lazy"
               className="size-20 shrink-0 object-contain"
             />
-            <span className="font-display text-2xl font-bold">Supplier Affordable</span>
+            <span className="font-display text-2xl font-bold">SupplierAffordable</span>
           </Link>
           <p className="text-sm text-muted-foreground max-w-sm">
-            Supplier Affordable is a Nigerian fashion brand bringing you stylish, quality, and affordable clothing. We make it easy to look good, feel confident, and stay fashionable without breaking the bank.
+            SupplierAffordable is a Nigerian fashion brand bringing you stylish, quality, and affordable clothing. We make it easy to look good, feel confident, and stay fashionable without breaking the bank.
           </p>
           <div className="flex gap-4 pt-2">
             <a href={`https://instagram.com/${CONTACT.instagram}`} target="_blank" rel="noreferrer" className="p-3 rounded-full bg-background border border-border hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Instagram">
@@ -50,7 +50,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-border">
         <div className="container-x py-8 text-xs text-muted-foreground flex flex-wrap gap-4 justify-between items-center">
-          <p>© {new Date().getFullYear()} Supplier Affordable. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} SupplierAffordable. All rights reserved.</p>
           <div className="flex gap-6">
             <Link to="/admin/login" className="hover:text-primary transition-colors">Admin Login</Link>
             <span>Lagos, Nigeria</span>

@@ -9,7 +9,7 @@ import { BuyNowDialog } from "@/components/BuyNowDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/product/$slug")({
-  head: ({ params }) => ({ meta: [{ title: `${params.slug} — Supplier Affordable` }] }),
+  head: ({ params }) => ({ meta: [{ title: `${params.slug} — SupplierAffordable` }] }),
   component: ProductDetails,
 });
 

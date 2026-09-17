@@ -11,10 +11,10 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 export const Route = createFileRoute("/bulk-order")({
   head: () => ({
     meta: [
-      { title: "Wholesale & Bulk Orders — Supplier Affordable" },
-      { name: "description", content: "Build a Supplier Affordable wholesale order of 10 pieces or more." },
-      { property: "og:title", content: "Wholesale & Bulk Orders — Supplier Affordable" },
-      { property: "og:description", content: "Build a Supplier Affordable wholesale order of 10 pieces or more." },
+      { title: "Wholesale & Bulk Orders — SupplierAffordable" },
+      { name: "description", content: "Build a SupplierAffordable wholesale order of 10 pieces or more." },
+      { property: "og:title", content: "Wholesale & Bulk Orders — SupplierAffordable" },
+      { property: "og:description", content: "Build a SupplierAffordable wholesale order of 10 pieces or more." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

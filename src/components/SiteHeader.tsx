@@ -37,15 +37,15 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-background/90 border-b border-border/50 shadow-sm">
       <div className="container-x flex items-center justify-between h-20">
-        <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Supplier Affordable home">
+        <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="SupplierAffordable home">
           <img
             src={officialLogo}
-            alt="Supplier Affordable official logo"
+            alt="SupplierAffordable official logo"
             width={1024}
             height={1024}
             className="size-12 object-contain md:size-14"
           />
-          <span className="hidden font-display text-xl font-bold tracking-tight sm:inline">Supplier Affordable</span>
+          <span className="hidden font-display text-xl font-bold tracking-tight sm:inline">SupplierAffordable</span>
         </Link>
         <nav className="hidden md:flex items-center gap-8">
           <NavLinks />

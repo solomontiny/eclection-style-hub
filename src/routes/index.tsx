@@ -9,7 +9,7 @@ import { LAGOS_DELIVERY_NOTE } from "@/lib/contact";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Supplier Affordable — Affordable Fashion for Women & Men" },
+      { title: "SupplierAffordable — Affordable Fashion for Women & Men" },
       { name: "description", content: "Stylish, quality and affordable clothing for women and men. Shop online and pay securely with card or bank transfer." },
     ],
   }),
@@ -33,7 +33,7 @@ function Home() {
       <section className="relative h-[85vh] min-h-[600px] w-full overflow-hidden">
         <img
           src={heroImg}
-          alt="Supplier Affordable fashion collection"
+          alt="SupplierAffordable fashion collection"
           width={1280}
           height={853}
           className="absolute inset-0 h-full w-full object-cover object-center"
