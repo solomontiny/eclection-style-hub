@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Instagram, Facebook, Mail, Clock } from "lucide-react";
-import { CONTACT } from "@/lib/contact";
+import { CONTACT, SUPPORT_HOURS } from "@/lib/contact";
 import officialLogo from "@/assets/supplier-affordable-logo.png";
 
 export function SiteFooter() {
