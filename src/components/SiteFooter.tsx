@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Instagram, Facebook, Mail, Phone, MapPin } from "lucide-react";
+import { Instagram, Facebook, Mail, Clock } from "lucide-react";
 import { CONTACT } from "@/lib/contact";
 import officialLogo from "@/assets/supplier-affordable-logo.png";
 
@@ -36,7 +36,6 @@ export function SiteFooter() {
           <ul className="space-y-4 text-sm text-muted-foreground">
             <li><Link to="/shop" className="hover:text-primary transition-colors">All Products</Link></li>
             <li><Link to="/shop" className="hover:text-primary transition-colors">Women's Collection</Link></li>
-            <li><Link to="/shop" className="hover:text-primary transition-colors">Men's Collection</Link></li>
             <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
           </ul>
         </div>
