@@ -1,12 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MessageCircle, X, Send } from "lucide-react";
-import { whatsappLink, CONTACT } from "@/lib/contact";
-
-const WhatsAppIcon = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
-  <svg viewBox="0 0 32 32" width={size} height={size} fill="currentColor" className={className} aria-hidden="true">
-    <path d="M16.001 3C9.373 3 4 8.373 4 15c0 2.385.701 4.604 1.905 6.477L4 29l7.72-1.873A11.94 11.94 0 0 0 16 27c6.627 0 12-5.373 12-12S22.628 3 16.001 3zm0 21.6c-1.86 0-3.6-.51-5.09-1.39l-.36-.21-4.58 1.11 1.13-4.46-.23-.37A9.56 9.56 0 0 1 6.4 15c0-5.293 4.308-9.6 9.6-9.6 5.293 0 9.6 4.307 9.6 9.6 0 5.293-4.307 9.6-9.6 9.6zm5.27-7.18c-.29-.14-1.71-.84-1.97-.94-.27-.1-.46-.14-.65.14-.19.29-.74.94-.91 1.13-.17.19-.34.21-.62.07-.29-.14-1.21-.45-2.31-1.42-.85-.76-1.43-1.69-1.6-1.97-.17-.29-.02-.44.13-.58.13-.13.29-.34.43-.51.14-.17.19-.29.29-.48.1-.19.05-.36-.02-.51-.07-.14-.65-1.57-.89-2.15-.23-.56-.47-.49-.65-.5l-.55-.01c-.19 0-.5.07-.76.36-.26.29-1 .98-1 2.39 0 1.41 1.03 2.78 1.17 2.97.14.19 2.02 3.08 4.9 4.32.69.3 1.22.48 1.64.61.69.22 1.32.19 1.81.12.55-.08 1.71-.7 1.95-1.37.24-.67.24-1.25.17-1.37-.07-.12-.26-.19-.55-.33z"/>
-  </svg>
-);
+import { CONTACT, SUPPORT_HOURS, DELIVERY_INFO, EXCHANGE_POLICY, LAGOS_DELIVERY_NOTE, PROMO } from "@/lib/contact";
 
 type Msg = { from: "bot" | "user"; text: string; quickReplies?: string[] };
 
@@ -14,9 +8,9 @@ const QUICK_REPLIES = [
   "Delivery & shipping",
   "Payment methods",
   "Sizes & fit",
-  "Returns",
+  "Exchanges",
   "Opening hours",
-  "Talk to a human",
+  "Email support",
 ];
 
 function autoReply(input: string): Msg {
@@ -24,47 +18,41 @@ function autoReply(input: string): Msg {
   if (/(deliver|shipping|ship|dispatch)/.test(q))
     return {
       from: "bot",
-      text:
-        "🚚 We deliver Lagos-wide within 24–48 hours and nationwide within 2–5 working days.\n\nLagos Delivery: your order is delivered by a rider and the delivery fee is paid directly to the rider when you receive your order — it is not part of your online payment.",
-      quickReplies: ["Payment methods", "Talk to a human"],
+      text: `🚚 ${DELIVERY_INFO.interstate}.\n${DELIVERY_INFO.international}.\n\n${LAGOS_DELIVERY_NOTE}\n\n${DELIVERY_INFO.note}`,
+      quickReplies: ["Payment methods", "Email support"],
     };
-  if (/(pay|payment|transfer|bank|card)/.test(q))
+  if (/(pay|payment|transfer|bank|card|promo|code|discount)/.test(q))
     return {
       from: "bot",
-      text:
-        "💳 You can pay for your order right here on the website — add items to your cart, go to checkout and pay securely with your card, bank transfer or USSD via Paystack.\n\nYou'll receive an order number and a confirmation receipt by email straight away.",
-      quickReplies: ["Talk to a human", "Delivery & shipping"],
+      text: `💳 Add items to your cart, go to checkout and pay securely with your card, bank transfer or USSD via Paystack.\n\nUse code ${PROMO.code} at checkout for ${PROMO.percent}% off.\n\nYou'll receive an order number and confirmation receipt by email straight away.`,
+      quickReplies: ["Delivery & shipping", "Email support"],
     };
   if (/(size|fit|measur)/.test(q))
     return {
       from: "bot",
-      text:
-        "📏 Most pieces run true to size (S, M, L, XL). For tailored items send your bust / waist / hip measurements and we'll match you to the perfect fit.",
-      quickReplies: ["Talk to a human"],
+      text: "📏 Most pieces run true to size. Available sizes are S, M, L, XL, XXL and XXXL — pick your size on the product page before adding to cart.",
+      quickReplies: ["Exchanges", "Email support"],
     };
   if (/(return|refund|exchange)/.test(q))
     return {
       from: "bot",
-      text:
-        "🔁 You can exchange any unworn item with tags within 3 days of delivery. Custom-made and sale items are final sale.",
-      quickReplies: ["Talk to a human"],
+      text: `🔁 ${EXCHANGE_POLICY}`,
+      quickReplies: ["Email support"],
     };
   if (/(hour|open|time|when)/.test(q))
     return {
       from: "bot",
-      text: "🕘 We reply Monday–Saturday, 9am–7pm WAT. Outside those hours? Drop your message and we'll get back as soon as we open. ✨",
-      quickReplies: ["Talk to a human"],
+      text: `🕘 ${SUPPORT_HOURS} Outside those hours, leave us an email and we'll reply as soon as we open. ✨`,
+      quickReplies: ["Email support"],
     };
-  
-  if (/(human|agent|whatsapp|call|chat|talk|person)/.test(q))
+  if (/(human|agent|email|mail|support|help|talk|person|contact)/.test(q))
     return {
       from: "bot",
-      text: "👋 You can shop directly on our website and pay online. Need help? Tap the button below to chat with us on WhatsApp.",
+      text: `✉️ You can reach our care team at ${CONTACT.email}. ${SUPPORT_HOURS}`,
     };
   return {
     from: "bot",
-    text:
-      "Thanks for your message! 💗 Feel free to browse our shop or tap “Talk to a human” to chat with us on WhatsApp for any support.",
+    text: `Thanks for your message! 💗 Browse our shop, or email ${CONTACT.email} for any support.`,
     quickReplies: QUICK_REPLIES,
   };
 }
@@ -93,13 +81,11 @@ export function CustomerCareWidget() {
     setTimeout(() => setMessages((m) => [...m, autoReply(value)]), 450);
   }
 
-  const handoffMsg = `Hi ${CONTACT.brand} 👋, I was chatting with your style assistant and would like to speak to a human.`;
-
   return (
     <>
       {open && (
         <div className="fixed bottom-24 right-4 z-50 w-[min(92vw,360px)] h-[min(70vh,520px)] flex flex-col rounded-2xl border border-border bg-background shadow-[var(--shadow-card)] overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-primary to-[var(--plum,theme(colors.primary))] text-primary-foreground">
+          <div className="flex items-center justify-between px-4 py-3 bg-primary text-primary-foreground">
             <div>
               <p className="font-display text-base leading-tight">Style Care</p>
               <p className="text-[11px] opacity-90 flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-green-400 inline-block" /> Auto-reply • online</p>
@@ -125,8 +111,8 @@ export function CustomerCareWidget() {
             ))}
           </div>
           <div className="border-t border-border p-2 bg-background">
-            <a href={whatsappLink(handoffMsg)} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 w-full text-center text-xs font-semibold text-[#25D366] hover:underline mb-2">
-              <WhatsAppIcon size={14} /> Continue on WhatsApp →
+            <a href={`mailto:${CONTACT.email}`} className="block w-full text-center text-xs font-semibold text-primary hover:underline mb-2">
+              Email customer care →
             </a>
             <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex gap-2">
               <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type a message…" className="flex-1 rounded-full border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary" />
@@ -137,10 +123,10 @@ export function CustomerCareWidget() {
       )}
       <button
         onClick={() => setOpen((v) => !v)}
-        aria-label="Customer care chat on WhatsApp"
-        className="fixed bottom-5 right-4 z-50 h-14 w-14 rounded-full bg-[#25D366] text-white shadow-[var(--shadow-card)] flex items-center justify-center hover:scale-105 transition-transform"
+        aria-label="Customer care chat"
+        className="fixed bottom-5 right-4 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-card)] flex items-center justify-center hover:scale-105 transition-transform"
       >
-        {open ? <X size={22} /> : <WhatsAppIcon size={28} />}
+        {open ? <X size={22} /> : <MessageCircle size={26} />}
       </button>
     </>
   );
