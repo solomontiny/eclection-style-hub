@@ -101,13 +101,14 @@ export function AuthProvider({
 
       async signIn(email, password, rememberMe) {
         try {
-          const { error } =
+          const { data, error } =
             await supabase.auth.signInWithPassword({
               email: email.trim(),
               password,
             });
 
           if (error) {
+            console.error("[SIGNIN ERROR]", error);
             return {
               error: error.message,
             };
@@ -115,8 +116,9 @@ export function AuthProvider({
 
           return {};
         } catch (err) {
+          console.error("[SIGNIN EXCEPTION]", err);
           return {
-            error: "Unexpected login error.",
+            error: err instanceof Error ? err.message : "Unexpected login error.",
           };
         }
       },
