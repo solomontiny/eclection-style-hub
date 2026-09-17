@@ -10,7 +10,7 @@ export const Route = createFileRoute("/login")({
   }),
   head: () => ({
     meta: [
-      { title: "Sign in — Supplier Affordable" },
+      { title: "Sign in — SupplierAffordable" },
       { name: "description", content: "Sign in or create an account to track your orders." },
       { name: "robots", content: "noindex" },
     ],

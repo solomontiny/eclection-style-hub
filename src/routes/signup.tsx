@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 export const Route = createFileRoute("/signup")({
   head: () => ({
     meta: [
-      { title: "Sign up — Supplier Affordable" },
+      { title: "Sign up — SupplierAffordable" },
       { name: "description", content: "Create an account to track your orders." },
     ],
   }),

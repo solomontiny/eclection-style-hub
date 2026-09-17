@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
-      { title: "Set New Password — Supplier Affordable" },
+      { title: "Set New Password — SupplierAffordable" },
     ],
   }),
   component: ResetPasswordPage,

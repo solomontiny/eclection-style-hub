@@ -111,7 +111,7 @@ function CheckoutPage() {
             <span>{formatNaira(subtotal)}</span>
           </div>
           <div className="mt-4 p-3 bg-secondary/30 rounded text-xs text-muted-foreground">
-            <p><strong>Delivery Disclaimer:</strong> Delivery fees are separate from your order total and are paid directly to the dispatch rider upon delivery. Supplier Affordable currently uses third-party dispatch services, so delivery fees may vary depending on your location and dispatch provider.</p>
+            <p><strong>Delivery Disclaimer:</strong> Delivery fees are separate from your order total and are paid directly to the dispatch rider upon delivery. SupplierAffordable currently uses third-party dispatch services, so delivery fees may vary depending on your location and dispatch provider.</p>
           </div>
         </div>
       </div>
