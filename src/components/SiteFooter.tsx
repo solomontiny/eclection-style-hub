@@ -43,7 +43,7 @@ export function SiteFooter() {
         <div>
           <h4 className="font-display font-bold text-sm uppercase tracking-wider mb-6">Contact</h4>
           <ul className="space-y-4 text-sm text-muted-foreground">
-            <li className="flex gap-3"><Phone size={18} className="text-primary" /> <a href={`tel:${CONTACT.phone}`} className="hover:text-primary transition-colors">{CONTACT.phone}</a></li>
+            
             <li className="flex gap-3"><Mail size={18} className="text-primary" /> <a href={`mailto:${CONTACT.email}`} className="hover:text-primary transition-colors break-all">{CONTACT.email}</a></li>
           </ul>
         </div>
