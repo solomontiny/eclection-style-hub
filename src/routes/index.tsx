@@ -29,27 +29,26 @@ function Home() {
 
   return (
     <>
-      {/* Premium hero section */}
-      <section className="relative h-[85vh] min-h-[600px] w-full overflow-hidden">
+      <section className="relative h-[70vh] min-h-[500px] w-full overflow-hidden">
         <img
           src={heroImg}
           alt="SupplierAffordable fashion collection"
           width={1280}
           height={853}
-          className="absolute inset-0 h-full w-full object-cover object-center"
+          className="absolute inset-0 h-full w-full object-cover object-[center_30%]"
         />
-        <div className="absolute inset-0 bg-black/20" />
+        <div className="absolute inset-0 bg-black/30" />
         <div className="container-x relative h-full flex flex-col justify-center items-start text-left">
-          <span className="text-white/80 font-medium tracking-[0.2em] uppercase text-xs mb-4">
+          <span className="text-white/90 font-medium tracking-[0.2em] uppercase text-xs mb-4">
             ✦ Premium Nigerian Fashion ✦
           </span>
-          <h1 className="font-display text-white text-5xl md:text-7xl lg:text-8xl leading-tight tracking-tight mb-6">
+          <h1 className="font-display text-white text-4xl md:text-6xl lg:text-7xl leading-tight tracking-tight mb-6">
             Elegance Made <span className="italic font-normal">Affordable</span>
           </h1>
-          <p className="text-white/90 text-lg md:text-xl max-w-lg mb-10">
+          <p className="text-white/95 text-lg md:text-xl max-w-lg mb-8">
             Discover curated fashion for every occasion. Quality clothing, styled for you.
           </p>
-          <div className="flex flex-wrap gap-4 justify-center">
+          <div className="flex flex-wrap gap-4">
             <Link to="/shop" className="btn-primary !bg-white !text-foreground hover:!bg-white/90 !px-10">
               Shop Collection
             </Link>
@@ -60,12 +59,11 @@ function Home() {
       {/* Shop by Category */}
       <section className="container-x py-20">
         <h2 className="font-display text-3xl md:text-5xl mb-10 text-center">Shop by Category</h2>
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="max-w-2xl mx-auto">
           {[
             { label: "Women", img: featured[0]?.image ?? featured[0]?.image_url ?? "" },
-            { label: "Men", img: featured[1]?.image ?? featured[1]?.image_url ?? "" },
           ].map((c) => (
-            <Link key={c.label} to="/shop" className="group relative aspect-[5/3] rounded-3xl overflow-hidden">
+            <Link key={c.label} to="/shop" className="group relative aspect-[5/3] rounded-3xl overflow-hidden block">
               <img
                 src={c.img || undefined}
                 alt={c.label}

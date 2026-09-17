@@ -1,7 +1,7 @@
 import { Sparkles } from "lucide-react";
 
 const MESSAGES = [
-  "✨ Free delivery on orders above ₦50,000",
+  "✨ WELCOME — 10% OFF",
   "🎁 Use code WELCOME10 for 10% off your first order",
   "🚚 Same-day delivery within Lekki / Ajah",
   "💖 New arrivals every week — shop the latest drops",

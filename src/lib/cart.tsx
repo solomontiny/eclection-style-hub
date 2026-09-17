@@ -8,6 +8,8 @@ export type CartItem = {
   image: string;
   size: string;
   qty: number;
+  isBulk?: boolean;
+  bundleQty?: number;
 };
 
 type CartContextValue = {
@@ -16,7 +18,7 @@ type CartContextValue = {
   subtotal: number;
   open: boolean;
   setOpen: (v: boolean) => void;
-  addItem: (product: Product, size?: string, qty?: number) => void;
+  addItem: (product: Product, size?: string, qty?: number, isBulk?: boolean, bundleQty?: number) => void;
   updateQty: (key: string, qty: number) => void;
   removeItem: (key: string) => void;
   clear: () => void;
@@ -44,13 +46,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch { /* ignore */ }
   }, [items, hydrated]);
 
-  const addItem = (product: Product, size = "M", qty = 1) => {
+  const addItem = (product: Product, size = "M", qty = 1, isBulk = false, bundleQty?: number) => {
     setItems((arr) => {
       const key = itemKey(product.id, size);
       const existing = arr.find((it) => itemKey(it.id, it.size) === key);
       if (existing) {
         return arr.map((it) =>
-          itemKey(it.id, it.size) === key ? { ...it, qty: it.qty + qty } : it,
+          itemKey(it.id, it.size) === key ? { ...it, qty: it.qty + qty, bundleQty: isBulk ? (it.bundleQty || 0) + (bundleQty || 0) : it.bundleQty } : it,
         );
       }
       return [
@@ -58,11 +60,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
         {
           id: product.id,
           name: product.name,
-          price: product.sale_price ?? product.price,
+          price: isBulk ? 6000 : (product.sale_price ?? product.price),
           image: product.image ?? product.image_url ?? "",
           size,
           qty,
+          isBulk,
+          bundleQty,
         },
+
       ];
     });
     setOpen(true);
@@ -71,7 +76,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const updateQty = (key: string, qty: number) =>
     setItems((arr) =>
       arr
-        .map((it) => (itemKey(it.id, it.size) === key ? { ...it, qty: Math.max(0, qty) } : it))
+        .map((it) => (itemKey(it.id, it.size) === key ? { ...it, qty: Math.max(0, qty), bundleQty: it.isBulk ? Math.max(0, qty / 10) : it.bundleQty } : it))
         .filter((it) => it.qty > 0),
     );
   const removeItem = (key: string) =>

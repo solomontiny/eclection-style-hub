@@ -28,6 +28,22 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const mapAuthError = (message: string) => {
+  if (message === "Error sending confirmation email") {
+    return "Account created, but we couldn't send the confirmation email. Please contact support.";
+  }
+  if (message.includes("User already registered")) {
+    return "This email is already registered.";
+  }
+  if (message.includes("Password should be at least")) {
+    return "Password is too weak.";
+  }
+  if (message.includes("Invalid email")) {
+    return "Invalid email address.";
+  }
+  return message;
+};
+
 export function AuthProvider({
   children,
 }: {
@@ -130,7 +146,7 @@ export function AuthProvider({
             console.error("[SIGNUP ERROR]", error);
 
             return {
-              error: error.message,
+              error: mapAuthError(error.message),
             };
           }
 

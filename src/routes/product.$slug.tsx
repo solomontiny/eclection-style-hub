@@ -70,7 +70,7 @@ function ProductDetails() {
         <div className="mt-8">
           <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Select Size</label>
           <div className="flex gap-3 mt-3">
-            {["S", "M", "L", "XL", "XXL"].map(size => (
+            {["S", "M", "L", "XL", "XXL", "XXXL"].map(size => (
               <button 
                 key={size}
                 type="button"
@@ -98,6 +98,12 @@ function ProductDetails() {
         </div>
         <div className="mt-4"><BuyNowDialog product={product} trigger={<button type="button" className="btn-outline w-full justify-center !py-4 !text-base">Buy now</button>} /></div>
         <p className="mt-8 text-sm text-muted-foreground border-t pt-6">Lagos delivery: Delivery fee is paid directly to the rider upon arrival. It is separate from your online order payment.</p>
+
+        {/* Reviews Section */}
+        <div className="mt-12 border-t pt-8">
+            <h3 className="font-display text-2xl mb-6">Customer Reviews</h3>
+            <p className="text-muted-foreground">No reviews yet. Be the first to review this product.</p>
+        </div>
       </div>
     </div>
     {related.length > 0 && <div className="mt-24 border-t pt-20"><h2 className="font-display text-4xl text-center">You may also like</h2><div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">{related.map((item) => <ProductCard key={item.id} product={item as never} />)}</div></div>}
