@@ -72,6 +72,50 @@
   --section-py: py-20;
 }
 
+
+.dark {
+  --background: oklch(0.18 0.012 60);
+  --foreground: oklch(0.95 0.008 80);
+
+  --card: oklch(0.22 0.014 60);
+  --card-foreground: oklch(0.95 0.008 80);
+  --popover: oklch(0.22 0.014 60);
+  --popover-foreground: oklch(0.95 0.008 80);
+
+  --primary: oklch(0.78 0.15 70);
+  --primary-foreground: oklch(0.2 0.02 60);
+
+  --secondary: oklch(0.27 0.015 60);
+  --secondary-foreground: oklch(0.95 0.008 80);
+
+  --muted: oklch(0.26 0.014 60);
+  --muted-foreground: oklch(0.74 0.012 80);
+
+  --accent: oklch(0.78 0.15 70);
+  --accent-foreground: oklch(0.2 0.02 60);
+
+  --destructive: oklch(0.58 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.32 0.015 60);
+  --input: oklch(0.32 0.015 60);
+  --ring: oklch(0.78 0.15 70);
+
+  --gradient-soft: linear-gradient(135deg, oklch(0.24 0.02 60), oklch(0.2 0.02 70));
+  --gradient-hero: linear-gradient(180deg, oklch(0.22 0.02 60) 0%, oklch(0.18 0.02 70) 100%);
+  --shadow-soft: 0 10px 30px -10px oklch(0 0 0 / 0.5);
+  --shadow-card: 0 5px 15px -5px oklch(0 0 0 / 0.45);
+}
+
+@layer base {
+  html, body { max-width: 100%; overflow-x: hidden; }
+  img, video { max-width: 100%; height: auto; }
+}
+
+@media (max-width: 480px) {
+  .container-x { padding-inline: 1rem; }
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
