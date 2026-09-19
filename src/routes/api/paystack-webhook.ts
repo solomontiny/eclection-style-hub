@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import crypto from "crypto";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin.server";
 
 export const Route = createFileRoute("/api/paystack-webhook")({
   server: {
