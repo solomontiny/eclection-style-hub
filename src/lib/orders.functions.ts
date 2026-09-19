@@ -1,7 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { CONTACT } from "./contact";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getSupabaseAdmin } from "./supabase-admin.server";
+
+/** Wholesale price per piece (1 bundle = 10 pieces = ₦60,000). */
+const BULK_UNIT_PRICE = 6000;
 
 const SnapshotSchema = z.object({
   orderRef: z.string().min(3).max(64),
@@ -128,30 +131,41 @@ function buildEmailHtml(args: {
  */
 export const createOrderServerFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({
-    items: z.array(z.object({ id: z.string(), size: z.string(), qty: z.number().int().min(1) })),
+    items: z.array(z.object({
+      id: z.string(),
+      size: z.string(),
+      qty: z.number().int().min(1),
+      isBulk: z.boolean().optional(),
+    })),
     customer: z.object({ name: z.string(), email: z.string().email(), phone: z.string().optional() }),
     callbackUrl: z.string().url().optional(),
   }))
   .handler(async ({ data }) => {
     const { items, customer, callbackUrl } = data;
+    const supabaseAdmin = getSupabaseAdmin();
 
     // 1. Fetch products
     const { data: products, error: productError } = await supabaseAdmin
       .from("products")
-      .select("id, name, price, discount_percent")
+      .select("id, name, price, sale_price, discount_percent")
       .in("id", items.map(i => i.id));
 
     if (productError || !products) {
-      throw new Error("Failed to fetch product data");
+      console.error("Failed to fetch products:", productError?.code, productError?.message, productError?.details);
+      throw new Error("We could not load your items. Please refresh your cart and try again.");
     }
 
-    // 2. Calculate totals
+    // 2. Calculate totals (authoritative, server-side, no VAT)
     let subtotal = 0;
     const orderItems = items.map(item => {
-      const product = products.find(p => p.id === item.id);
-      if (!product) throw new Error(`Product not found: ${item.id}`);
+      const product = products.find((p) => p.id === item.id);
+      if (!product) throw new Error("One of the items in your cart is no longer available.");
 
-      const price = Number(product.price) * (1 - Number(product.discount_percent) / 100);
+      // Bulk/wholesale pieces are a fixed ₦6,000 per piece.
+      const base = product.sale_price != null
+        ? Number(product.sale_price)
+        : Number(product.price) * (1 - Number(product.discount_percent ?? 0) / 100);
+      const price = item.isBulk ? BULK_UNIT_PRICE : base;
       const itemSubtotal = price * item.qty;
       subtotal += itemSubtotal;
 
@@ -176,7 +190,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       total,
       payment_status: 'pending' as const,
       paystack_reference: reference,
-      notes: items.map(i => `${products.find(p => p.id === i.id)?.name} (Size ${i.size}) x ${i.qty}`).join(", "),
+      notes: items.map(i => `${products.find((p) => p.id === i.id)?.name}${i.isBulk ? " (Bulk)" : ""} (Size ${i.size}) x ${i.qty}`).join(", "),
     };
 
     const { data: order, error: orderError } = await supabaseAdmin
@@ -186,8 +200,8 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       .single();
 
     if (orderError) {
-      console.error("Failed to create order:", orderError.code, orderError.message);
-      throw new Error("Failed to create order");
+      console.error("Failed to create order:", orderError.code, orderError.message, orderError.details, orderError.hint);
+      throw new Error(`We could not save your order (${orderError.code || "db_error"}). Please try again.`);
     }
     if (!order) {
       throw new Error("Failed to create order: No data returned");
@@ -275,6 +289,8 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
     if (!paystackSecret) {
       return { status: "error" as const, message: "Payment verification is not configured." };
     }
+
+    const supabaseAdmin = getSupabaseAdmin();
 
     try {
       const res = await fetch(

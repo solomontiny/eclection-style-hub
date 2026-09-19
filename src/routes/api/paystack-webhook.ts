@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import crypto from "crypto";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin.server";
 
 export const Route = createFileRoute("/api/paystack-webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const supabaseAdmin = getSupabaseAdmin();
         const signature = request.headers.get("x-paystack-signature");
         const secret = process.env.PAYSTACK_SECRET_KEY;
         if (!secret) {

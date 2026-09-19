@@ -34,21 +34,21 @@ function BulkOrderPage() {
   return (
     <div className="container-x py-12 space-y-12">
       <div className="text-center">
-        <h1 className="text-4xl font-display">Build Your Wholesale Order</h1>
+        <h1 className="text-3xl sm:text-4xl font-display">Build Your Wholesale Order</h1>
         <p className="text-muted-foreground mt-4">
           Wholesale price: ₦6,000 per piece (1 bundle = 10 pieces = ₦60,000).
         </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
         {products.map(p => (
           <div key={p.id} className="p-4 bg-muted rounded-lg space-y-4">
             <img src={p.image ?? p.image_url ?? ""} alt={p.name} className="w-full h-48 object-cover rounded-lg" />
             <p className="font-medium">{p.name}</p>
-            <div className="flex gap-2 items-center">
-                <Input type="number" min="1" value={bundleInputs[p.id] || 1} onChange={e => setBundleInputs({...bundleInputs, [p.id]: parseInt(e.target.value) || 1})} className="w-20" />
+            <div className="flex flex-wrap gap-2 items-center">
+                <Input type="number" min="1" aria-label={`Bundles of ${p.name}`} value={bundleInputs[p.id] || 1} onChange={e => setBundleInputs({...bundleInputs, [p.id]: parseInt(e.target.value) || 1})} className="w-20" />
                 <span>Bundles</span>
-                <Button onClick={() => handleAddBulk(p)}>Add to Cart</Button>
+                <Button className="ml-auto" onClick={() => handleAddBulk(p)}>Add to cart</Button>
             </div>
             <p className="text-sm font-semibold">Total: {formatNaira((bundleInputs[p.id] || 1) * 60000)}</p>
           </div>

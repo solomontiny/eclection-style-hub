@@ -29,7 +29,7 @@ function Home() {
 
   return (
     <>
-      <section className="relative h-[70vh] min-h-[500px] w-full overflow-hidden">
+      <section className="relative h-[58vh] min-h-[380px] sm:h-[70vh] sm:min-h-[500px] w-full overflow-hidden">
         <img
           src={heroImg}
           alt="SupplierAffordable fashion collection"
@@ -38,21 +38,10 @@ function Home() {
           className="absolute inset-0 h-full w-full object-cover object-[center_30%]"
         />
         <div className="absolute inset-0 bg-black/30" />
-        <div className="container-x relative h-full flex flex-col justify-center items-start text-left">
-          <span className="text-white/90 font-medium tracking-[0.2em] uppercase text-xs mb-4">
-            ✦ Premium Nigerian Fashion ✦
-          </span>
-          <h1 className="font-display text-white text-4xl md:text-6xl lg:text-7xl leading-tight tracking-tight mb-6">
-            Elegance Made <span className="italic font-normal">Affordable</span>
-          </h1>
-          <p className="text-white/95 text-lg md:text-xl max-w-lg mb-8">
-            Discover curated fashion for every occasion. Quality clothing, styled for you.
-          </p>
-          <div className="flex flex-wrap gap-4">
-            <Link to="/shop" className="btn-primary !bg-white !text-foreground hover:!bg-white/90 !px-10">
-              Shop Collection
-            </Link>
-          </div>
+        <div className="container-x relative h-full flex flex-col justify-end items-start text-left pb-10 sm:pb-14">
+          <Link to="/shop" className="btn-primary !bg-white !text-black hover:!bg-white/90 !px-8 sm:!px-10">
+            Shop Collection
+          </Link>
         </div>
       </section>
 
