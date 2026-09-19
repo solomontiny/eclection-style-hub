@@ -200,8 +200,8 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       .single();
 
     if (orderError) {
-      console.error("Failed to create order:", orderError.code, orderError.message);
-      throw new Error("Failed to create order");
+      console.error("Failed to create order:", orderError.code, orderError.message, orderError.details, orderError.hint);
+      throw new Error(`We could not save your order (${orderError.code || "db_error"}). Please try again.`);
     }
     if (!order) {
       throw new Error("Failed to create order: No data returned");
