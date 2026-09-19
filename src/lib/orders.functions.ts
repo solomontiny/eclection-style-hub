@@ -131,30 +131,41 @@ function buildEmailHtml(args: {
  */
 export const createOrderServerFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({
-    items: z.array(z.object({ id: z.string(), size: z.string(), qty: z.number().int().min(1) })),
+    items: z.array(z.object({
+      id: z.string(),
+      size: z.string(),
+      qty: z.number().int().min(1),
+      isBulk: z.boolean().optional(),
+    })),
     customer: z.object({ name: z.string(), email: z.string().email(), phone: z.string().optional() }),
     callbackUrl: z.string().url().optional(),
   }))
   .handler(async ({ data }) => {
     const { items, customer, callbackUrl } = data;
+    const supabaseAdmin = getSupabaseAdmin();
 
     // 1. Fetch products
     const { data: products, error: productError } = await supabaseAdmin
       .from("products")
-      .select("id, name, price, discount_percent")
+      .select("id, name, price, sale_price, discount_percent")
       .in("id", items.map(i => i.id));
 
     if (productError || !products) {
-      throw new Error("Failed to fetch product data");
+      console.error("Failed to fetch products:", productError?.code, productError?.message, productError?.details);
+      throw new Error("We could not load your items. Please refresh your cart and try again.");
     }
 
-    // 2. Calculate totals
+    // 2. Calculate totals (authoritative, server-side, no VAT)
     let subtotal = 0;
     const orderItems = items.map(item => {
-      const product = products.find(p => p.id === item.id);
-      if (!product) throw new Error(`Product not found: ${item.id}`);
+      const product = products.find((p) => p.id === item.id);
+      if (!product) throw new Error("One of the items in your cart is no longer available.");
 
-      const price = Number(product.price) * (1 - Number(product.discount_percent) / 100);
+      // Bulk/wholesale pieces are a fixed ₦6,000 per piece.
+      const base = product.sale_price != null
+        ? Number(product.sale_price)
+        : Number(product.price) * (1 - Number(product.discount_percent ?? 0) / 100);
+      const price = item.isBulk ? BULK_UNIT_PRICE : base;
       const itemSubtotal = price * item.qty;
       subtotal += itemSubtotal;
 
