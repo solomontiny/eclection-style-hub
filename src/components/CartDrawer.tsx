@@ -31,12 +31,12 @@ export function CartDrawer() {
         </button>
       </SheetTrigger>
 
-      <SheetContent side="right" className="w-full sm:max-w-md">
+      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Your cart ({count})</SheetTitle>
         </SheetHeader>
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 pb-10">
           {items.length === 0 ? <div className="py-10 text-center text-sm text-muted-foreground">Your cart is empty.</div> : <div className="space-y-3">{items.map((item) => <div key={cartItemKey(item.id, item.size)} className="flex gap-3 border-b border-border pb-3">
             <div className="h-16 w-14 rounded-lg bg-muted overflow-hidden">{item.image && <img src={item.image} alt="" className="h-full w-full object-cover" />}</div>
             <div className="min-w-0 flex-1">
@@ -61,7 +61,7 @@ export function CartDrawer() {
           <button
             disabled={items.length === 0}
             onClick={handleCheckout}
-            className="w-full bg-black text-white py-2 rounded-lg disabled:opacity-50"
+            className="w-full bg-primary text-primary-foreground py-3 rounded-full font-semibold disabled:opacity-50"
           >
             Checkout
           </button>
