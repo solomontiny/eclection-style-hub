@@ -290,6 +290,8 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
       return { status: "error" as const, message: "Payment verification is not configured." };
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+
     try {
       const res = await fetch(
         `https://api.paystack.co/transaction/verify/${encodeURIComponent(data.reference)}`,
