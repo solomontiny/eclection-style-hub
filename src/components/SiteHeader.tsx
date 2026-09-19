@@ -69,12 +69,14 @@ export function SiteHeader() {
               Login
             </Link>
           )}
-          <Link to="/contact" className="btn-primary !py-2 !px-6 text-sm">
-            Order Now
+          <ThemeToggle />
+          <Link to="/shop" className="btn-primary !py-2 !px-6 text-sm">
+            Shop Now
           </Link>
           <CartDrawer />
         </nav>
-        <div className="md:hidden flex items-center gap-2">
+        <div className="md:hidden flex items-center gap-1">
+          <ThemeToggle />
           <CartDrawer />
           <button
             className="p-2 -mr-2"
