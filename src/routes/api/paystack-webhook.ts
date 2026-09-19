@@ -6,6 +6,7 @@ export const Route = createFileRoute("/api/paystack-webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const supabaseAdmin = getSupabaseAdmin();
         const signature = request.headers.get("x-paystack-signature");
         const secret = process.env.PAYSTACK_SECRET_KEY;
         if (!secret) {
