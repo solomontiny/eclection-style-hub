@@ -52,7 +52,7 @@ function CheckoutPage() {
     try {
       const order = await createOrderServerFn({
         data: {
-          items: items.map((i) => ({ id: i.id, size: i.size, qty: i.qty })),
+          items: items.map((i) => ({ id: i.id, size: i.size, qty: i.qty, isBulk: !!i.isBulk })),
           customer: data,
           callbackUrl: `${window.location.origin}/thank-you`,
         },
@@ -75,9 +75,9 @@ function CheckoutPage() {
 
 
   return (
-    <section className="container-x py-12">
-      <h1 className="text-3xl font-display">Checkout</h1>
-      <div className="grid md:grid-cols-2 gap-12 mt-8">
+    <section className="container-x py-10 md:py-12">
+      <h1 className="text-2xl sm:text-3xl font-display">Checkout</h1>
+      <div className="grid gap-8 md:grid-cols-2 md:gap-12 mt-8">
         <form onSubmit={form.handleSubmit(handleCheckout)} className="space-y-4">
           <div>
             <Label>Full Name</Label>
@@ -98,15 +98,22 @@ function CheckoutPage() {
             {loading ? "Processing..." : "Pay with Paystack"}
           </Button>
         </form>
-        <div className="border p-6 rounded-lg">
-          <h2 className="text-xl font-bold mb-4">Order Summary</h2>
+        <div className="border rounded-lg p-4 sm:p-6 bg-card h-fit">
+          <h2 className="text-lg sm:text-xl font-bold mb-4">Order Summary</h2>
           {items.map(item => (
-            <div key={cartItemKey(item.id, item.size)} className="flex justify-between py-2">
-              <span>{item.name} (Size {item.size}) x {item.qty}</span>
-              <span>{formatNaira(item.price * item.qty)}</span>
+            <div key={cartItemKey(item.id, item.size)} className="flex items-start justify-between gap-3 py-2 border-b border-border/50 last:border-0">
+              <span className="min-w-0 text-sm break-words">
+                {item.name}
+                <span className="block text-xs text-muted-foreground">
+                  {item.isBulk
+                    ? `Bulk · ${item.bundleQty ?? Math.round(item.qty / 10)} bundle(s) · ${item.qty} pieces`
+                    : `Size ${item.size} · Qty ${item.qty}`}
+                </span>
+              </span>
+              <span className="shrink-0 text-sm font-medium tabular-nums">{formatNaira(item.price * item.qty)}</span>
             </div>
           ))}
-          <div className="border-t mt-4 pt-4 font-bold flex justify-between">
+          <div className="border-t mt-4 pt-4 font-bold flex justify-between gap-3">
             <span>Total</span>
             <span>{formatNaira(subtotal)}</span>
           </div>
