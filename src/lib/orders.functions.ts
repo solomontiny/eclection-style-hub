@@ -1,7 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { CONTACT } from "./contact";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getSupabaseAdmin } from "./supabase-admin.server";
+
+/** Wholesale price per piece (1 bundle = 10 pieces = ₦60,000). */
+const BULK_UNIT_PRICE = 6000;
 
 const SnapshotSchema = z.object({
   orderRef: z.string().min(3).max(64),
