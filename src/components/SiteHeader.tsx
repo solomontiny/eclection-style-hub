@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Menu, X, LayoutDashboard } from "lucide-react";
 import { CartDrawer } from "./CartDrawer";
+import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "@/lib/auth";
 import officialLogo from "@/assets/supplier-affordable-logo.png";
 
