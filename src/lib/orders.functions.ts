@@ -190,7 +190,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       total,
       payment_status: 'pending' as const,
       paystack_reference: reference,
-      notes: items.map(i => `${products.find(p => p.id === i.id)?.name} (Size ${i.size}) x ${i.qty}`).join(", "),
+      notes: items.map(i => `${products.find((p) => p.id === i.id)?.name}${i.isBulk ? " (Bulk)" : ""} (Size ${i.size}) x ${i.qty}`).join(", "),
     };
 
     const { data: order, error: orderError } = await supabaseAdmin
