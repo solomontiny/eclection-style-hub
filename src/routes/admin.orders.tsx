@@ -170,10 +170,10 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
               <p className="text-xs text-muted-foreground mb-2">Items</p>
               <div className="space-y-1">
                 {data.items.map((it) => (
-                  <div key={it.id} className="flex justify-between border-b border-border py-1">
-                    <span>{it.product_name} × {it.quantity}</span>
-                    <span>{fmtNGN(it.subtotal)}</span>
-                  </div>
+                   <div key={it.id} className="flex justify-between border-b border-border py-1">
+                     <span>{it.product_name} × {it.quantity}{it.color ? ` (${it.color})` : ""}</span>
+                     <span>{fmtNGN(it.subtotal)}</span>
+                   </div>
                 ))}
               </div>
             </div>

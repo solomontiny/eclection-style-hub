@@ -70,7 +70,11 @@ function OrderDetailsPage() {
                 <div key={item.id} className="p-4 flex justify-between">
                     <div>
                         <p className="font-medium">{item.product_name}</p>
-                        <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                         <p className="text-sm text-muted-foreground">
+                           Qty: {item.quantity}
+                           {item.size && ` · Size ${item.size}`}
+                           {item.color && ` · Color: ${item.color}`}
+                         </p>
                     </div>
                     <p className="font-semibold">{fmtNGN(Number(item.unit_price) * item.quantity)}</p>
                 </div>

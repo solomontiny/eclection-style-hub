@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { parseColorsString } from "@/lib/colors";
 
 export default function EditProduct() {
   const navigate = useNavigate();
@@ -36,9 +37,7 @@ export default function EditProduct() {
       }
     }
 
-    const colorsArr = data.colors
-      ? data.colors.split(",").map((c: string) => c.trim()).filter(Boolean)
-      : null;
+    const colorsArr = parseColorsString(data.colors);
 
     const { error } = await supabase.from("products").update({
       ...data,

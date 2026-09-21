@@ -4,12 +4,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Minus, Plus, ShoppingBag } from "lucide-react";
 import { type Product, formatNaira } from "@/lib/products";
 import { useCart } from "@/lib/cart";
+import { colorToCss } from "@/lib/colors";
 
 export function BuyNowDialog({ product, trigger, preselectedColor }: { product: Product; trigger: React.ReactNode; preselectedColor?: string }) {
   const [open, setOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState("M");
-  const [color, setColor] = useState<string>(preselectedColor ?? "");
+  const [color, setColor] = useState<string>(preselectedColor ?? product.colors?.[0] ?? "");
   const { addItem } = useCart();
   const navigate = useNavigate();
   
@@ -67,6 +68,33 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
             <p className="font-display text-2xl text-primary">{formatNaira(total)}</p>
           </div>
         </div>
+
+        {product.colors && product.colors.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs font-medium mb-1.5">Colour</p>
+            <div className="flex gap-1.5" role="radiogroup" aria-label="Select colour">
+              {product.colors.map((c: string) => (
+                <button
+                  key={c}
+                  type="button"
+                  role="radio"
+                  aria-checked={color === c}
+                  onClick={() => setColor(c)}
+                  className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
+                    color === c
+                      ? "ring-2 ring-primary ring-offset-1 ring-offset-background border-primary"
+                      : "border-border hover:border-primary"
+                  }`}
+                  style={{ backgroundColor: colorToCss(c) }}
+                  aria-label={`Select colour ${c}`}
+                >
+                  {color === c && <span className="w-2 h-2 rounded-full bg-white/70" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <DialogFooter>
           <button type="button" onClick={handlePayNow} className="btn-primary w-full justify-center">
             <ShoppingBag size={16} /> Pay now

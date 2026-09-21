@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
+import { colorsToString } from "@/lib/colors";
+
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
@@ -39,9 +41,13 @@ export function ProductForm({ initialData, onSubmit, loading }: ProductFormProps
     initialData?.images?.map((url: string, index: number) => ({ file: null, url, isPrimary: index === 0 })) || []
   );
 
+  const initialColors = Array.isArray(initialData?.colors)
+    ? colorsToString(initialData.colors)
+    : (typeof initialData?.colors === "string" ? initialData.colors : "");
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: initialData || { status: "active" },
+    defaultValues: { ...(initialData ?? { status: "active" }), colors: initialColors },
   });
 
   useEffect(() => {
@@ -75,12 +81,13 @@ export function ProductForm({ initialData, onSubmit, loading }: ProductFormProps
         <Switch checked={form.watch("status") === "active"} onCheckedChange={(checked) => form.setValue("status", checked ? "active" : "draft")} />
       </div>
 
-      <input
-        {...form.register("colors")}
-        placeholder="Colors (comma-separated, e.g. Black, White, Red)"
-        className="input"
-        maxLength={500}
-      />
+      <div>
+        <Input
+          {...form.register("colors")}
+          placeholder="Colors (comma-separated, e.g. Black, White, Red)"
+          maxLength={500}
+        />
+      </div>
 
       <ImageUploader images={images} setImages={setImages} />
 

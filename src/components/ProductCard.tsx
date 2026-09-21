@@ -1,4 +1,5 @@
 import { type Product, formatNaira } from "@/lib/products";
+import { colorToCss } from "@/lib/colors";
 import { ShoppingBag, Plus, Check } from "lucide-react";
 import { useState } from "react";
 import { BuyNowDialog } from "./BuyNowDialog";
@@ -116,7 +117,7 @@ export function ProductCard({ product }: { product: Product }) {
                 className={`w-6 h-6 rounded-full border transition-all ${
                   color === c ? "ring-2 ring-accent ring-offset-1" : "border-border"
                 }`}
-                style={{ backgroundColor: c.toLowerCase() }}
+                style={{ backgroundColor: colorToCss(c) }}
                 aria-label={`Select colour ${c}`}
               />
             ))}

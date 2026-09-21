@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Minus, Plus, ShoppingBag } from "lucide-react";
 import { getProductBySlug, formatNaira } from "@/lib/products";
+import { colorToCss } from "@/lib/colors";
 import { useCart } from "@/lib/cart";
 import { ProductCard } from "@/components/ProductCard";
 import { BuyNowDialog } from "@/components/BuyNowDialog";
@@ -100,7 +101,7 @@ function ProductDetails() {
                     type="button"
                     onClick={() => setSelectedColor(color)}
                     className={`w-14 h-14 border-2 rounded-full font-bold transition-all ${selectedColor === color ? "border-primary ring-2 ring-primary ring-offset-2" : "border-border hover:border-primary"}`}
-                    style={{ backgroundColor: color.toLowerCase() }}
+                     style={{ backgroundColor: colorToCss(color) }}
                 />
                 ))}
             </div>

@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fmtNGN, slugify } from "@/lib/admin-utils";
+import { colorsToString, parseColorsString } from "@/lib/colors";
 import type { Product } from "@/lib/products";
 
 export const Route = createFileRoute("/admin/products")({
@@ -287,6 +288,7 @@ function ProductDialog({
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<Partial<Product>>(initial ?? {});
+  const [colorsText, setColorsText] = useState("");
   const [uploading, setUploading] = useState(false);
   const { data: allProducts = [] } = useQuery({
     queryKey: ["all-products"],
@@ -313,6 +315,7 @@ function ProductDialog({
         ...initial
       });
       setImages((initial?.images || []).map((url, i) => ({ file: null, url, isPrimary: i === 0 })));
+      setColorsText(colorsToString(initial?.colors));
 
       if (initial?.id) {
         supabase.from("bundles")
@@ -388,7 +391,7 @@ function ProductDialog({
             featured: !!form.featured,
             product_type: form.product_type || "standard",
             promotion_status: form.promotion_status || "regular",
-            colors: form.colors ?? null
+            colors: parseColorsString(colorsText)
         };
 
         let result;
@@ -532,6 +535,15 @@ function ProductDialog({
                 ))}
              </div>
           )}
+
+          <div>
+            <Label>Colors (comma-separated)</Label>
+            <Input
+              value={colorsText}
+              onChange={(e) => setColorsText(e.target.value)}
+              placeholder="e.g. Black, White, Red"
+            />
+          </div>
 
           <div>
             <Label>Description</Label>

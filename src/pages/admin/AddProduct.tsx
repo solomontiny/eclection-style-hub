@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { parseColorsString } from "@/lib/colors";
 
 export default function AddProduct() {
   const navigate = useNavigate();
@@ -28,9 +29,7 @@ export default function AddProduct() {
       }
     }
 
-    const colorsArr = data.colors
-      ? data.colors.split(",").map((c: string) => c.trim()).filter(Boolean)
-      : null;
+    const colorsArr = parseColorsString(data.colors);
 
     const baseSlug = data.name.toLowerCase().replace(/\s+/g, "-");
     let productSlug = baseSlug;
