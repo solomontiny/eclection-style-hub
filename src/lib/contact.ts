@@ -17,7 +17,13 @@ export const LAGOS_DELIVERY_NOTE = "Lagos Delivery: Your order will be delivered
 export const DELIVERY_INFO = {
   interstate: "Interstate delivery: 2–5 working days",
   international: "International delivery: 2–14 working days",
-  note: "Delivery times may vary depending on your location and circumstances.",
+  regionalFees: {
+    East: "₦5,000",
+    South: "₦5,000",
+    North: "₦6,000",
+    West: "₦4,500",
+  },
+  note: "Delivery times may vary depending on your location and circumstances. Please note that delivery fees are separate from your order total and are paid directly to the dispatch rider upon delivery.",
 } as const;
 
 export const SUPPORT_HOURS = "We reply Monday to Friday, 9 AM to 6 PM.";

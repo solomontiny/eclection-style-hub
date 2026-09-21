@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +53,7 @@ function OrdersPage() {
               <div className="text-right">
                 <p className="font-semibold">{fmtNGN(Number(order.total))}</p>
                 <p className="text-xs capitalize text-muted-foreground">{order.status}</p>
+                <Link to="/account/orders/$id" params={{ id: order.id }} className="text-xs text-primary underline mt-1 block">Track Order</Link>
               </div>
             </div>
           ))}

@@ -1,0 +1,2 @@
+ALTER TABLE public.shop_settings ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5,2) NOT NULL DEFAULT 0;
+ALTER TABLE public.shop_settings ADD COLUMN IF NOT EXISTS is_vat_enabled BOOLEAN NOT NULL DEFAULT false;

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as ThankYouRouteImport } from './routes/thank-you'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
@@ -39,7 +40,13 @@ import { Route as AdminBulkRequestsRouteImport } from './routes/admin.bulk-reque
 import { Route as AdminAddProductRouteImport } from './routes/admin.add-product'
 import { Route as AccountOrdersRouteImport } from './routes/account.orders'
 import { Route as AdminEditProductIdRouteImport } from './routes/admin.edit-product.$id'
+import { Route as AccountOrdersIdRouteImport } from './routes/account.orders.$id'
 
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ThankYouRoute = ThankYouRouteImport.update({
   id: '/thank-you',
   path: '/thank-you',
@@ -190,6 +197,11 @@ const AdminEditProductIdRoute = AdminEditProductIdRouteImport.update({
   path: '/edit-product/$id',
   getParentRoute: () => AdminRoute,
 } as any)
+const AccountOrdersIdRoute = AccountOrdersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AccountOrdersRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -206,7 +218,8 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/thank-you': typeof ThankYouRoute
-  '/account/orders': typeof AccountOrdersRoute
+  '/verify-email': typeof VerifyEmailRoute
+  '/account/orders': typeof AccountOrdersRouteWithChildren
   '/admin/add-product': typeof AdminAddProductRoute
   '/admin/bulk-requests': typeof AdminBulkRequestsRoute
   '/admin/categories': typeof AdminCategoriesRoute
@@ -221,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
   '/product/$slug': typeof ProductSlugRoute
   '/admin/': typeof AdminIndexRoute
+  '/account/orders/$id': typeof AccountOrdersIdRoute
   '/admin/edit-product/$id': typeof AdminEditProductIdRoute
 }
 export interface FileRoutesByTo {
@@ -237,7 +251,8 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/thank-you': typeof ThankYouRoute
-  '/account/orders': typeof AccountOrdersRoute
+  '/verify-email': typeof VerifyEmailRoute
+  '/account/orders': typeof AccountOrdersRouteWithChildren
   '/admin/add-product': typeof AdminAddProductRoute
   '/admin/bulk-requests': typeof AdminBulkRequestsRoute
   '/admin/categories': typeof AdminCategoriesRoute
@@ -252,6 +267,7 @@ export interface FileRoutesByTo {
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
   '/product/$slug': typeof ProductSlugRoute
   '/admin': typeof AdminIndexRoute
+  '/account/orders/$id': typeof AccountOrdersIdRoute
   '/admin/edit-product/$id': typeof AdminEditProductIdRoute
 }
 export interface FileRoutesById {
@@ -270,7 +286,8 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/thank-you': typeof ThankYouRoute
-  '/account/orders': typeof AccountOrdersRoute
+  '/verify-email': typeof VerifyEmailRoute
+  '/account/orders': typeof AccountOrdersRouteWithChildren
   '/admin/add-product': typeof AdminAddProductRoute
   '/admin/bulk-requests': typeof AdminBulkRequestsRoute
   '/admin/categories': typeof AdminCategoriesRoute
@@ -285,6 +302,7 @@ export interface FileRoutesById {
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
   '/product/$slug': typeof ProductSlugRoute
   '/admin/': typeof AdminIndexRoute
+  '/account/orders/$id': typeof AccountOrdersIdRoute
   '/admin/edit-product/$id': typeof AdminEditProductIdRoute
 }
 export interface FileRouteTypes {
@@ -304,6 +322,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/thank-you'
+    | '/verify-email'
     | '/account/orders'
     | '/admin/add-product'
     | '/admin/bulk-requests'
@@ -319,6 +338,7 @@ export interface FileRouteTypes {
     | '/api/paystack-webhook'
     | '/product/$slug'
     | '/admin/'
+    | '/account/orders/$id'
     | '/admin/edit-product/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -335,6 +355,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/thank-you'
+    | '/verify-email'
     | '/account/orders'
     | '/admin/add-product'
     | '/admin/bulk-requests'
@@ -350,6 +371,7 @@ export interface FileRouteTypes {
     | '/api/paystack-webhook'
     | '/product/$slug'
     | '/admin'
+    | '/account/orders/$id'
     | '/admin/edit-product/$id'
   id:
     | '__root__'
@@ -367,6 +389,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/thank-you'
+    | '/verify-email'
     | '/account/orders'
     | '/admin/add-product'
     | '/admin/bulk-requests'
@@ -382,6 +405,7 @@ export interface FileRouteTypes {
     | '/api/paystack-webhook'
     | '/product/$slug'
     | '/admin/'
+    | '/account/orders/$id'
     | '/admin/edit-product/$id'
   fileRoutesById: FileRoutesById
 }
@@ -400,12 +424,20 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ThankYouRoute: typeof ThankYouRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
   ApiPaystackWebhookRoute: typeof ApiPaystackWebhookRoute
   ProductSlugRoute: typeof ProductSlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/thank-you': {
       id: '/thank-you'
       path: '/thank-you'
@@ -616,15 +648,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminEditProductIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/account/orders/$id': {
+      id: '/account/orders/$id'
+      path: '/$id'
+      fullPath: '/account/orders/$id'
+      preLoaderRoute: typeof AccountOrdersIdRouteImport
+      parentRoute: typeof AccountOrdersRoute
+    }
   }
 }
 
+interface AccountOrdersRouteChildren {
+  AccountOrdersIdRoute: typeof AccountOrdersIdRoute
+}
+
+const AccountOrdersRouteChildren: AccountOrdersRouteChildren = {
+  AccountOrdersIdRoute: AccountOrdersIdRoute,
+}
+
+const AccountOrdersRouteWithChildren = AccountOrdersRoute._addFileChildren(
+  AccountOrdersRouteChildren,
+)
+
 interface AccountRouteChildren {
-  AccountOrdersRoute: typeof AccountOrdersRoute
+  AccountOrdersRoute: typeof AccountOrdersRouteWithChildren
 }
 
 const AccountRouteChildren: AccountRouteChildren = {
-  AccountOrdersRoute: AccountOrdersRoute,
+  AccountOrdersRoute: AccountOrdersRouteWithChildren,
 }
 
 const AccountRouteWithChildren =
@@ -679,6 +730,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ThankYouRoute: ThankYouRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
   ApiPaystackWebhookRoute: ApiPaystackWebhookRoute,
   ProductSlugRoute: ProductSlugRoute,
 }

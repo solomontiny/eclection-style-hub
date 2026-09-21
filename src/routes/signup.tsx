@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import * as React from "react";
 import { useEffect, useState, type FormEvent } from "react";
@@ -25,6 +26,7 @@ function SignupPage() {
   const [busy, setBusy] = useState(false);
   const busyRef = React.useRef(false);
   const [err, setErr] = useState("");
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   useEffect(() => {
     if (!loading && user) {
@@ -44,22 +46,66 @@ function SignupPage() {
       if (res.error) {
         setErr(res.error);
         busyRef.current = false;
+        setBusy(false);
       } else {
-        // If the user has a session, they are automatically logged in.
-        // If not, it means email confirmation is probably required.
-        if (res.data?.session) {
-          navigate({ to: "/account" });
-        } else {
-          setErr("Account created successfully! Please check your email to confirm your account.");
-          // We can't navigate to /account yet as they aren't logged in.
-        }
+        setSignupSuccess(true);
       }
     } catch (err) {
       setErr("An unexpected error occurred.");
       busyRef.current = false;
-    } finally {
       setBusy(false);
     }
+  }
+
+  async function resendVerification() {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    setErr("");
+    console.log("[RESEND START]", email.trim());
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/verify-email`,
+        }
+      });
+      if (error) {
+        console.error("[RESEND ERROR]", error);
+        throw error;
+      }
+      console.log("[RESEND SUCCESS]");
+      alert("Verification email resent successfully!");
+    } catch (err: any) {
+      console.error("[RESEND EXCEPTION]", err);
+      setErr(err.message || "Failed to resend verification email");
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
+
+  if (signupSuccess) {
+    return (
+      <section className="container-x py-16 flex justify-center">
+        <div className="w-full max-w-md card-elegant p-8">
+          <h1 className="font-display text-3xl mb-1">Account Created! 🎉</h1>
+          <p className="text-muted-foreground text-sm mb-6">
+            We've sent a verification email to {email}. Please check your inbox and click the verification link to activate your account.
+          </p>
+          <div className="flex flex-col gap-3">
+            <Button onClick={resendVerification} disabled={busy}>
+              {busy ? "Sending..." : "Resend verification email"}
+            </Button>
+            <Link to="/login" className="text-center text-primary font-medium hover:underline">
+              Back to Login
+            </Link>
+          </div>
+          {err && <p className="mt-4 text-destructive text-sm">{err}</p>}
+        </div>
+      </section>
+    );
   }
 
   return (

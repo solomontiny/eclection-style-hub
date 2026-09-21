@@ -38,10 +38,12 @@ function Home() {
           className="absolute inset-0 h-full w-full object-cover object-[center_30%]"
         />
         <div className="absolute inset-0 bg-black/30" />
-        <div className="container-x relative h-full flex flex-col justify-end items-start text-left pb-10 sm:pb-14">
-          <Link to="/shop" className="btn-primary !bg-white !text-black hover:!bg-white/90 !px-8 sm:!px-10">
-            Shop Collection
-          </Link>
+        <div className="container-x relative h-full flex flex-col justify-end items-center pb-20">
+          <div className="flex flex-wrap gap-4">
+            <Link to="/shop" className="btn-primary !bg-white !text-black hover:!bg-white/90 !px-10">
+              Shop Collection
+            </Link>
+          </div>
         </div>
       </section>
 

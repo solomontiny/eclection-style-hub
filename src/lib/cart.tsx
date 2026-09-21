@@ -52,7 +52,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const existing = arr.find((it) => itemKey(it.id, it.size) === key);
       if (existing) {
         return arr.map((it) =>
-          itemKey(it.id, it.size) === key ? { ...it, qty: it.qty + qty, bundleQty: isBulk ? (it.bundleQty || 0) + (bundleQty || 0) : it.bundleQty } : it,
+          itemKey(it.id, it.size) === key ? { ...it, price: isBulk ? 6000 : (product.sale_price ?? product.price), qty: it.qty + qty, bundleQty: isBulk ? (it.bundleQty || 0) + (bundleQty || 0) : it.bundleQty } : it,
         );
       }
       return [

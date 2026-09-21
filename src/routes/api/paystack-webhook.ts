@@ -59,7 +59,7 @@ export const Route = createFileRoute("/api/paystack-webhook")({
             return new Response(null, { status: 400 });
           }
 
-          const { data: order, error: orderError } = await supabaseAdmin
+          const { data: order, error: orderError } = await getSupabaseAdmin()
             .from("orders")
             .select("id, total, payment_status")
             .eq("paystack_reference", reference)
@@ -77,7 +77,7 @@ export const Route = createFileRoute("/api/paystack-webhook")({
             order.payment_status !== "paid" &&
             Math.abs(amount - order.total * 100) < 100
           ) {
-            const { error: updateError } = await supabaseAdmin
+            const { error: updateError } = await getSupabaseAdmin()
               .from("orders")
               .update({ payment_status: "paid" })
               .eq("id", order.id);

@@ -1,16 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { useCart, cartItemKey } from "@/lib/cart";
 import { formatNaira } from "@/lib/products";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createOrderServerFn } from "@/lib/orders.functions";
+import { createOrderServerFn, getTaxSettings } from "@/lib/orders.functions";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { DELIVERY_INFO } from "@/lib/contact";
 
 const CustomerSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -74,6 +75,8 @@ function CheckoutPage() {
   };
 
 
+  const totalWithVat = subtotal;
+
   return (
     <section className="container-x py-10 md:py-12">
       <h1 className="text-2xl sm:text-3xl font-display">Checkout</h1>
@@ -113,12 +116,25 @@ function CheckoutPage() {
               <span className="shrink-0 text-sm font-medium tabular-nums">{formatNaira(item.price * item.qty)}</span>
             </div>
           ))}
-          <div className="border-t mt-4 pt-4 font-bold flex justify-between gap-3">
-            <span>Total</span>
-            <span>{formatNaira(subtotal)}</span>
+          <div className="border-t mt-4 pt-4 font-bold flex flex-col gap-2">
+            <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>{formatNaira(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-lg pt-2 border-t">
+                <span>Total</span>
+                <span>{formatNaira(totalWithVat)}</span>
+            </div>
           </div>
-          <div className="mt-4 p-3 bg-secondary/30 rounded text-xs text-muted-foreground">
-            <p><strong>Delivery Disclaimer:</strong> Delivery fees are separate from your order total and are paid directly to the dispatch rider upon delivery. SupplierAffordable currently uses third-party dispatch services, so delivery fees may vary depending on your location and dispatch provider.</p>
+
+          <div className="mt-4 p-3 bg-secondary/30 rounded text-sm text-muted-foreground space-y-2">
+            <p><strong>Delivery Note:</strong> Delivery fees are separate from your order total and are paid directly to the dispatch rider upon delivery.</p>
+            <div className="grid grid-cols-2 gap-1 text-xs">
+                {Object.entries(DELIVERY_INFO.regionalFees).map(([region, fee]) => (
+                  <p key={region}><strong>{region}:</strong> {fee}</p>
+                ))}
+            </div>
+            <p className="text-xs">{DELIVERY_INFO.note}</p>
           </div>
         </div>
       </div>

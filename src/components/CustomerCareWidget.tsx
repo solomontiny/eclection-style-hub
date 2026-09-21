@@ -18,7 +18,7 @@ function autoReply(input: string): Msg {
   if (/(deliver|shipping|ship|dispatch)/.test(q))
     return {
       from: "bot",
-      text: `🚚 ${DELIVERY_INFO.interstate}.\n${DELIVERY_INFO.international}.\n\n${LAGOS_DELIVERY_NOTE}\n\n${DELIVERY_INFO.note}`,
+      text: `🚚 ${DELIVERY_INFO.interstate}.\n${DELIVERY_INFO.international}.\n\nRegional Fees:\n${Object.entries(DELIVERY_INFO.regionalFees).map(([k, v]) => `${k}: ${v}`).join('\n')}\n\n${LAGOS_DELIVERY_NOTE}\n\n${DELIVERY_INFO.note}`,
       quickReplies: ["Payment methods", "Email support"],
     };
   if (/(pay|payment|transfer|bank|card|promo|code|discount)/.test(q))

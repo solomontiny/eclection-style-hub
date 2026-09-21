@@ -127,7 +127,7 @@ export function AuthProvider({
         try {
           const redirectTo =
             typeof window !== "undefined"
-              ? `${window.location.origin}/`
+              ? `${window.location.origin}/verify-email`
               : undefined;
 
           const { data, error } =
@@ -145,7 +145,8 @@ export function AuthProvider({
             });
 
           if (error) {
-            console.error("[SIGNUP ERROR]", error);
+            console.error("[SIGNUP ERROR FULL]", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+            console.error("[SIGNUP ERROR MESSAGE]", error.message);
 
             return {
               error: mapAuthError(error.message),
@@ -154,6 +155,7 @@ export function AuthProvider({
 
           console.log("[SIGNUP SUCCESS]", data.user?.email);
 
+          // Treat as success if user created, even if session is null (email confirmation pending)
           return { data };
         } catch (err) {
           console.error("[SIGNUP EXCEPTION]", err);

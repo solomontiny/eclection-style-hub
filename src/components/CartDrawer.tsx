@@ -41,9 +41,13 @@ export function CartDrawer() {
             <div className="h-16 w-14 rounded-lg bg-muted overflow-hidden">{item.image && <img src={item.image} alt="" className="h-full w-full object-cover" />}</div>
             <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{item.isBulk ? "Bulk Order: " : ""}{item.name}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground font-mono">
                     {formatNaira(item.price)}
-                    {item.isBulk ? ` · ${item.qty} pieces / ${item.bundleQty} bundles` : ` · Size ${item.size}`}
+                    {item.isBulk ? (
+                        <span className="block mt-0.5 text-[11px] text-primary">
+                          {item.bundleQty} Bundle{item.bundleQty !== 1 ? 's' : ''} ({item.qty} Pieces)
+                        </span>
+                    ) : ` · Size ${item.size}`}
                 </p>
                 <div className="mt-2 flex items-center gap-2">
                     <button type="button" onClick={() => updateQty(cartItemKey(item.id, item.size), item.qty - (item.isBulk ? 10 : 1))} className="rounded border p-1"><Minus size={12} /></button>

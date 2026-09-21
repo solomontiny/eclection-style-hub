@@ -8,16 +8,20 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fmtNGN, fmtDate } from "@/lib/admin-utils";
+import { sendDeliveryNotification } from "@/lib/orders.functions";
+import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/admin/orders")({ component: OrdersPage });
 
-const STATUSES = ["pending", "processing", "shipped", "delivered", "cancelled"] as const;
+const STATUSES = ["pending", "processing", "shipped", "out_for_delivery", "delivered", "cancelled"] as const;
 const PAYMENT_STATUSES = ["pending", "paid", "failed", "refunded"] as const;
 type Status = typeof STATUSES[number];
 const statusClass: Record<Status, string> = {
   pending: "bg-amber-100 text-amber-800",
   processing: "bg-blue-100 text-blue-800",
   shipped: "bg-indigo-100 text-indigo-800",
+  out_for_delivery: "bg-teal-100 text-teal-800",
   delivered: "bg-emerald-100 text-emerald-800",
   cancelled: "bg-red-100 text-red-800",
 };
@@ -123,6 +127,8 @@ function OrdersPage() {
 }
 
 function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [tracking, setTracking] = useState("");
   const { data } = useQuery({
     queryKey: ["admin-order", orderId],
     enabled: !!orderId,
@@ -135,6 +141,17 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
     },
   });
 
+  useEffect(() => { if (data?.order) setTracking(data.order.tracking_number ?? ""); }, [data]);
+  
+  const updateTracking = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("orders").update({ tracking_number: tracking }).eq("id", orderId!);
+      if (error) throw error;
+      await sendDeliveryNotification({ orderId: orderId! });
+    },
+    onSuccess: () => { toast.success("Tracking updated and notification sent"); qc.invalidateQueries({ queryKey: ["admin-order", orderId] }); qc.invalidateQueries({ queryKey: ["admin-orders"] }); },
+  });
+
   return (
     <Dialog open={!!orderId} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-xl">
@@ -145,6 +162,7 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
               <div><p className="text-xs text-muted-foreground">Customer</p><p>{data.order.customer_name}</p><p className="text-xs">{data.order.customer_email}</p>{data.order.customer_phone && <p className="text-xs">{data.order.customer_phone}</p>}</div>
               <div><p className="text-xs text-muted-foreground">Date</p><p>{fmtDate(data.order.created_at)}</p><p className="text-xs capitalize">Payment: {data.order.payment_status}</p></div>
             </div>
+            <div><p className="text-xs text-muted-foreground">Tracking Number</p><div className="flex gap-2"><Input value={tracking} onChange={(e) => setTracking(e.target.value)} /><Button onClick={() => updateTracking.mutate()}>Save</Button></div></div>
             {data.order.shipping_address && (
               <div><p className="text-xs text-muted-foreground">Shipping address</p><pre className="text-xs bg-muted p-2 rounded">{JSON.stringify(data.order.shipping_address, null, 2)}</pre></div>
             )}

@@ -49,8 +49,15 @@ function Contact() {
               <p className="font-semibold">Delivery</p>
               <p className="text-muted-foreground">{DELIVERY_INFO.interstate}</p>
               <p className="text-muted-foreground">{DELIVERY_INFO.international}</p>
-              <p className="text-muted-foreground mt-1">{LAGOS_DELIVERY_NOTE}</p>
-              <p className="text-muted-foreground mt-1">{DELIVERY_INFO.note}</p>
+              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                {Object.entries(DELIVERY_INFO.regionalFees).map(([region, fee]) => (
+                  <p key={region} className="text-muted-foreground text-sm">
+                    <span className="font-medium text-foreground">{region}:</span> {fee}
+                  </p>
+                ))}
+              </div>
+              <p className="text-muted-foreground mt-3 text-sm border-t pt-2">{LAGOS_DELIVERY_NOTE}</p>
+              <p className="text-muted-foreground mt-1 text-sm">{DELIVERY_INFO.note}</p>
             </div>
           </div>
 

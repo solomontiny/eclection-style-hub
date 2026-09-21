@@ -73,7 +73,7 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="mt-4 flex items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
-          <Link to="/product/$slug" params={{ slug: product.slug }} className="font-display text-lg mt-0.5 hover:text-primary">{product.name}</Link>
+          <Link to="/product/$slug" params={{ slug: product.slug }} className="font-display text-base sm:text-lg mt-0.5 hover:text-primary block leading-tight">{product.name}</Link>
         </div>
         <div className="text-right">
           <p className="font-semibold text-primary whitespace-nowrap">{formatNaira(product.sale_price ?? product.price)}</p>
