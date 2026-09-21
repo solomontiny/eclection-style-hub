@@ -15,13 +15,14 @@ function DashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-dashboard"],
     queryFn: async () => {
-      const [products, orders, customers, lowStock, recent, recentProducts] = await Promise.all([
+      const [products, orders, customers, lowStock, recent, recentProducts, unreadNotifications] = await Promise.all([
         supabase.from("products").select("id", { count: "exact", head: true }),
         supabase.from("orders").select("total, status, payment_status, created_at", { count: "exact" }),
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("products").select("id, name, stock, low_stock_threshold").order("stock", { ascending: true }).limit(5),
         supabase.from("orders").select("id, order_number, total, status, created_at, customer_name").order("created_at", { ascending: false }).limit(5),
         supabase.from("products").select("id, name, price, status, created_at").order("created_at", { ascending: false }).limit(5),
+        supabase.from("notifications").select("id", { count: "exact", head: true }).eq("is_read", false),
       ]);
       const validOrders = (orders.data ?? []).filter((o) => o.status !== "cancelled");
       const today = new Date().toISOString().slice(0, 10);
@@ -39,6 +40,7 @@ function DashboardPage() {
         lowStock: lowStock.data ?? [],
         recent: recent.data ?? [],
         recentProducts: recentProducts.data ?? [],
+        unreadNotifications: unreadNotifications.count ?? 0,
       };
     },
   });
@@ -75,7 +77,14 @@ function DashboardPage() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="bg-background rounded-2xl border border-border p-6">
-          <h2 className="font-display text-lg mb-4">Recent orders</h2>
+          <div className="flex items-center justify-between">
+           <h2 className="font-display text-lg mb-4">Recent orders</h2>
+           {(data?.unreadNotifications ?? 0) > 0 && (
+             <span className="px-2 py-1 text-xs font-bold bg-primary text-primary-foreground rounded-full">
+               {data?.unreadNotifications} new
+             </span>
+           )}
+        </div>
           <div className="space-y-3">
             {(data?.recent ?? []).map((o: any) => (
               <div key={o.id} className="flex items-center justify-between text-sm border-b border-border pb-2 last:border-0">

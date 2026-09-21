@@ -9,6 +9,8 @@ export type Product = ProductRow & {
   tag?: string | null;
   bundle_items?: { id: string; name?: string; quantity: number }[];
   colors?: string[] | null;
+  sizes?: string[] | null;
+  color_images?: Record<string, string> | null;
 };
 
 type ProductRowWithCategory = ProductRow & {
@@ -16,12 +18,18 @@ type ProductRowWithCategory = ProductRow & {
   image_url?: string | null;
 };
 
+const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"];
+
 const normalizeProduct = (product: ProductRowWithCategory): Product => ({
   ...product,
   category: product.category?.name ?? null,
   image_url: product.image_url ?? null,
   image: product.image_url ?? product.images?.[0] ?? null,
   colors: (product as any).colors ?? [],
+  sizes: Array.isArray((product as any).sizes) && (product as any).sizes.length > 0
+    ? (product as any).sizes
+    : DEFAULT_SIZES,
+  color_images: (product as any).color_images ?? null,
 });
 
 /**

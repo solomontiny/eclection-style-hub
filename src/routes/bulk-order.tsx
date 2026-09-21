@@ -25,7 +25,8 @@ type BundleItem = {
 };
 
 function ProductEntry({ product, onAdd, disabled }: { product: Product, onAdd: (p: Product, qty: number, color: string, size: string) => void, disabled: boolean }) {
-    const [size, setSize] = useState('M');
+    const productSizes = product.sizes?.length ? product.sizes : ["S", "M", "L", "XL", "XXL", "XXXL"];
+    const [size, setSize] = useState(productSizes[1] ?? 'M');
     const [color, setColor] = useState(product.colors?.[0] ?? 'Default');
     const [qty, setQty] = useState(1);
 
@@ -37,7 +38,7 @@ function ProductEntry({ product, onAdd, disabled }: { product: Product, onAdd: (
                 <div className="flex gap-2 flex-wrap">
                     <Select value={size} onValueChange={setSize}>
                         <SelectTrigger className="w-20"><SelectValue placeholder="Size" /></SelectTrigger>
-                        <SelectContent>{["S", "M", "L", "XL", "XXL", "XXXL"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                        <SelectContent>                    {productSizes.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                     </Select>
                     {product.colors && product.colors.length > 0 && (
                         <Select value={color} onValueChange={setColor}>

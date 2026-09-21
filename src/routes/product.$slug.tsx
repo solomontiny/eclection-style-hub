@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Minus, Plus, ShoppingBag } from "lucide-react";
 import { getProductBySlug, formatNaira } from "@/lib/products";
@@ -8,6 +8,8 @@ import { useCart } from "@/lib/cart";
 import { ProductCard } from "@/components/ProductCard";
 import { BuyNowDialog } from "@/components/BuyNowDialog";
 import { supabase } from "@/integrations/supabase/client";
+
+const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"];
 
 export const Route = createFileRoute("/product/$slug")({
   head: ({ params }) => ({ meta: [{ title: `${params.slug} — SupplierAffordable` }] }),
@@ -55,7 +57,11 @@ function ProductDetails() {
   if (isLoading) return <section className="container-x py-24 text-center text-muted-foreground">Loading product…</section>;
   if (isError || !product) return <section className="container-x py-24 text-center"><h1 className="font-display text-3xl">Product unavailable</h1><p className="mt-2 text-muted-foreground">This product may have been unpublished or removed.</p><Link to="/shop" className="btn-primary mt-6 inline-flex">Back to shop</Link></section>;
 
-  const images = product.images.length ? product.images : [""];
+  const sizes = product.sizes?.length ? product.sizes : DEFAULT_SIZES;
+  const images = product.images && product.images.length ? product.images : [""];
+  const colorImages = product.color_images ?? {};
+  const colorSpecificImage = selectedColor ? colorImages[selectedColor] : null;
+  const primaryImage = colorSpecificImage ?? images[selectedImage] ?? "";
   const price = product.sale_price ?? product.price;
   const discount = product.sale_price && product.price > 0 ? Math.round((1 - product.sale_price / product.price) * 100) : product.discount_percent;
 
@@ -64,7 +70,7 @@ function ProductDetails() {
     <div className="mt-10 grid lg:grid-cols-2 gap-12 lg:gap-20">
       <div className="space-y-4">
         <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-muted shadow-sm">
-          {product.images && product.images[selectedImage] ? <img src={product.images[selectedImage]} alt={product.name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <span className="text-sm text-muted-foreground">No image available</span>}
+          {primaryImage ? <img src={primaryImage} alt={product.name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <span className="text-sm text-muted-foreground">No image available</span>}
         </div>
         {product.images && product.images.length > 1 && <div className="grid grid-cols-5 gap-3">{product.images.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setSelectedImage(index)} className={`aspect-square overflow-hidden rounded-xl border-2 transition-all ${selectedImage === index ? "border-primary shadow-sm" : "border-border hover:border-border/80"}`}>{image ? <img src={image} alt={`${product.name} ${index + 1}`} className="h-full w-full object-cover" /> : <span className="text-xs text-muted-foreground">No image</span>}</button>)}</div>}
       </div>
@@ -78,7 +84,7 @@ function ProductDetails() {
         <div className="mt-8">
           <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Select Size</label>
           <div className="flex gap-3 mt-3">
-            {["S", "M", "L", "XL", "XXL", "XXXL"].map(size => (
+            {sizes.map(size => (
               <button 
                 key={size}
                 type="button"
@@ -93,16 +99,19 @@ function ProductDetails() {
 
         {product.colors && product.colors.length > 0 && (
             <div className="mt-8">
-            <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Select Colour</label>
-            <div className="flex gap-3 mt-3">
+            <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Select Colour {selectedColor && `— ${selectedColor}`}</label>
+            <div className="flex gap-3 mt-3 flex-wrap">
                 {product.colors.map((color: string) => (
                 <button 
                     key={color}
                     type="button"
                     onClick={() => setSelectedColor(color)}
-                    className={`w-14 h-14 border-2 rounded-full font-bold transition-all ${selectedColor === color ? "border-primary ring-2 ring-primary ring-offset-2" : "border-border hover:border-primary"}`}
-                     style={{ backgroundColor: colorToCss(color) }}
-                />
+                    className={`w-14 h-14 border-2 rounded-full font-bold transition-all flex items-center justify-center ${selectedColor === color ? "border-primary ring-2 ring-primary ring-offset-2" : "border-border hover:border-primary"}`}
+                    style={{ backgroundColor: colorToCss(color) }}
+                    aria-label={`Select colour ${color}`}
+                >
+                  {selectedColor === color && <span className="w-3 h-3 rounded-full bg-white/70" />}
+                </button>
                 ))}
             </div>
             </div>

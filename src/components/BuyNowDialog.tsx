@@ -14,8 +14,11 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
   const { addItem } = useCart();
   const navigate = useNavigate();
   
+  const sizes = product.sizes?.length ? product.sizes : ["S", "M", "L", "XL", "XXL", "XXXL"];
   const unitPrice = product.sale_price ?? product.price;
   const total = unitPrice * qty;
+  const colorImage = color ? product.color_images?.[color] : null;
+  const displayImage = colorImage ?? product.images?.[0] ?? "";
 
   const handlePayNow = () => {
     addItem(product, size, color || undefined, qty);
@@ -31,14 +34,14 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
           <DialogTitle className="font-display text-2xl">{product.name}</DialogTitle>
         </DialogHeader>
         <div className="flex gap-4">
-          <img src={product.images?.[0] ?? ""} alt={product.name} className="h-28 w-24 rounded-xl object-cover" />
+          <img src={displayImage} alt={product.name} className="h-28 w-24 rounded-xl object-cover" />
           <div className="flex-1">
             <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
             <p className="mt-1 font-semibold text-primary">{formatNaira(unitPrice)}</p>
             <div className="mt-3">
               <p className="text-xs font-medium mb-1.5">Size</p>
               <div className="flex gap-1.5">
-                {["S", "M", "L", "XL"].map((s) => (
+                {sizes.map((s) => (
                   <button
                     key={s}
                     type="button"

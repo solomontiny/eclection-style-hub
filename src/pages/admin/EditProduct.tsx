@@ -38,10 +38,14 @@ export default function EditProduct() {
     }
 
     const colorsArr = parseColorsString(data.colors);
+    const sizesArr = parseColorsString(data.sizes);
+    const colorImages = data.color_images ?? null;
 
     const { error } = await supabase.from("products").update({
       ...data,
       colors: colorsArr,
+      sizes: sizesArr,
+      color_images: colorImages,
       images: uploadedUrls,
     }).eq("id", id);
 

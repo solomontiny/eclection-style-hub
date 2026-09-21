@@ -6,13 +6,16 @@ import { BuyNowDialog } from "./BuyNowDialog";
 import { useCart } from "@/lib/cart";
 import { Link } from "@tanstack/react-router";
 
-const SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"] as const;
+const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"] as const;
 
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
-  const [size, setSize] = useState<string>("M");
+  const sizes = product.sizes?.length ? product.sizes : DEFAULT_SIZES;
+  const [size, setSize] = useState<string>(sizes[1] ?? "M");
   const [color, setColor] = useState<string | undefined>(product.colors?.[0]);
   const [justAdded, setJustAdded] = useState(false);
+
+  const selectedImage = product.color_images?.[color ?? ""] ?? product.images?.[0] ?? null;
 
   const handleAdd = () => {
     addItem(product, size, color, 1, false, undefined);
@@ -38,7 +41,7 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted shadow-sm group-hover:shadow-xl transition-shadow duration-300">
         <Link to="/product/$slug" params={{ slug: product.slug }} aria-label={`View ${product.name}`}>
           <img
-          src={product.images?.[0] ?? undefined}
+          src={selectedImage ?? undefined}
           alt={product.name}
           width={800}
           height={1000}
@@ -88,7 +91,7 @@ export function ProductCard({ product }: { product: Product }) {
 
       <div className="mt-3 space-y-2">
         <div className="flex items-center gap-1" role="radiogroup" aria-label={`Select size for ${product.name}`}>
-          {SIZES.map((s) => (
+          {sizes.map((s) => (
             <button
               key={s}
               type="button"
@@ -114,14 +117,19 @@ export function ProductCard({ product }: { product: Product }) {
                 role="radio"
                 aria-checked={color === c}
                 onClick={() => setColor(c)}
-                className={`w-6 h-6 rounded-full border transition-all ${
+                className={`w-6 h-6 rounded-full border transition-all relative ${
                   color === c ? "ring-2 ring-accent ring-offset-1" : "border-border"
                 }`}
                 style={{ backgroundColor: colorToCss(c) }}
                 aria-label={`Select colour ${c}`}
-              />
+              >
+                {color === c && <span className="absolute inset-0 rounded-full ring-2 ring-primary" />}
+              </button>
             ))}
           </div>
+        )}
+        {color && (
+          <p className="text-xs text-muted-foreground mt-1">Colour: {color}</p>
         )}
         <button
           type="button"

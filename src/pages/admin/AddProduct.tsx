@@ -30,6 +30,8 @@ export default function AddProduct() {
     }
 
     const colorsArr = parseColorsString(data.colors);
+    const sizesArr = parseColorsString(data.sizes);
+    const colorImages = data.color_images ?? null;
 
     const baseSlug = data.name.toLowerCase().replace(/\s+/g, "-");
     let productSlug = baseSlug;
@@ -41,6 +43,8 @@ export default function AddProduct() {
     const { error } = await supabase.from("products").insert([{
       ...data,
       colors: colorsArr,
+      sizes: sizesArr,
+      color_images: colorImages,
       images: uploadedUrls,
       slug: productSlug,
     }]);

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { CONTACT } from "./contact";
 import { getSupabaseAdmin } from "./supabase-admin.server";
+import { newOrderNotification, sendCustomerOrderEmail } from "./notifications";
 
 /** Wholesale price per piece (1 bundle = 10 pieces = ₦60,000). */
 const BULK_UNIT_PRICE = 6000;
@@ -265,6 +266,10 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       throw new Error("Failed to create order items. Please contact support.");
     }
 
+    void newOrderNotification({ data: { orderId: order.id } }).catch((err: any) =>
+      console.error("Admin notification failed:", err?.message)
+    );
+
     // 5. Initialize Paystack transaction (server-side, secret never leaves the server)
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
     if (!paystackSecret) {
@@ -386,6 +391,10 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
         .from("orders")
         .update({ payment_status: "paid" })
         .eq("id", order.id);
+
+      void sendCustomerOrderEmail(order.id).catch((err: any) =>
+        console.error("Customer receipt email failed:", err?.message)
+      );
 
       return { status: "paid" as const, orderNumber: order.order_number, total: Number(order.total) };
     } catch (err: any) {

@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fmtNGN, slugify } from "@/lib/admin-utils";
-import { colorsToString, parseColorsString } from "@/lib/colors";
+import { colorsToString, parseColorsString, colorToCss } from "@/lib/colors";
 import type { Product } from "@/lib/products";
 
 export const Route = createFileRoute("/admin/products")({
@@ -289,6 +289,9 @@ function ProductDialog({
 }) {
   const [form, setForm] = useState<Partial<Product>>(initial ?? {});
   const [colorsText, setColorsText] = useState("");
+  const [sizesText, setSizesText] = useState("");
+  const [colorImages, setColorImages] = useState<Record<string, string>>({});
+  const [uploadingColor, setUploadingColor] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const { data: allProducts = [] } = useQuery({
     queryKey: ["all-products"],
@@ -316,6 +319,8 @@ function ProductDialog({
       });
       setImages((initial?.images || []).map((url, i) => ({ file: null, url, isPrimary: i === 0 })));
       setColorsText(colorsToString(initial?.colors));
+      setSizesText(Array.isArray(initial?.sizes) ? initial.sizes.join(", ") : "");
+      setColorImages((initial?.color_images as Record<string, string>) ?? {});
 
       if (initial?.id) {
         supabase.from("bundles")
@@ -391,7 +396,9 @@ function ProductDialog({
             featured: !!form.featured,
             product_type: form.product_type || "standard",
             promotion_status: form.promotion_status || "regular",
-            colors: parseColorsString(colorsText)
+            colors: parseColorsString(colorsText),
+            sizes: parseColorsString(sizesText),
+            color_images: Object.keys(colorImages).length > 0 ? colorImages : null
         };
 
         let result;
@@ -436,6 +443,33 @@ function ProductDialog({
     }
   }
 
+  const colorNames = parseColorsString(colorsText) ?? [];
+
+  const handleColorImageUpload = async (colorName: string, file: File) => {
+    setUploadingColor(colorName);
+    try {
+      const fileName = `${Date.now()}-${crypto.randomUUID()}-${file.name.replace(/\s+/g, "-")}`;
+      const { data: uploadData, error } = await supabase.storage
+        .from("product-images")
+        .upload(fileName, file);
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(uploadData.path);
+      setColorImages((prev) => ({ ...prev, [colorName]: publicUrl }));
+    } catch (e) {
+      toast.error("Image upload failed");
+    } finally {
+      setUploadingColor(null);
+    }
+  };
+
+  const removeColorImage = (colorName: string) => {
+    setColorImages((prev) => {
+      const next = { ...prev };
+      delete next[colorName];
+      return next;
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -447,6 +481,16 @@ function ProductDialog({
           <div>
             <Label>Name</Label>
             <Input value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} />
+          </div>
+
+          <div>
+            <Label>Category</Label>
+            <Select value={form.category_id ?? ""} onValueChange={(v) => set("category_id", v || null as any)}>
+              <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
+              <SelectContent className="z-[100]">
+                {categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-4">
@@ -545,10 +589,63 @@ function ProductDialog({
             />
           </div>
 
-          <div>
-            <Label>Description</Label>
-            <Textarea value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
-          </div>
+           <div>
+             <Label>Sizes (comma-separated)</Label>
+             <Input
+               value={sizesText}
+               onChange={(e) => setSizesText(e.target.value)}
+               placeholder="e.g. S, M, L, XL, XXL"
+             />
+           </div>
+
+           {colorNames.length > 0 && (
+             <div className="space-y-3">
+               <Label>Colour Images</Label>
+               <p className="text-xs text-muted-foreground">Upload an image for each colour variant.</p>
+               {colorNames.map((colorName: string) => (
+                 <div key={colorName} className="flex items-center gap-4 p-4 border border-border rounded-lg">
+                   <div
+                     className="w-8 h-8 rounded-full border-2 border-border flex-shrink-0"
+                     style={{ backgroundColor: colorToCss(colorName) }}
+                   />
+                   <span className="w-24 text-sm font-medium">{colorName}</span>
+                   {colorImages[colorName] ? (
+                     <div className="flex items-center gap-2">
+                       <img src={colorImages[colorName]} alt={colorName} className="w-16 h-16 object-cover rounded border" />
+                       <button
+                         type="button"
+                         onClick={() => removeColorImage(colorName)}
+                         className="p-1 hover:bg-muted rounded"
+                         aria-label={`Remove ${colorName} image`}
+                       >
+                         <X size={14} />
+                       </button>
+                     </div>
+                   ) : (
+                     <label className="flex items-center justify-center w-16 h-16 border-2 border-dashed border-border rounded cursor-pointer hover:border-primary">
+                       <input
+                         type="file"
+                         accept="image/jpeg,image/png,image/webp"
+                         className="hidden"
+                         onChange={(e) => {
+                           const file = e.target.files?.[0];
+                           if (file) handleColorImageUpload(colorName, file);
+                           e.target.value = "";
+                         }}
+                         disabled={uploadingColor === colorName}
+                       />
+                       <Upload size={16} className="text-muted-foreground" />
+                     </label>
+                   )}
+                 </div>
+               ))}
+             </div>
+           )}
+
+           <div>
+             <Label>Description</Label>
+             <Textarea value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
+           </div>
         </div>
         <div className="flex justify-end gap-3 mt-4">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>

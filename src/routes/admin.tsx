@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, Outlet, Link, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useQuery } from "@tanstack/react-query";
 import { LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Ticket, Boxes, Settings, LogOut, Store } from "lucide-react";
 import { Toaster } from "sonner";
 
@@ -52,6 +53,17 @@ const navItems = [
 function AdminLayout() {
   const { user, signOut } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["unread-notifications"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("is_read", false);
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
+  });
 
   return (
     <div className="min-h-screen flex bg-muted/20 -mt-px">
@@ -71,9 +83,14 @@ function AdminLayout() {
                   active ? "bg-primary/10 text-primary font-medium" : "text-foreground/70 hover:bg-muted hover:text-foreground"
                 }`}
               >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
+                 <item.icon className="h-4 w-4" />
+                 {item.label}
+                {item.to === "/admin/orders" && unreadCount > 0 && (
+                  <span className="ml-auto bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 min-w-[20px] flex items-center justify-center px-1">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+               </Link>
             );
           })}
         </nav>

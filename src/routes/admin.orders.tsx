@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fmtNGN, fmtDate } from "@/lib/admin-utils";
 import { sendDeliveryNotification } from "@/lib/orders.functions";
+import { sendCustomerStatusChangeEmail } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
 
@@ -39,13 +40,22 @@ function OrdersPage() {
   const [paymentFilter, setPaymentFilter] = useState<string>("all");
   const [viewing, setViewing] = useState<string | null>(null);
 
-  const { data: orders = [], isLoading } = useQuery({
+const { data: orders = [], isLoading } = useQuery({
     queryKey: ["admin-orders"],
     queryFn: async () => {
       const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       return data as Order[];
     },
+  });
+
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["unread-notifications"],
+    queryFn: async () => {
+      const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("is_read", false);
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
   });
 
   const filtered = useMemo(() => orders.filter(o => {
@@ -60,13 +70,31 @@ function OrdersPage() {
       const { error } = await supabase.from("orders").update({ status }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Status updated"); qc.invalidateQueries({ queryKey: ["admin-orders"] }); },
+    onSuccess: async (_, { id, status }) => {
+      toast.success("Status updated");
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+
+      if (["delivered", "shipped", "cancelled", "out_for_delivery"].includes(status)) {
+        try {
+          await sendCustomerStatusChangeEmail({ data: { orderId: id } });
+        } catch (err) {
+          console.error("Customer notification failed:", err);
+        }
+      }
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   return (
     <div className="space-y-6">
-      <div><h1 className="font-display text-3xl">Orders</h1><p className="text-sm text-muted-foreground mt-1">{filtered.length} of {orders.length}</p></div>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div><h1 className="font-display text-3xl">Orders</h1><p className="text-sm text-muted-foreground mt-1">{filtered.length} of {orders.length}</p></div>
+       {unreadCount > 0 && (
+         <span className="px-2 py-1 text-xs font-bold bg-primary text-primary-foreground rounded-full h-fit">
+           {unreadCount} unread notification{unreadCount > 1 ? "s" : ""}
+         </span>
+        )}
+      </div>
 
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
@@ -140,6 +168,13 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
       return { order: order.data, items: items.data ?? [] };
     },
   });
+
+  useEffect(() => {
+    if (orderId) {
+      supabase.from("notifications").update({ is_read: true }).eq("order_id", orderId).is("is_read", false);
+      qc.invalidateQueries({ queryKey: ["unread-notifications"] });
+    }
+  }, [orderId]);
 
   useEffect(() => { if (data?.order) setTracking(data.order.tracking_number ?? ""); }, [data]);
   
