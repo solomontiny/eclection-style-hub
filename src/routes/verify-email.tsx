@@ -69,7 +69,7 @@ function VerifyEmailPage() {
           <p className="text-muted-foreground mb-6">
             Your SupplierAffordable account has been successfully created and verified.
           </p>
-          <Button onClick={() => navigate({ to: "/login" })}>
+          <Button onClick={() => navigate({ to: "/login", search: { redirect: undefined } })}>
             Continue to Login
           </Button>
         </div>
@@ -88,7 +88,7 @@ function VerifyEmailPage() {
           <Link to="/signup" className="btn-primary text-center">
             Resend Verification Email
           </Link>
-          <Link to="/login" className="text-primary font-medium hover:underline">
+          <Link to="/login" search={{ redirect: undefined }} className="text-primary font-medium hover:underline">
             Back to Login
           </Link>
         </div>

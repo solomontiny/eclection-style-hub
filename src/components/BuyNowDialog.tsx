@@ -5,10 +5,11 @@ import { Minus, Plus, ShoppingBag } from "lucide-react";
 import { type Product, formatNaira } from "@/lib/products";
 import { useCart } from "@/lib/cart";
 
-export function BuyNowDialog({ product, trigger }: { product: Product; trigger: React.ReactNode }) {
+export function BuyNowDialog({ product, trigger, preselectedColor }: { product: Product; trigger: React.ReactNode; preselectedColor?: string }) {
   const [open, setOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState("M");
+  const [color, setColor] = useState<string>(preselectedColor ?? "");
   const { addItem } = useCart();
   const navigate = useNavigate();
   
@@ -16,7 +17,7 @@ export function BuyNowDialog({ product, trigger }: { product: Product; trigger: 
   const total = unitPrice * qty;
 
   const handlePayNow = () => {
-    addItem(product, size, qty);
+    addItem(product, size, color || undefined, qty);
     setOpen(false);
     navigate({ to: "/checkout" });
   };
@@ -29,7 +30,7 @@ export function BuyNowDialog({ product, trigger }: { product: Product; trigger: 
           <DialogTitle className="font-display text-2xl">{product.name}</DialogTitle>
         </DialogHeader>
         <div className="flex gap-4">
-          <img src={product.image ?? product.image_url ?? ""} alt={product.name} className="h-28 w-24 rounded-xl object-cover" />
+          <img src={product.images?.[0] ?? ""} alt={product.name} className="h-28 w-24 rounded-xl object-cover" />
           <div className="flex-1">
             <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
             <p className="mt-1 font-semibold text-primary">{formatNaira(unitPrice)}</p>

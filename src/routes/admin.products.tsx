@@ -387,7 +387,8 @@ function ProductDialog({
             status: form.status ?? "draft",
             featured: !!form.featured,
             product_type: form.product_type || "standard",
-            promotion_status: form.promotion_status || "regular"
+            promotion_status: form.promotion_status || "regular",
+            colors: form.colors ?? null
         };
 
         let result;

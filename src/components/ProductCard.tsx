@@ -5,7 +5,7 @@ import { BuyNowDialog } from "./BuyNowDialog";
 import { useCart } from "@/lib/cart";
 import { Link } from "@tanstack/react-router";
 
-const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
+const SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"] as const;
 
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
@@ -14,7 +14,7 @@ export function ProductCard({ product }: { product: Product }) {
   const [justAdded, setJustAdded] = useState(false);
 
   const handleAdd = () => {
-    addItem(product, size, color, 1);
+    addItem(product, size, color, 1, false, undefined);
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1200);
   };
@@ -37,7 +37,7 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted shadow-sm group-hover:shadow-xl transition-shadow duration-300">
         <Link to="/product/$slug" params={{ slug: product.slug }} aria-label={`View ${product.name}`}>
           <img
-          src={product.image ?? product.image_url ?? undefined}
+          src={product.images?.[0] ?? undefined}
           alt={product.name}
           width={800}
           height={1000}
@@ -45,7 +45,7 @@ export function ProductCard({ product }: { product: Product }) {
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
           onError={(event) => { event.currentTarget.style.display = "none"; }}
           />
-          {!product.image && !product.image_url && <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">No image</div>}
+          {(!product.images || product.images.length === 0) && <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">No image</div>}
         </Link>
         {product.stock <= 0 && (
           <span className="absolute top-3 left-3 px-3 py-1 text-xs font-semibold rounded-full bg-red-500/90 text-white backdrop-blur">OUT OF STOCK</span>
@@ -60,6 +60,7 @@ export function ProductCard({ product }: { product: Product }) {
 
         <BuyNowDialog
           product={product}
+          preselectedColor={color}
           trigger={
             <button
               type="button"
@@ -95,7 +96,7 @@ export function ProductCard({ product }: { product: Product }) {
               onClick={() => setSize(s)}
               className={`flex-1 text-[11px] font-semibold py-1.5 rounded-md border transition-colors ${
                 size === s
-                  ? "bg-primary text-primary-foreground border-primary"
+                  ? "bg-accent text-accent-foreground border-accent"
                   : "border-border text-foreground/70 hover:border-primary hover:text-primary"
               }`}
             >
@@ -113,7 +114,7 @@ export function ProductCard({ product }: { product: Product }) {
                 aria-checked={color === c}
                 onClick={() => setColor(c)}
                 className={`w-6 h-6 rounded-full border transition-all ${
-                  color === c ? "ring-2 ring-primary ring-offset-1" : "border-border"
+                  color === c ? "ring-2 ring-accent ring-offset-1" : "border-border"
                 }`}
                 style={{ backgroundColor: c.toLowerCase() }}
                 aria-label={`Select colour ${c}`}

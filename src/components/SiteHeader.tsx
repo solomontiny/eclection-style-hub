@@ -53,10 +53,10 @@ export function SiteHeader() {
           <div className="h-6 w-px bg-border/60" />
           {user ? (
             <div className="flex items-center gap-4">
-              <Link to="/account" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">
+              <Link to="/account" className="text-sm font-medium text-primary hover:text-accent transition-colors">
                 Account
               </Link>
-              <button onClick={async () => await signOut()} className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors disabled:opacity-50">
+              <button onClick={async () => await signOut()} className="text-sm font-medium text-primary hover:text-accent transition-colors disabled:opacity-50">
                 Sign out
               </button>
             </div>
@@ -64,8 +64,8 @@ export function SiteHeader() {
             <Link
               to="/login"
               search={{ redirect: undefined }}
-              className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors"
-              activeProps={{ className: "text-primary" }}
+              className="text-sm font-medium text-primary hover:text-accent transition-colors"
+              activeProps={{ className: "text-accent" }}
             >
               Login
             </Link>

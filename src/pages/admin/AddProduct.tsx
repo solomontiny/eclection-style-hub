@@ -28,6 +28,10 @@ export default function AddProduct() {
       }
     }
 
+    const colorsArr = data.colors
+      ? data.colors.split(",").map((c: string) => c.trim()).filter(Boolean)
+      : null;
+
     const baseSlug = data.name.toLowerCase().replace(/\s+/g, "-");
     let productSlug = baseSlug;
     const { data: existing } = await supabase.from("products").select("id").eq("slug", productSlug).maybeSingle();
@@ -37,6 +41,7 @@ export default function AddProduct() {
 
     const { error } = await supabase.from("products").insert([{
       ...data,
+      colors: colorsArr,
       images: uploadedUrls,
       slug: productSlug,
     }]);

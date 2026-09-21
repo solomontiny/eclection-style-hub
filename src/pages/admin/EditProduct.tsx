@@ -36,8 +36,13 @@ export default function EditProduct() {
       }
     }
 
+    const colorsArr = data.colors
+      ? data.colors.split(",").map((c: string) => c.trim()).filter(Boolean)
+      : null;
+
     const { error } = await supabase.from("products").update({
       ...data,
+      colors: colorsArr,
       images: uploadedUrls,
     }).eq("id", id);
 

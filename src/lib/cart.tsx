@@ -10,7 +10,7 @@ export type CartItem = {
   color?: string;
   qty: number;
   isBulk?: boolean;
-  bundleQty?: number;
+  bundleId?: string; // New: group identifier for bundle items
 };
 
 type CartContextValue = {
@@ -19,42 +19,29 @@ type CartContextValue = {
   subtotal: number;
   open: boolean;
   setOpen: (v: boolean) => void;
-  addItem: (product: Product, size?: string, color?: string, qty?: number, isBulk?: boolean, bundleQty?: number) => void;
+  addItem: (product: Product, size?: string, color?: string, qty?: number, isBulk?: boolean, bundleId?: string) => void;
   updateQty: (key: string, qty: number) => void;
   removeItem: (key: string) => void;
   clear: () => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
-const STORAGE_KEY = "esc_cart_v1";
-const itemKey = (id: string, size: string, color?: string) => `${id}::${size}::${color ?? "none"}`;
+
+const itemKey = (id: string, size: string, color?: string, bundleId?: string) =>
+  bundleId ? `${bundleId}::${id}-${size}-${color || "none"}` : `${id}-${size}-${color || "none"}`;
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [open, setOpen] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(JSON.parse(raw));
-    } catch { /* ignore */ }
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch { /* ignore */ }
-  }, [items, hydrated]);
-
-  const addItem = (product: Product, size = "M", color?: string, qty = 1, isBulk = false, bundleQty?: number) => {
+  const addItem = (product: Product, size = "M", color?: string, qty = 1, isBulk = false, bundleId?: string) => {
     setItems((arr) => {
-      const key = itemKey(product.id, size, color);
-      const existing = arr.find((it) => itemKey(it.id, it.size, it.color) === key);
+      const key = itemKey(product.id, size, color, bundleId);
+      const existing = arr.find((it) => itemKey(it.id, it.size, it.color, it.bundleId) === key);
       if (existing) {
-        return arr.map((it) =>
-          itemKey(it.id, it.size, it.color) === key ? { ...it, price: isBulk ? 6000 : (product.sale_price ?? product.price), qty: it.qty + qty, bundleQty: isBulk ? (it.bundleQty || 0) + (bundleQty || 0) : it.bundleQty } : it,
-        );
+        return arr.map((it) => {
+          return itemKey(it.id, it.size, it.color, it.bundleId) === key ? { ...it, price: isBulk ? 6000 : (product.sale_price ?? product.price), qty: it.qty + qty } : it;
+        });
       }
       return [
         ...arr,
@@ -67,9 +54,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
           color,
           qty,
           isBulk,
-          bundleQty,
+          bundleId,
         },
-
       ];
     });
     setOpen(true);
@@ -78,11 +64,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const updateQty = (key: string, qty: number) =>
     setItems((arr) =>
       arr
-        .map((it) => (itemKey(it.id, it.size, it.color) === key ? { ...it, qty: Math.max(0, qty), bundleQty: it.isBulk ? Math.max(0, qty / 10) : it.bundleQty } : it))
+        .map((it) => (itemKey(it.id, it.size, it.color, it.bundleId) === key ? { ...it, qty: Math.max(0, qty) } : it))
         .filter((it) => it.qty > 0),
     );
   const removeItem = (key: string) =>
-    setItems((arr) => arr.filter((it) => itemKey(it.id, it.size, it.color) !== key));
+    setItems((arr) => arr.filter((it) => itemKey(it.id, it.size, it.color, it.bundleId) !== key));
   const clear = () => setItems([]);
 
   const value = useMemo<CartContextValue>(() => {

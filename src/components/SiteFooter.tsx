@@ -23,29 +23,30 @@ export function SiteFooter() {
             SupplierAffordable is a Nigerian fashion brand bringing you stylish, quality, and affordable clothing. We make it easy to look good, feel confident, and stay fashionable without breaking the bank.
           </p>
           <div className="flex gap-4 pt-2">
-            <a href={`https://instagram.com/${CONTACT.instagram}`} target="_blank" rel="noreferrer" className="p-3 rounded-full bg-background border border-border hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Instagram">
-              <Instagram size={20} />
-            </a>
-            <a href={`https://facebook.com/${CONTACT.facebook}`} target="_blank" rel="noreferrer" className="p-3 rounded-full bg-background border border-border hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Facebook">
-              <Facebook size={20} />
-            </a>
+          <a href={`https://instagram.com/${CONTACT.instagram}`} target="_blank" rel="noreferrer" className="p-3 rounded-full bg-background border border-primary hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Instagram">
+            <Instagram size={20} />
+          </a>
+          <a href={`https://facebook.com/${CONTACT.facebook}`} target="_blank" rel="noreferrer" className="p-3 rounded-full bg-background border border-primary hover:bg-primary hover:text-primary-foreground transition-colors" aria-label="Facebook">
+            <Facebook size={20} />
+          </a>
           </div>
-        </div>
-        <div>
-          <h4 className="font-display font-bold text-sm uppercase tracking-wider mb-6">Shop</h4>
+          </div>
+          <div>
+          <h4 className="font-display font-bold text-sm uppercase tracking-wider mb-6 text-primary">Shop</h4>
           <ul className="space-y-4 text-sm text-muted-foreground">
-            <li><Link to="/shop" className="hover:text-primary transition-colors">All Products</Link></li>
-            <li><Link to="/shop" className="hover:text-primary transition-colors">Women's Collection</Link></li>
-            <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
+          <li><Link to="/shop" className="hover:text-accent transition-colors">All Products</Link></li>
+          <li><Link to="/shop" className="hover:text-accent transition-colors">Women's Collection</Link></li>
+          <li><Link to="/about" className="hover:text-accent transition-colors">About Us</Link></li>
           </ul>
-        </div>
-        <div>
-          <h4 className="font-display font-bold text-sm uppercase tracking-wider mb-6">Contact</h4>
+          </div>
+          <div>
+          <h4 className="font-display font-bold text-sm uppercase tracking-wider mb-6 text-primary">Contact</h4>
           <ul className="space-y-4 text-sm text-muted-foreground">
-            <li className="flex gap-3"><Mail size={18} className="text-primary" /> <a href={`mailto:${CONTACT.email}`} className="hover:text-primary transition-colors break-all">{CONTACT.email}</a></li>
-            <li className="flex gap-3"><Clock size={18} className="text-primary" /> <span>{SUPPORT_HOURS}</span></li>
+          <li className="flex gap-3"><Mail size={18} className="text-accent" /> <a href={`mailto:${CONTACT.email}`} className="hover:text-accent transition-colors break-all">{CONTACT.email}</a></li>
+          <li className="flex gap-3"><Clock size={18} className="text-accent" /> <span>{SUPPORT_HOURS}</span></li>
           </ul>
-        </div>
+          </div>
+
       </div>
       <div className="border-t border-border">
         <div className="container-x py-8 text-xs text-muted-foreground flex flex-wrap gap-4 justify-between items-center">

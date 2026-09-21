@@ -19,6 +19,7 @@ const schema = z.object({
   sale_price: z.coerce.number().min(0).optional(),
   stock: z.coerce.number().int().min(0, "Stock cannot be negative"),
   status: z.enum(["active", "draft"]),
+  colors: z.string().optional(),
 }).refine(data => !data.sale_price || data.sale_price <= data.price, {
   message: "Sale price cannot exceed regular price",
   path: ["sale_price"],
@@ -73,6 +74,13 @@ export function ProductForm({ initialData, onSubmit, loading }: ProductFormProps
         <label>Active</label>
         <Switch checked={form.watch("status") === "active"} onCheckedChange={(checked) => form.setValue("status", checked ? "active" : "draft")} />
       </div>
+
+      <input
+        {...form.register("colors")}
+        placeholder="Colors (comma-separated, e.g. Black, White, Red)"
+        className="input"
+        maxLength={500}
+      />
 
       <ImageUploader images={images} setImages={setImages} />
 

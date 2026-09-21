@@ -98,7 +98,7 @@ function SignupPage() {
             <Button onClick={resendVerification} disabled={busy}>
               {busy ? "Sending..." : "Resend verification email"}
             </Button>
-            <Link to="/login" className="text-center text-primary font-medium hover:underline">
+            <Link to="/login" search={{ redirect: undefined }} className="text-center text-primary font-medium hover:underline">
               Back to Login
             </Link>
           </div>

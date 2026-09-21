@@ -53,7 +53,7 @@ function CheckoutPage() {
     try {
       const order = await createOrderServerFn({
         data: {
-          items: items.map((i) => ({ id: i.id, size: i.size, qty: i.qty, isBulk: !!i.isBulk })),
+          items: items.map((i) => ({ id: i.id, size: i.size, color: i.color, qty: i.qty, isBulk: !!i.isBulk, bundleId: i.bundleId })),
           customer: data,
           callbackUrl: `${window.location.origin}/thank-you`,
         },
@@ -104,13 +104,13 @@ function CheckoutPage() {
         <div className="border rounded-lg p-4 sm:p-6 bg-card h-fit">
           <h2 className="text-lg sm:text-xl font-bold mb-4">Order Summary</h2>
           {items.map(item => (
-            <div key={cartItemKey(item.id, item.size)} className="flex items-start justify-between gap-3 py-2 border-b border-border/50 last:border-0">
+            <div key={cartItemKey(item.id, item.size, item.color, item.bundleId)} className="flex items-start justify-between gap-3 py-2 border-b border-border/50 last:border-0">
               <span className="min-w-0 text-sm break-words">
                 {item.name}
                 <span className="block text-xs text-muted-foreground">
                   {item.isBulk
-                    ? `Bulk · ${item.bundleQty ?? Math.round(item.qty / 10)} bundle(s) · ${item.qty} pieces`
-                    : `Size ${item.size} · Qty ${item.qty}`}
+                    ? `Bulk · ${item.qty} pieces ${item.color ? `· ${item.color}` : ""}`
+                    : `Size ${item.size} · Qty ${item.qty} ${item.color ? `· ${item.color}` : ""}`}
                 </span>
               </span>
               <span className="shrink-0 text-sm font-medium tabular-nums">{formatNaira(item.price * item.qty)}</span>
@@ -135,6 +135,7 @@ function CheckoutPage() {
                 ))}
             </div>
             <p className="text-xs">{DELIVERY_INFO.note}</p>
+            <p className="text-xs pt-1 border-t border-border/50"><strong>International Delivery:</strong> Orders are weighed by our logistics agent, and you'll be contacted with the delivery fee. Bus, Express & Cargo options are available. If you have your own logistics agent, provide their details and we'll send your package with a photo for confirmation.</p>
           </div>
         </div>
       </div>

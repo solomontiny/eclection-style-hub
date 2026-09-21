@@ -150,6 +150,9 @@ export type Database = {
           quantity: number
           subtotal: number
           unit_price: number
+          size: string
+          color: string
+          bundle_id?: string | null
         }
         Insert: {
           created_at?: string
@@ -160,6 +163,9 @@ export type Database = {
           quantity: number
           subtotal: number
           unit_price: number
+          size?: string
+          color?: string
+          bundle_id?: string | null
         }
         Update: {
           created_at?: string
@@ -170,6 +176,9 @@ export type Database = {
           quantity?: number
           subtotal?: number
           unit_price?: number
+          size?: string
+          color?: string
+          bundle_id?: string | null
         }
         Relationships: [
           {
@@ -206,6 +215,7 @@ export type Database = {
           shipping_address: Json | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
+          tracking_number: string | null
           total: number
           updated_at: string
           user_id: string | null
@@ -227,6 +237,7 @@ export type Database = {
           shipping_address?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
+          tracking_number?: string | null
           total?: number
           updated_at?: string
           user_id?: string | null
@@ -248,6 +259,7 @@ export type Database = {
           shipping_address?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
+          tracking_number?: string | null
           total?: number
           updated_at?: string
           user_id?: string | null
@@ -258,6 +270,7 @@ export type Database = {
         Row: {
           category_id: string | null
           created_at: string
+          colors: string[] | null
           description: string | null
           discount_percent: number
           featured: boolean
@@ -278,6 +291,7 @@ export type Database = {
         Insert: {
           category_id?: string | null
           created_at?: string
+          colors?: string[] | null
           description?: string | null
           discount_percent?: number
           featured?: boolean
@@ -298,6 +312,7 @@ export type Database = {
         Update: {
           category_id?: string | null
           created_at?: string
+          colors?: string[] | null
           description?: string | null
           discount_percent?: number
           featured?: boolean
@@ -435,6 +450,7 @@ export type Database = {
         | "pending"
         | "processing"
         | "shipped"
+        | "out_for_delivery"
         | "delivered"
         | "cancelled"
       payment_status: "pending" | "paid" | "failed" | "refunded"
@@ -572,6 +588,7 @@ export const Constants = {
         "pending",
         "processing",
         "shipped",
+        "out_for_delivery",
         "delivered",
         "cancelled",
       ],

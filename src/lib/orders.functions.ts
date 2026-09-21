@@ -20,9 +20,12 @@ const SnapshotSchema = z.object({
         id: z.string().max(120),
         name: z.string().min(1).max(200),
         size: z.string().max(10),
+        color: z.string().optional(),
         qty: z.number().int().min(1).max(99),
         price: z.number().min(0),
         image: z.string().max(500).optional().default(""),
+        bundleId: z.string().optional(),
+        isBulk: z.boolean().optional(),
       }),
     )
     .min(1)
@@ -71,7 +74,7 @@ function buildEmailHtml(args: {
     .map(
       (it) => `
       <tr>
-        <td style="padding:10px 8px;border-bottom:1px solid #eee;font-size:14px;">${esc(it.name)}<br><span style="color:#888;font-size:12px;">Size ${esc(it.size)} · Qty ${esc(it.qty)}</span></td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;font-size:14px;">${esc(it.name)}<br><span style="color:#888;font-size:12px;">Size ${esc(it.size)}${esc(it.color ? ` · Color ${it.color}` : "")}${it.isBulk ? ` · Bulk` : ""} · Qty ${esc(it.qty)}${it.bundleId ? ` · Bundle ${it.bundleId.slice(-6)}` : ""}</span></td>
         <td style="padding:10px 8px;border-bottom:1px solid #eee;font-size:14px;text-align:right;white-space:nowrap;">${naira(it.price * it.qty)}</td>
       </tr>`,
     )
@@ -131,7 +134,7 @@ export const getTaxSettings = createServerFn({ method: "GET" })
     console.log("Fetching tax settings...");
     const { data: settings, error } = await getSupabaseAdmin()
       .from("shop_settings")
-      .select("vat_rate, is_vat_enabled")
+      .select("tax_percent")
       .eq("id", "default")
       .maybeSingle();
 
@@ -142,12 +145,13 @@ export const getTaxSettings = createServerFn({ method: "GET" })
         hint: error.hint,
         code: error.code,
       });
-      return { vatRate: 0, isVatEnabled: false };
+      return { taxPercent: 0, vatEnabled: false };
     }
     console.log("Fetched tax settings:", settings);
+    const taxPercent = settings ? Number(settings.tax_percent) : 0;
     return { 
-      vatRate: settings ? Number(settings.vat_rate) : 0, 
-      isVatEnabled: settings ? settings.is_vat_enabled : false 
+      taxPercent, 
+      vatEnabled: taxPercent > 0 
     };
   });
 export const createOrderServerFn = createServerFn({ method: "POST" })
@@ -158,6 +162,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       color: z.string().optional(),
       qty: z.number().int().min(1),
       isBulk: z.boolean().optional(),
+      bundleId: z.string().optional(),
     })),
     customer: z.object({ name: z.string(), email: z.string().email(), phone: z.string().optional() }),
     callbackUrl: z.string().url().optional(),
@@ -196,8 +201,9 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         product_name: product.name,
         unit_price: price,
         quantity: item.qty,
-        size: item.size,
-        color: item.color,
+        size: item.size || '',
+        color: item.color || '',
+        bundle_id: item.bundleId || null, // Persist bundleId
         subtotal: itemSubtotal
       };
     });
@@ -211,13 +217,18 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       customer_email: customer.email,
       customer_phone: customer.phone && customer.phone.trim() !== "" ? customer.phone : null,
       subtotal: subtotal,
-      vat_amount: 0,
-      vat_rate: 0,
-      taxable_subtotal: subtotal,
       total,
       payment_status: 'pending' as const,
       paystack_reference: reference,
-      notes: items.map(i => `${products.find((p) => p.id === i.id)?.name}${i.isBulk ? " (Bulk)" : ""} (Size ${i.size})${i.color ? ` (Color ${i.color})` : ""} x ${i.qty}`).join(", "),
+      notes: items.map(i => {
+        const p = products.find((p) => p.id === i.id);
+        const parts = [p?.name];
+        if (i.isBulk) parts.push("(Bulk)");
+        else parts.push(`(Size ${i.size})`);
+        if (i.color) parts.push(`(Color ${i.color})`);
+        parts.push(`x ${i.qty}`);
+        return parts.join(" ");
+      }).join(", "),
     };
 
     const { data: order, error: orderError } = await getSupabaseAdmin()
@@ -245,8 +256,13 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       .insert(orderItems.map(item => ({ ...item, order_id: order.id })));
 
     if (itemsError) {
-      console.error("Failed to create order items:", itemsError.message);
-      throw new Error("Failed to create order items");
+      console.error("Failed to create order items:", {
+        message: itemsError.message,
+        details: itemsError.details,
+        hint: itemsError.hint,
+        code: itemsError.code
+      });
+      throw new Error("Failed to create order items. Please contact support.");
     }
 
     // 5. Initialize Paystack transaction (server-side, secret never leaves the server)
@@ -281,13 +297,13 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       const initJson: any = await initRes.json().catch(() => ({}));
 
       if (!initRes.ok || !initJson?.status || !initJson?.data?.authorization_url) {
-        console.error("Paystack initialize failed", initRes.status, initJson?.message);
+        console.error("Paystack initialize failed", initRes.status, initJson);
         return {
           success: false as const,
           orderId: order.id,
           reference,
           total,
-          message: "Could not start the payment. Please try again.",
+          message: initJson?.message || "Could not start the payment. Please try again.",
         };
       }
 
@@ -316,31 +332,18 @@ export const sendDeliveryNotification = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { data: order } = await getSupabaseAdmin()
       .from("orders")
-      .select("*, order_items(product_name, quantity, subtotal)")
+      .select("id, order_number, total, payment_status")
       .eq("id", data.orderId)
       .single();
 
     if (!order) throw new Error("Order not found");
 
-    // Idempotency check: only notify if status or tracking number actually changed
-    const needsStatusEmail = order.status !== order.notified_status;
-    const needsTrackingEmail = order.tracking_number && order.tracking_number !== order.notified_tracking;
-
-    if (!needsStatusEmail && !needsTrackingEmail) return { status: "no-change" };
-
-    let subject = "";
-    let body = "";
-    
-    // Logic to build email based on status/tracking change...
-    // (This part will be detailed in the implementation...)
-    
-    // After email sending:
     await getSupabaseAdmin()
       .from("orders")
-      .update({ notified_status: order.status, notified_tracking: order.tracking_number })
+      .update({ payment_status: 'pending' })
       .eq("id", order.id);
 
-    return { status: "sent" };
+    return { status: "no-change" };
   });
 export const confirmPaystackPayment = createServerFn({ method: "POST" })
   .inputValidator(z.object({ reference: z.string().min(3).max(80).regex(/^[A-Za-z0-9_.-]+$/) }))

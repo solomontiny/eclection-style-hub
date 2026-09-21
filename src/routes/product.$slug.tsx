@@ -18,12 +18,19 @@ function ProductDetails() {
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState("M");
+  const [selectedColor, setSelectedColor] = useState<string | undefined>();
   const [selectedImage, setSelectedImage] = useState(0);
 
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ["product", slug],
     queryFn: () => getProductBySlug(slug),
   });
+
+  useEffect(() => {
+    if (product && product.colors && product.colors.length > 0) {
+      setSelectedColor(product.colors[0]);
+    }
+  }, [product]);
 
   useEffect(() => {
     if (!product) return;
@@ -56,9 +63,9 @@ function ProductDetails() {
     <div className="mt-10 grid lg:grid-cols-2 gap-12 lg:gap-20">
       <div className="space-y-4">
         <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-muted shadow-sm">
-          {images[selectedImage] ? <img src={images[selectedImage]} alt={product.name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <span className="text-sm text-muted-foreground">No image available</span>}
+          {product.images && product.images[selectedImage] ? <img src={product.images[selectedImage]} alt={product.name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <span className="text-sm text-muted-foreground">No image available</span>}
         </div>
-        {images.length > 1 && <div className="grid grid-cols-5 gap-3">{images.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setSelectedImage(index)} className={`aspect-square overflow-hidden rounded-xl border-2 transition-all ${selectedImage === index ? "border-primary shadow-sm" : "border-border hover:border-border/80"}`}>{image ? <img src={image} alt={`${product.name} ${index + 1}`} className="h-full w-full object-cover" /> : <span className="text-xs text-muted-foreground">No image</span>}</button>)}</div>}
+        {product.images && product.images.length > 1 && <div className="grid grid-cols-5 gap-3">{product.images.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setSelectedImage(index)} className={`aspect-square overflow-hidden rounded-xl border-2 transition-all ${selectedImage === index ? "border-primary shadow-sm" : "border-border hover:border-border/80"}`}>{image ? <img src={image} alt={`${product.name} ${index + 1}`} className="h-full w-full object-cover" /> : <span className="text-xs text-muted-foreground">No image</span>}</button>)}</div>}
       </div>
       <div className="flex flex-col">
         <p className="text-xs uppercase tracking-[0.2em] text-primary font-bold">{product.category ?? "Collection"}</p>
@@ -83,6 +90,23 @@ function ProductDetails() {
           </div>
         </div>
 
+        {product.colors && product.colors.length > 0 && (
+            <div className="mt-8">
+            <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Select Colour</label>
+            <div className="flex gap-3 mt-3">
+                {product.colors.map((color: string) => (
+                <button 
+                    key={color}
+                    type="button"
+                    onClick={() => setSelectedColor(color)}
+                    className={`w-14 h-14 border-2 rounded-full font-bold transition-all ${selectedColor === color ? "border-primary ring-2 ring-primary ring-offset-2" : "border-border hover:border-primary"}`}
+                    style={{ backgroundColor: color.toLowerCase() }}
+                />
+                ))}
+            </div>
+            </div>
+        )}
+
         <p className={`mt-8 text-sm font-semibold flex items-center gap-2 ${product.stock > 0 ? "text-emerald-700" : "text-amber-700"}`}>
             <span className={`size-2 rounded-full ${product.stock > 0 ? "bg-emerald-600" : "bg-amber-600"}`} />
             {product.stock > 0 ? `${product.stock} items available` : "Currently out of stock"}
@@ -94,9 +118,9 @@ function ProductDetails() {
                 <span className="w-12 text-center font-bold">{quantity}</span>
                 <button type="button" onClick={() => setQuantity((value) => value + 1)} className="p-4 hover:text-primary"><Plus size={18} /></button>
             </div>
-            <button type="button" disabled={product.stock === 0} onClick={() => addItem(product, selectedSize, quantity)} className="btn-primary flex-1 justify-center disabled:opacity-50 !py-4 !text-base">Add to cart</button>
+            <button type="button" disabled={product.stock === 0} onClick={() => addItem(product, selectedSize, selectedColor, quantity)} className="btn-primary flex-1 justify-center disabled:opacity-50 !py-4 !text-base">Add to cart</button>
         </div>
-        <div className="mt-4"><BuyNowDialog product={product} trigger={<button type="button" className="btn-outline w-full justify-center !py-4 !text-base">Buy now</button>} /></div>
+        <div className="mt-4"><BuyNowDialog product={product} preselectedColor={selectedColor} trigger={<button type="button" className="btn-outline w-full justify-center !py-4 !text-base">Buy now</button>} /></div>
         <p className="mt-8 text-sm text-muted-foreground border-t pt-6">Lagos delivery: Delivery fee is paid directly to the rider upon arrival. It is separate from your online order payment.</p>
 
         {/* Reviews Section */}

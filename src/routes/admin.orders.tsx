@@ -143,11 +143,11 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
 
   useEffect(() => { if (data?.order) setTracking(data.order.tracking_number ?? ""); }, [data]);
   
-  const updateTracking = useMutation({
+    const updateTracking = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("orders").update({ tracking_number: tracking }).eq("id", orderId!);
       if (error) throw error;
-      await sendDeliveryNotification({ orderId: orderId! });
+      await sendDeliveryNotification({ data: { orderId: orderId! } });
     },
     onSuccess: () => { toast.success("Tracking updated and notification sent"); qc.invalidateQueries({ queryKey: ["admin-order", orderId] }); qc.invalidateQueries({ queryKey: ["admin-orders"] }); },
   });

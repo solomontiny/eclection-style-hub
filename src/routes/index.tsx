@@ -29,18 +29,18 @@ function Home() {
 
   return (
     <>
-      <section className="relative h-[58vh] min-h-[380px] sm:h-[70vh] sm:min-h-[500px] w-full overflow-hidden">
+      <section className="relative h-[60vh] min-h-[400px] sm:h-[75vh] sm:min-h-[550px] w-full overflow-hidden">
         <img
           src={heroImg}
           alt="SupplierAffordable fashion collection"
-          width={1280}
-          height={853}
-          className="absolute inset-0 h-full w-full object-cover object-[center_30%]"
+          width={1920}
+          height={1080}
+          className="absolute inset-0 h-full w-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-black/30" />
-        <div className="container-x relative h-full flex flex-col justify-end items-center pb-20">
+        <div className="absolute inset-0 bg-black/20" />
+        <div className="container-x relative h-full flex flex-col justify-end items-center pb-24">
           <div className="flex flex-wrap gap-4">
-            <Link to="/shop" className="btn-primary !bg-white !text-black hover:!bg-white/90 !px-10">
+            <Link to="/shop" className="btn-primary !bg-white !text-black hover:!bg-white/90 !px-10 !py-4 !text-lg">
               Shop Collection
             </Link>
           </div>
