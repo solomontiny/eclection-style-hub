@@ -10,10 +10,11 @@ const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const [size, setSize] = useState<string>("M");
+  const [color, setColor] = useState<string | undefined>(product.colors?.[0]);
   const [justAdded, setJustAdded] = useState(false);
 
   const handleAdd = () => {
-    addItem(product, size, 1);
+    addItem(product, size, color, 1);
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1200);
   };
@@ -71,14 +72,14 @@ export function ProductCard({ product }: { product: Product }) {
         />
       </div>
       <div className="mt-4 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
-          <Link to="/product/$slug" params={{ slug: product.slug }} className="font-display text-base sm:text-lg mt-0.5 hover:text-primary block leading-tight">{product.name}</Link>
+        <div className="min-w-0">
+          <p className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground truncate">{product.category ?? "Uncategorized"}</p>
+          <Link to="/product/$slug" params={{ slug: product.slug }} className="font-display text-sm sm:text-base mt-0.5 hover:text-primary block leading-tight truncate">{product.name}</Link>
         </div>
-        <div className="text-right">
-          <p className="font-semibold text-primary whitespace-nowrap">{formatNaira(product.sale_price ?? product.price)}</p>
+        <div className="text-right shrink-0">
+          <p className="text-sm sm:font-semibold text-primary whitespace-nowrap">{formatNaira(product.sale_price ?? product.price)}</p>
           {isSale && (
-            <p className="text-xs text-muted-foreground line-through">{formatNaira(product.price)}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground line-through whitespace-nowrap">{formatNaira(product.price)}</p>
           )}
         </div>
       </div>
@@ -102,11 +103,29 @@ export function ProductCard({ product }: { product: Product }) {
             </button>
           ))}
         </div>
+        {product.colors && product.colors.length > 0 && (
+          <div className="flex items-center gap-1.5 mt-1" role="radiogroup" aria-label={`Select colour for ${product.name}`}>
+            {product.colors.map((c) => (
+              <button
+                key={c}
+                type="button"
+                role="radio"
+                aria-checked={color === c}
+                onClick={() => setColor(c)}
+                className={`w-6 h-6 rounded-full border transition-all ${
+                  color === c ? "ring-2 ring-primary ring-offset-1" : "border-border"
+                }`}
+                style={{ backgroundColor: c.toLowerCase() }}
+                aria-label={`Select colour ${c}`}
+              />
+            ))}
+          </div>
+        )}
         <button
           type="button"
           onClick={handleAdd}
           className="w-full flex items-center justify-center gap-1.5 py-2 rounded-full border border-primary/30 text-xs font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-          aria-label={`Add ${product.name} size ${size} to cart`}
+          aria-label={`Add ${product.name} size ${size} ${color ? `colour ${color}` : ""} to cart`}
         >
           {justAdded ? (
             <><Check size={14} /> Added · Size {size}</>

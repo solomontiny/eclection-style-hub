@@ -78,18 +78,13 @@ function Home() {
 
       {/* Trust Section */}
       <section className="container-x py-20 bg-secondary/30">
-        <div className="grid md:grid-cols-3 gap-10">
+        <div className="grid md:grid-cols-2 gap-10">
             {[
-                { icon: ShieldCheck, title: "Secure Payment", text: "Shop with peace of mind using Paystack" },
-                { icon: Truck, title: "Fast Delivery", text: "Reliable shipping within Lagos and beyond" },
-                { icon: Sparkles, title: "Premium Quality", text: "Carefully curated fashion for you" },
+                { title: "✦ New Styles & Collections Regularly" },
+                { title: "✦ Fast & Reliable Delivery" },
             ].map((i, idx) => (
                 <div key={idx} className="text-center flex flex-col items-center">
-                    <div className="mb-4 p-4 rounded-full bg-primary/10 text-primary">
-                        <i.icon size={28} />
-                    </div>
-                    <h3 className="font-display text-xl mb-2">{i.title}</h3>
-                    <p className="text-sm text-muted-foreground">{i.text}</p>
+                    <h3 className="font-display text-xl">{i.title}</h3>
                 </div>
             ))}
         </div>

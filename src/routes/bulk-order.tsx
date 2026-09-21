@@ -25,11 +25,12 @@ function BulkOrderPage() {
   const { data: products = [] } = useQuery({ queryKey: ["products"], queryFn: getProducts });
   const { addItem } = useCart();
   const [bundleInputs, setBundleInputs] = useState<Record<string, number>>({});
+  const [selectedColors, setSelectedColors] = useState<Record<string, string>>({});
 
-  const handleAddBulk = (product: any) => {
+  const handleAddBulk = (product: any, color?: string) => {
     const bundles = bundleInputs[product.id] || 1;
     const qty = bundles * 10;
-    addItem(product, "Bulk", qty, true, bundles);
+    addItem(product, "Bulk", color, qty, true, bundles);
   };
 
   return (
@@ -61,7 +62,14 @@ function BulkOrderPage() {
             <div className="flex flex-wrap gap-2 items-center">
                 <Input type="number" min="1" aria-label={`Bundles of ${p.name}`} value={bundleInputs[p.id] || 1} onChange={e => setBundleInputs({...bundleInputs, [p.id]: parseInt(e.target.value) || 1})} className="w-20" />
                 <span className="text-sm font-medium">Bundles</span>
-                <Button onClick={() => handleAddBulk(p)}>Add to Cart</Button>
+                {p.colors && p.colors.length > 0 && (
+                   <select className="text-sm border rounded-md p-1 bg-background" value={selectedColors[p.id] ?? p.colors[0]} onChange={e => {
+                        setSelectedColors(prev => ({ ...prev, [p.id]: e.target.value }));
+                   }}>
+                        {p.colors.map((c: string) => <option key={c} value={c}>{c}</option>)}
+                   </select>
+                )}
+                <Button onClick={() => handleAddBulk(p, selectedColors[p.id] ?? p.colors?.[0])}>Add to Cart</Button>
             </div>
             <p className="text-lg font-bold">Total: {formatNaira((bundleInputs[p.id] || 1) * 60000)}</p>
           </div>

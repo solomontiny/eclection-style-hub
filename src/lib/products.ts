@@ -8,6 +8,7 @@ export type Product = ProductRow & {
   image?: string | null;
   tag?: string | null;
   bundle_items?: { id: string; name?: string; quantity: number }[];
+  colors?: string[] | null;
 };
 
 type ProductRowWithCategory = ProductRow & {
@@ -20,6 +21,7 @@ const normalizeProduct = (product: ProductRowWithCategory): Product => ({
   category: product.category?.name ?? null,
   image_url: product.image_url ?? null,
   image: product.image_url ?? product.images?.[0] ?? null,
+  colors: (product as any).colors ?? [],
 });
 
 /**

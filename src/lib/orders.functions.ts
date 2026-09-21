@@ -155,6 +155,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     items: z.array(z.object({
       id: z.string(),
       size: z.string(),
+      color: z.string().optional(),
       qty: z.number().int().min(1),
       isBulk: z.boolean().optional(),
     })),
@@ -195,6 +196,8 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         product_name: product.name,
         unit_price: price,
         quantity: item.qty,
+        size: item.size,
+        color: item.color,
         subtotal: itemSubtotal
       };
     });
@@ -214,7 +217,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       total,
       payment_status: 'pending' as const,
       paystack_reference: reference,
-      notes: items.map(i => `${products.find((p) => p.id === i.id)?.name}${i.isBulk ? " (Bulk)" : ""} (Size ${i.size}) x ${i.qty}`).join(", "),
+      notes: items.map(i => `${products.find((p) => p.id === i.id)?.name}${i.isBulk ? " (Bulk)" : ""} (Size ${i.size})${i.color ? ` (Color ${i.color})` : ""} x ${i.qty}`).join(", "),
     };
 
     const { data: order, error: orderError } = await getSupabaseAdmin()
