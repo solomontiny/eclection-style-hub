@@ -9,8 +9,8 @@ import { LAGOS_DELIVERY_NOTE } from "@/lib/contact";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SupplierAffordable — Affordable Fashion for Women & Men" },
-      { name: "description", content: "Stylish, quality and affordable clothing for women and men. Shop online and pay securely with card or bank transfer." },
+      { title: "SupplierAffordable — Affordable Fashion for Women" },
+      { name: "description", content: "Stylish, quality and affordable clothing for women. Shop online and pay securely with card or bank transfer." },
     ],
   }),
   component: Home,
@@ -37,10 +37,11 @@ function Home() {
           height={1080}
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-black/20" />
-        <div className="container-x relative h-full flex flex-col justify-end items-center pb-24">
-          <div className="flex flex-wrap gap-4">
-            <Link to="/shop" className="btn-primary !bg-white !text-black hover:!bg-white/90 !px-10 !py-4 !text-lg">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+        <div className="container-x relative h-full flex flex-col justify-center items-center pb-24 text-center">
+          <h1 className="font-display text-4xl md:text-6xl text-white mb-6 drop-shadow-lg">Elevate Your Style</h1>
+          <div className="flex flex-wrap gap-4 justify-center">
+            <Link to="/shop" className="btn-primary !bg-white !text-black hover:!bg-white/90 !px-10 !py-4 !text-lg !font-bold">
               Shop Collection
             </Link>
           </div>
