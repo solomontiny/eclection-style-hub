@@ -259,6 +259,8 @@ export type Database = {
           discount: number
           id: string
           notes: string | null
+          notified_status: Database["public"]["Enums"]["order_status"] | null
+          notified_tracking: string | null
           order_number: string
           payment_status: Database["public"]["Enums"]["payment_status"]
           paystack_reference: string | null

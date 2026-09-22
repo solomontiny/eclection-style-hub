@@ -53,8 +53,8 @@
   --secondary: oklch(0.95 0.01 280);
   --secondary-foreground: oklch(0.25 0.02 280);
 
-  /* Gold Accent */
-  --accent: oklch(0.70 0.12 85);
+  /* Gold Accent - refined, delicate */
+  --accent: oklch(0.72 0.07 85);
   --accent-foreground: oklch(0.20 0.02 280);
 
   --muted: oklch(0.96 0.005 280);
@@ -93,7 +93,7 @@
   --muted: oklch(0.26 0.014 60);
   --muted-foreground: oklch(0.74 0.012 80);
 
-  --accent: oklch(0.78 0.15 70);
+  --accent: oklch(0.72 0.08 85);
   --accent-foreground: oklch(0.2 0.02 60);
 
   --destructive: oklch(0.58 0.2 25);
@@ -159,7 +159,7 @@
     box-shadow: var(--shadow-soft);
   }
   .btn-outline {
-    border: 1.5px solid var(--primary);
+    border: 1px solid var(--primary);
     color: var(--primary);
     padding: 0.875rem 1.75rem;
     border-radius: 9999px;
@@ -185,11 +185,13 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    border: 1px solid color-mix(in oklab, var(--accent) 40%, transparent);
   }
   .btn-accent:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-soft);
-    filter: brightness(1.1);
+    filter: brightness(1.05);
+    background-color: color-mix(in oklab, var(--accent) 90%, white);
   }
   .btn-ghost {
     background-color: transparent;
@@ -228,6 +230,12 @@
     max-width: 1280px;
     margin-inline: auto;
     padding-inline: 1.5rem;
+  }
+  .gold-accent {
+    border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
+  }
+  .gold-ring {
+    --tw-ring-color: color-mix(in oklab, var(--accent) 50%, transparent);
   }
 }
 

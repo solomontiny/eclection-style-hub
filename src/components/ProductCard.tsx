@@ -10,26 +10,26 @@ const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"] as const;
 
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
-  const sizes = product.sizes?.length ? product.sizes : DEFAULT_SIZES;
+  const sizes = product.sizes?.length ? product.sizes : [...DEFAULT_SIZES];
   const [size, setSize] = useState<string>(sizes[1] ?? "M");
   const [color, setColor] = useState<string | undefined>(product.colors?.[0]);
   const [justAdded, setJustAdded] = useState(false);
-
-  const selectedImage = product.color_images?.[color ?? ""] ?? product.images?.[0] ?? null;
+  const isOutOfStock = product.stock <= 0;
+  const isNew = new Date(product.created_at).getTime() > Date.now() - 1000 * 60 * 60 * 24 * 7;
+  const isSale = product.sale_price != null && product.sale_price < product.price;
+  const isBundle = product.product_type === "bundle";
+  const isFeatured = product.featured;
+  const selectedImage = product.color_images?.[color ?? ""] ?? product.images?.[0] ?? product.image_url ?? product.image ?? null;
 
   const handleAdd = () => {
+    if (isOutOfStock) return;
     addItem(product, size, color, 1, false, undefined);
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1200);
   };
 
-  // Badge logic
-  const isNew = new Date(product.created_at).getTime() > Date.now() - 1000 * 60 * 60 * 24 * 7; // 7 days
-  const isSale = product.sale_price && product.sale_price < product.price;
-  const isBundle = product.product_type === 'bundle';
-  const isFeatured = product.featured;
-
   const badges = [
+    isOutOfStock && { label: "OUT OF STOCK", className: "bg-muted text-muted-foreground" },
     isNew && { label: "NEW", className: "bg-blue-600" },
     isBundle && { label: "BUNDLE", className: "bg-purple-600" },
     isSale && { label: "SALE", className: "bg-red-600" },
@@ -49,13 +49,8 @@ export function ProductCard({ product }: { product: Product }) {
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
           onError={(event) => { event.currentTarget.style.display = "none"; }}
           />
-          {(!product.images || product.images.length === 0) && <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">No image</div>}
+          {(!selectedImage) && <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">No image</div>}
         </Link>
-        {product.stock <= 0 && (
-          <span className="absolute top-3 left-3 px-3 py-1 text-xs font-semibold rounded-full bg-red-500/90 text-white backdrop-blur">OUT OF STOCK</span>
-        )}
-        
-        {/* Intelligent Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-2">
           {badges.slice(0, 2).map((b, i) => (
              <span key={i} className={`px-3 py-1 text-[10px] font-bold rounded-full text-white backdrop-blur ${b.className}`}>{b.label}</span>
@@ -68,8 +63,9 @@ export function ProductCard({ product }: { product: Product }) {
           trigger={
             <button
               type="button"
-              className="absolute bottom-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity btn-primary !py-2 !px-3 text-xs"
+              className={`absolute bottom-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity btn-primary !py-2 !px-3 text-xs ${isOutOfStock ? "pointer-events-none opacity-60" : ""}`}
               aria-label={`Buy ${product.name}`}
+              disabled={isOutOfStock}
             >
               <ShoppingBag size={14} /> Buy now
             </button>
@@ -98,10 +94,11 @@ export function ProductCard({ product }: { product: Product }) {
               role="radio"
               aria-checked={size === s}
               onClick={() => setSize(s)}
-              className={`flex-1 text-[11px] font-semibold py-1.5 rounded-md border transition-colors ${
+              disabled={isOutOfStock}
+              className={`min-h-9 flex-1 text-[11px] font-semibold py-1.5 rounded-md border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                 size === s
-                  ? "bg-accent text-accent-foreground border-accent"
-                  : "border-border text-foreground/70 hover:border-primary hover:text-primary"
+                  ? "bg-accent/10 text-accent border-accent/40"
+                  : "border-border text-foreground/70 hover:border-primary/50 hover:text-primary"
               }`}
             >
               {s}
@@ -116,14 +113,15 @@ export function ProductCard({ product }: { product: Product }) {
                 type="button"
                 role="radio"
                 aria-checked={color === c}
-                onClick={() => setColor(c)}
-                className={`w-6 h-6 rounded-full border transition-all relative ${
-                  color === c ? "ring-2 ring-accent ring-offset-1" : "border-border"
+              onClick={() => setColor(c)}
+              disabled={isOutOfStock}
+              className={`w-6 h-6 rounded-full border transition-all relative disabled:cursor-not-allowed disabled:opacity-50 ${
+                  color === c ? "ring-1 ring-accent ring-offset-1" : "border-border"
                 }`}
                 style={{ backgroundColor: colorToCss(c) }}
                 aria-label={`Select colour ${c}`}
               >
-                {color === c && <span className="absolute inset-0 rounded-full ring-2 ring-primary" />}
+                {color === c && <span className="absolute inset-0 rounded-full ring-1 ring-primary" />}
               </button>
             ))}
           </div>
@@ -134,7 +132,12 @@ export function ProductCard({ product }: { product: Product }) {
         <button
           type="button"
           onClick={handleAdd}
-          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-full border border-primary/30 text-xs font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+          disabled={isOutOfStock}
+          className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-full border text-xs font-semibold transition-colors ${
+            isOutOfStock
+              ? "cursor-not-allowed border-border bg-muted/40 text-muted-foreground"
+              : "border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/40"
+          }`}
           aria-label={`Add ${product.name} size ${size} ${color ? `colour ${color}` : ""} to cart`}
         >
           {justAdded ? (

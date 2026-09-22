@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
@@ -18,7 +18,8 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
   const unitPrice = product.sale_price ?? product.price;
   const total = unitPrice * qty;
   const colorImage = color ? product.color_images?.[color] : null;
-  const displayImage = colorImage ?? product.images?.[0] ?? "";
+  const displayImage = colorImage ?? product.images?.[0] ?? product.image_url ?? product.image ?? "";
+  const isOutOfStock = product.stock <= 0;
 
   const handlePayNow = () => {
     addItem(product, size, color || undefined, qty);
@@ -34,19 +35,24 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
           <DialogTitle className="font-display text-2xl">{product.name}</DialogTitle>
         </DialogHeader>
         <div className="flex gap-4">
-          <img src={displayImage} alt={product.name} className="h-28 w-24 rounded-xl object-cover" />
-          <div className="flex-1">
+          {displayImage ? (
+            <img src={displayImage} alt={product.name} className="h-28 w-24 rounded-xl object-cover" />
+          ) : (
+            <div className="h-28 w-24 rounded-xl bg-muted grid place-items-center text-xs text-muted-foreground">No image</div>
+          )}
+          <div className="flex-1 min-w-0">
             <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
             <p className="mt-1 font-semibold text-primary">{formatNaira(unitPrice)}</p>
-            <div className="mt-3">
-              <p className="text-xs font-medium mb-1.5">Size</p>
-              <div className="flex gap-1.5">
+              <div className="mt-3">
+                <p className="text-xs font-medium mb-1.5">Size</p>
+                <div className="flex flex-wrap gap-1.5">
                 {sizes.map((s) => (
                   <button
                     key={s}
                     type="button"
                     onClick={() => setSize(s)}
-                    className={`h-8 w-8 rounded-full text-xs font-medium border transition-colors ${
+                    disabled={isOutOfStock}
+                    className={`h-8 w-8 rounded-full text-xs font-medium border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                       size === s ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary"
                     }`}
                   >
@@ -83,10 +89,10 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
                   role="radio"
                   aria-checked={color === c}
                   onClick={() => setColor(c)}
-                  className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
+                  className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${
                     color === c
-                      ? "ring-2 ring-primary ring-offset-1 ring-offset-background border-primary"
-                      : "border-border hover:border-primary"
+                      ? "ring-1 ring-accent ring-offset-1 ring-offset-background border-accent/50"
+                      : "border-border hover:border-primary/50"
                   }`}
                   style={{ backgroundColor: colorToCss(c) }}
                   aria-label={`Select colour ${c}`}
@@ -99,8 +105,8 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
         )}
 
         <DialogFooter>
-          <button type="button" onClick={handlePayNow} className="btn-primary w-full justify-center">
-            <ShoppingBag size={16} /> Pay now
+          <button type="button" onClick={handlePayNow} disabled={isOutOfStock} className={`btn-primary w-full justify-center ${isOutOfStock ? "pointer-events-none opacity-60" : ""}`}>
+            <ShoppingBag size={16} /> {isOutOfStock ? "Out of stock" : "Pay now"}
           </button>
         </DialogFooter>
       </DialogContent>

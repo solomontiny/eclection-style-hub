@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, ShieldCheck, Truck, Sparkles, CreditCard, ShoppingBag, Package } from "lucide-react";
+import { ArrowRight, ShieldCheck, Truck, Sparkles, CreditCard, ShoppingBag, Package, Lock, HeadphonesIcon, Award } from "lucide-react";
 import heroImg from "@/assets/supplier-affordable-hero.png";
-import { Product, getProducts } from "@/lib/products";
+import { Product, getProducts, getCategories } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
 import { LAGOS_DELIVERY_NOTE } from "@/lib/contact";
 

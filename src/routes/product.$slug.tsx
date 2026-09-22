@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Minus, Plus, ShoppingBag } from "lucide-react";
 import { getProductBySlug, formatNaira } from "@/lib/products";
@@ -58,12 +58,13 @@ function ProductDetails() {
   if (isError || !product) return <section className="container-x py-24 text-center"><h1 className="font-display text-3xl">Product unavailable</h1><p className="mt-2 text-muted-foreground">This product may have been unpublished or removed.</p><Link to="/shop" className="btn-primary mt-6 inline-flex">Back to shop</Link></section>;
 
   const sizes = product.sizes?.length ? product.sizes : DEFAULT_SIZES;
-  const images = product.images && product.images.length ? product.images : [""];
+  const images = product.images && product.images.length ? product.images : [product.image_url, product.image].filter(Boolean) as string[];
   const colorImages = product.color_images ?? {};
   const colorSpecificImage = selectedColor ? colorImages[selectedColor] : null;
   const primaryImage = colorSpecificImage ?? images[selectedImage] ?? "";
   const price = product.sale_price ?? product.price;
   const discount = product.sale_price && product.price > 0 ? Math.round((1 - product.sale_price / product.price) * 100) : product.discount_percent;
+  const isOutOfStock = product.stock <= 0;
 
   return <section className="container-x py-16 md:py-24">
     <Link to="/shop" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"><ArrowLeft size={16} /> Back to shop</Link>
@@ -116,11 +117,6 @@ function ProductDetails() {
             </div>
             </div>
         )}
-
-        <p className={`mt-8 text-sm font-semibold flex items-center gap-2 ${product.stock > 0 ? "text-emerald-700" : "text-amber-700"}`}>
-            <span className={`size-2 rounded-full ${product.stock > 0 ? "bg-emerald-600" : "bg-amber-600"}`} />
-            {product.stock > 0 ? `${product.stock} items available` : "Currently out of stock"}
-        </p>
 
         <div className="mt-8 flex flex-col sm:flex-row gap-4">
             <div className="flex items-center rounded-full border border-border">

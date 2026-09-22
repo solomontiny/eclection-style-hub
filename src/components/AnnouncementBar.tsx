@@ -1,21 +1,19 @@
 import { Sparkles } from "lucide-react";
 
 const MESSAGES = [
-  "✨ WELCOME — 10% OFF",
-  "🎁 Use code WELCOME10 for 10% off your first order",
-  "🚚 Same-day delivery within Lekki / Ajah",
-  "💖 New arrivals every week — shop the latest drops",
+  "✦ New Styles & Collections Regularly",
+  "✦ Fast & Reliable Delivery",
 ];
 
 export function AnnouncementBar() {
   // Duplicate so the marquee loops seamlessly
   const loop = [...MESSAGES, ...MESSAGES];
   return (
-    <div className="bg-primary text-primary-foreground overflow-hidden border-b border-primary/20">
-      <div className="flex whitespace-nowrap animate-marquee py-2 will-change-transform">
+    <div className="bg-primary/5 text-primary overflow-hidden border-b border-primary/10">
+      <div className="flex whitespace-nowrap animate-marquee py-3 will-change-transform">
         {loop.map((m, i) => (
-          <span key={i} className="flex items-center gap-2 px-6 text-xs font-medium tracking-wide">
-            <Sparkles size={12} className="opacity-80" />
+          <span key={i} className="flex items-center gap-3 px-8 text-sm font-medium tracking-wide">
+            <Sparkles size={14} className="opacity-60" />
             {m}
           </span>
         ))}
