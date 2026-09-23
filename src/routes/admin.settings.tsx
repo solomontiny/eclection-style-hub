@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 function SettingsPage() {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [newPassword, setNewPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [settings, setSettings] = useState({
@@ -65,7 +67,12 @@ function SettingsPage() {
     setBusy(true);
     const { error } = await supabase.from("shop_settings").upsert({ id: "default", ...settings });
     setBusy(false);
-    if (error) toast.error(error.message); else toast.success("Shop settings saved");
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Shop settings saved");
+      qc.invalidateQueries({ queryKey: ["shop_settings_video"] });
+    }
   }
 
   async function uploadMedia(
@@ -140,7 +147,6 @@ function SettingsPage() {
               <div className="flex-1 min-w-[200px]"><Label>Video URL</Label><Input value={settings.video_url ?? ""} onChange={(e) => setSettings({ ...settings, video_url: e.target.value })} placeholder="https://..." /></div>
               <div>
                 <Label>&nbsp;</Label>
-                <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setVideoFile(f); uploadMedia(f, setUploadingVideo, "video"); e.target.value = ""; } }} disabled={uploadingVideo} className="hidden" />
                 <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("video-file-input")?.click()} disabled={uploadingVideo}>
                   {uploadingVideo ? "Uploading…" : <><Upload size={14} className="mr-1" /> Video</>}
                 </Button>
@@ -165,7 +171,6 @@ function SettingsPage() {
               <div className="flex-1 min-w-[200px]"><Label>Poster Image URL</Label><Input value={settings.poster_image_url ?? ""} onChange={(e) => setSettings({ ...settings, poster_image_url: e.target.value })} placeholder="https://..." /></div>
               <div>
                 <Label>&nbsp;</Label>
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setPosterFile(f); uploadMedia(f, setUploadingPoster, "poster"); e.target.value = ""; } }} disabled={uploadingPoster} className="hidden" />
                 <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("poster-file-input")?.click()} disabled={uploadingPoster}>
                   {uploadingPoster ? "Uploading…" : <><Upload size={14} className="mr-1" /> Poster</>}
                 </Button>

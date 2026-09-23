@@ -2,10 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatNaira, getProducts, type Product } from "@/lib/products";
+import { colorToCss } from "@/lib/colors";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/lib/cart";
-import { Trash2, AlertCircle, CheckCircle, Package } from "lucide-react";
+import { Trash2, AlertCircle, CheckCircle, Package, Check } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
@@ -101,21 +103,64 @@ function ProductEntry({ product, remaining, onAdd }: ProductEntryProps) {
           <div className="mt-4 space-y-3">
             {colours.map((color) => {
               const line = lines[color] ?? { color, size: defaultSize, qty: 0 };
+              const isSelected = line.qty > 0;
               const colourImage = product.color_images?.[color];
               return (
-                <div key={color} className="rounded-xl border border-border/60 bg-background p-3">
+                <div
+                  key={color}
+                  className={cn(
+                    "rounded-xl border bg-background p-3 transition-colors",
+                    "border-border/60",
+                    isSelected && "border-primary/40 bg-primary/5",
+                  )}
+                >
                   <div className="flex items-center gap-3">
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
-                      <Package className="absolute inset-0 m-auto h-5 w-5 text-muted-foreground" />
-                      {colourImage && <img src={colourImage} alt={`${product.name} ${color}`} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updateLine(color, { qty: isSelected ? 0 : 1 })}
+                      className={cn(
+                        "relative h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 bg-muted transition-all",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        isSelected
+                          ? "border-primary ring-2 ring-primary ring-offset-2 ring-offset-background"
+                          : "border-border hover:border-primary/60",
+                      )}
+                      aria-pressed={isSelected}
+                      aria-label={isSelected ? `${color} selected` : `Select ${color}`}
+                    >
+                      <Package className="absolute inset-0 m-auto h-5 w-5 text-muted-foreground/50" />
+                      {colourImage ? (
+                        <img
+                          src={colourImage}
+                          alt={color}
+                          className="h-full w-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <span
+                          className="absolute inset-0 rounded-full"
+                          style={{
+                            backgroundColor:
+                              color === "Default" ? "#cbd5e1" : colorToCss(color),
+                          }}
+                        />
+                      )}
+                      {isSelected && (
+                        <span className="absolute bottom-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                          <Check size={12} />
+                        </span>
+                      )}
+                    </button>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{color === "Default" ? "Standard design" : color}</p>
-                      <p className="text-xs text-muted-foreground">Separate quantity for this colour/design</p>
+                      <p className="truncate font-medium">
+                        {color === "Default" ? "Standard design" : color}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Separate quantity for this colour/design
+                      </p>
                     </div>
-                    {product.colors?.includes(color) && (
-                      <span className="h-6 w-6 shrink-0 rounded-full border border-border/50" style={{ backgroundColor: color === "Default" ? "#cbd5e1" : undefined }} aria-label={color} />
-                    )}
                   </div>
 
                   <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_5.5rem]">
@@ -135,7 +180,10 @@ function ProductEntry({ product, remaining, onAdd }: ProductEntryProps) {
                         step={1}
                         value={line.qty}
                         onChange={(event) => updateQuantity(color, event.target.value)}
-                        className="h-10 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-auto"
+                        className={cn(
+                          "h-10 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-auto",
+                          isSelected ? "border-primary/60" : "",
+                        )}
                         aria-describedby={`quantity-help-${product.id}-${color}`}
                       />
                     </div>

@@ -39,6 +39,18 @@ function Home() {
   const bundles = products.filter(p => p.product_type === 'bundle').slice(0, 4);
   const onSale = products.filter(p => p.sale_price && p.sale_price < p.price).slice(0, 4);
 
+  // Map each category id to a representative product image (used as a polished
+  // fallback when a category has no image of its own).
+  const categoryProductImage = (() => {
+    const map = new Map<string, string>();
+    products.forEach((p) => {
+      if (p.category_id && !map.has(p.category_id) && p.images?.[0]) {
+        map.set(p.category_id, p.images[0]);
+      }
+    });
+    return map;
+  })();
+
   return (
     <>
       <section className="relative h-[60vh] min-h-[400px] sm:h-[75vh] sm:min-h-[550px] w-full overflow-hidden">
@@ -63,42 +75,52 @@ function Home() {
       <VideoAdvert />
 
       {/* Shop by Category */}
-      <section className="container-x py-20">
-        <h2 className="font-display text-3xl md:text-5xl mb-10 text-center">Shop by Category</h2>
-        <div className="max-w-2xl mx-auto">
-          {(categories.length ? categories : []).map((c) => {
-            const imgSrc = c.image_url || heroImg;
-            return (
-              <Link key={c.id} to="/shop" className="group relative aspect-[5/3] rounded-3xl overflow-hidden block">
-                <img
-                  src={imgSrc}
-                  alt={c.name}
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  loading="lazy"
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = heroImg; }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/10 to-transparent" />
-                <div className="absolute bottom-6 left-6 text-background">
-                  <p className="text-xs tracking-widest uppercase opacity-80">Shop</p>
-                  <p className="font-display text-3xl">{c.name}</p>
-                </div>
-              </Link>
-            );
-          })}
-          {categories.length === 0 && (
-            <Link to="/shop" className="group relative aspect-[5/3] rounded-3xl overflow-hidden block">
-              <img
-                src={heroImg}
-                alt="Shop by Category"
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/10 to-transparent" />
-              <div className="absolute bottom-6 left-6 text-background">
-                <p className="text-xs tracking-widest uppercase opacity-80">Shop</p>
-                <p className="font-display text-3xl">Women</p>
-              </div>
-            </Link>
-          )}
+      <section className="container-x py-16">
+        <div className="mb-8 flex items-center justify-between">
+          <h2 className="font-display text-3xl md:text-4xl">Shop by Category</h2>
+          <Link to="/shop" className="text-sm font-semibold text-primary hover:underline">View all →</Link>
+        </div>
+        <div className="relative">
+          <div className="flex gap-5 overflow-x-auto pb-2 md:grid md:grid-cols-2 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+            {(categories.length ? categories : []).map((c) => {
+              const imgSrc = c.image_url || categoryProductImage.get(c.id);
+              const hasImage = !!imgSrc;
+              return (
+                <Link
+                  key={c.id}
+                  to="/shop"
+                  aria-label={`Shop ${c.name}`}
+                  className="group relative flex shrink-0 w-[150px] sm:w-[170px] md:w-auto overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                >
+                  <div className="relative aspect-[3/4] w-full">
+                    {hasImage ? (
+                      <img
+                        src={imgSrc}
+                        alt={c.name}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        loading="lazy"
+                        onError={(e) => {
+                          const t = e.currentTarget as HTMLImageElement;
+                          if (t.src !== heroImg) t.src = heroImg;
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/5 via-secondary to-accent/10">
+                        <ShoppingBag className="h-10 w-10 text-muted-foreground/50" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 p-4 text-background">
+                    <p className="font-display text-xl drop-shadow-sm">{c.name}</p>
+                  </div>
+                </Link>
+              );
+            })}
+            {categories.length === 0 && (
+              <p className="text-sm text-muted-foreground">No categories available yet.</p>
+            )}
+          </div>
         </div>
       </section>
 
