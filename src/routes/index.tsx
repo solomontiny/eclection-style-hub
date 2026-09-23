@@ -23,6 +23,17 @@ function Home() {
     queryFn: getProducts,
   });
 
+  const { data: categories = [] } = useQuery<any[]>({
+    queryKey: ["home-categories"],
+    queryFn: async () => {
+      try {
+        return await getCategories();
+      } catch {
+        return [];
+      }
+    },
+  });
+
   const featured = products.filter(p => p.featured).slice(0, 4);
   const newArrivals = products.slice(0, 4);
   const bundles = products.filter(p => p.product_type === 'bundle').slice(0, 4);
@@ -55,22 +66,39 @@ function Home() {
       <section className="container-x py-20">
         <h2 className="font-display text-3xl md:text-5xl mb-10 text-center">Shop by Category</h2>
         <div className="max-w-2xl mx-auto">
-          {[
-            { label: "Women", img: featured[0]?.image ?? featured[0]?.image_url ?? "" },
-          ].map((c) => (
-            <Link key={c.label} to="/shop" className="group relative aspect-[5/3] rounded-3xl overflow-hidden block">
+          {(categories.length ? categories : []).map((c) => {
+            const imgSrc = c.image_url || heroImg;
+            return (
+              <Link key={c.id} to="/shop" className="group relative aspect-[5/3] rounded-3xl overflow-hidden block">
+                <img
+                  src={imgSrc}
+                  alt={c.name}
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  loading="lazy"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = heroImg; }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/10 to-transparent" />
+                <div className="absolute bottom-6 left-6 text-background">
+                  <p className="text-xs tracking-widest uppercase opacity-80">Shop</p>
+                  <p className="font-display text-3xl">{c.name}</p>
+                </div>
+              </Link>
+            );
+          })}
+          {categories.length === 0 && (
+            <Link to="/shop" className="group relative aspect-[5/3] rounded-3xl overflow-hidden block">
               <img
-                src={c.img || undefined}
-                alt={c.label}
+                src={heroImg}
+                alt="Shop by Category"
                 className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/10 to-transparent" />
               <div className="absolute bottom-6 left-6 text-background">
                 <p className="text-xs tracking-widest uppercase opacity-80">Shop</p>
-                <p className="font-display text-3xl">{c.label}</p>
+                <p className="font-display text-3xl">Women</p>
               </div>
             </Link>
-          ))}
+          )}
         </div>
       </section>
 

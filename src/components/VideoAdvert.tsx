@@ -14,6 +14,7 @@ type VideoSettings = {
 
 export function VideoAdvert() {
   const [mediaError, setMediaError] = useState(false);
+  const [placeholderError, setPlaceholderError] = useState(false);
 
   const { data: settings } = useQuery<VideoSettings>({
     queryKey: ["shop_settings_video"],
@@ -32,12 +33,11 @@ export function VideoAdvert() {
 
   const { video_url, video_title, video_description, poster_image_url } = settings;
 
-  // Determine the media to display. If the primary media fails to load, fall
-  // back gracefully to the poster (or the brand placeholder) so we never show a
-  // blank grey area.
   const poster = poster_image_url || heroImg;
   const effectiveVideo = !mediaError && video_url ? video_url : null;
   const showPlaceholder = !effectiveVideo;
+
+  const placeholderSrc = placeholderError ? heroImg : poster;
 
   return (
     <section className="container-x py-16">
@@ -45,35 +45,24 @@ export function VideoAdvert() {
         <div className="aspect-video w-full relative bg-secondary/30">
           {showPlaceholder ? (
             <img
-              src={poster}
+              src={placeholderSrc}
               alt={video_title || "SupplierAffordable style collection"}
               className="h-full w-full object-cover"
               loading="lazy"
-              onError={() => setMediaError(true)}
+              onError={() => setPlaceholderError(true)}
             />
           ) : (
-            <>
-              <video
-                className="h-full w-full object-cover"
-                src={effectiveVideo!}
-                controls
-                playsInline
-                muted
-                poster={poster}
-                onError={() => setMediaError(true)}
-              />
-              {!video_url && poster_image_url && (
-                <img
-                  src={poster_image_url}
-                  alt={video_title || "Brand advertisement"}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
-              )}
-            </>
+            <video
+              className="h-full w-full object-cover"
+              src={effectiveVideo!}
+              controls
+              playsInline
+              muted
+              poster={poster}
+              onError={() => setMediaError(true)}
+            />
           )}
 
-          {/* Premium play overlay shown when there is a video but no controls visible */}
           {effectiveVideo && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="rounded-full bg-primary/80 p-4 text-primary-foreground shadow-lg">
