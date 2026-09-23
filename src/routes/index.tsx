@@ -4,6 +4,7 @@ import { ArrowRight, ShieldCheck, Truck, Sparkles, CreditCard, ShoppingBag, Pack
 import heroImg from "@/assets/supplier-affordable-hero.png";
 import { Product, getProducts, getCategories } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
+import { VideoAdvert } from "@/components/VideoAdvert";
 import { LAGOS_DELIVERY_NOTE } from "@/lib/contact";
 
 export const Route = createFileRoute("/")({
@@ -47,6 +48,8 @@ function Home() {
           </div>
         </div>
       </section>
+
+      <VideoAdvert />
 
       {/* Shop by Category */}
       <section className="container-x py-20">

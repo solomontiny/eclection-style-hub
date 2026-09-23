@@ -426,48 +426,63 @@ export type Database = {
         }
         Relationships: []
       }
-      shop_settings: {
-        Row: {
-          contact_email: string
-          contact_phone: string
-          created_at: string
-          currency: string
-          id: string
-          shipping_flat_rate: number
-          store_description: string
-          store_name: string
-          store_policies: string
-          tax_percent: number
-          updated_at: string
-        }
-        Insert: {
-          contact_email?: string
-          contact_phone?: string
-          created_at?: string
-          currency?: string
-          id?: string
-          shipping_flat_rate?: number
-          store_description?: string
-          store_name?: string
-          store_policies?: string
-          tax_percent?: number
-          updated_at?: string
-        }
-        Update: {
-          contact_email?: string
-          contact_phone?: string
-          created_at?: string
-          currency?: string
-          id?: string
-          shipping_flat_rate?: number
-          store_description?: string
-          store_name?: string
-          store_policies?: string
-          tax_percent?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
+       shop_settings: {
+         Row: {
+           contact_email: string
+           contact_phone: string
+           created_at: string
+           currency: string
+           id: string
+           shipping_flat_rate: number
+           store_description: string
+           store_name: string
+           store_policies: string
+           tax_percent: number
+           updated_at: string
+           video_description: string | null
+           video_title: string | null
+           video_url: string | null
+           is_video_advert_enabled: boolean | null
+           poster_image_url: string | null
+         }
+         Insert: {
+           contact_email?: string
+           contact_phone?: string
+           created_at?: string
+           currency?: string
+           id?: string
+           shipping_flat_rate?: number
+           store_description?: string
+           store_name?: string
+           store_policies?: string
+           tax_percent?: number
+           updated_at?: string
+           video_description?: string | null
+           video_title?: string | null
+           video_url?: string | null
+           is_video_advert_enabled?: boolean | null
+           poster_image_url?: string | null
+         }
+         Update: {
+           contact_email?: string
+           contact_phone?: string
+           created_at?: string
+           currency?: string
+           id?: string
+           shipping_flat_rate?: number
+           store_description?: string
+           store_name?: string
+           store_policies?: string
+           tax_percent?: number
+           updated_at?: string
+           video_description?: string | null
+           video_title?: string | null
+           video_url?: string | null
+           is_video_advert_enabled?: boolean | null
+           poster_image_url?: string | null
+         }
+         Relationships: []
+       }
       user_roles: {
         Row: {
           created_at: string
