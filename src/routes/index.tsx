@@ -81,19 +81,18 @@ function Home() {
           <Link to="/shop" className="text-sm font-semibold text-primary hover:underline">View all →</Link>
         </div>
         <div className="relative">
-          <div className="flex gap-5 overflow-x-auto pb-2 md:grid md:grid-cols-2 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide md:grid md:grid-cols-3 lg:grid-cols-4 md:gap-6">
             {(categories.length ? categories : []).map((c) => {
               const imgSrc = c.image_url || categoryProductImage.get(c.id);
-              const hasImage = !!imgSrc;
               return (
                 <Link
                   key={c.id}
                   to="/shop"
                   aria-label={`Shop ${c.name}`}
-                  className="group relative flex shrink-0 w-[150px] sm:w-[170px] md:w-auto overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                  className="group relative flex shrink-0 w-[160px] sm:w-[200px] md:w-auto overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
                 >
                   <div className="relative aspect-[3/4] w-full">
-                    {hasImage ? (
+                    {imgSrc ? (
                       <img
                         src={imgSrc}
                         alt={c.name}
@@ -109,10 +108,10 @@ function Home() {
                         <ShoppingBag className="h-10 w-10 text-muted-foreground/50" />
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                   </div>
                   <div className="absolute bottom-0 left-0 right-0 p-4 text-background">
-                    <p className="font-display text-xl drop-shadow-sm">{c.name}</p>
+                    <p className="font-display text-lg drop-shadow-sm font-medium">{c.name}</p>
                   </div>
                 </Link>
               );

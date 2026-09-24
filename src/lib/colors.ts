@@ -6,13 +6,17 @@ export const COLOR_OPTIONS = [
 
 const COLOR_SWATCH_MAP: Record<string, string> = {
   black: "#1a1a1a",
-  white: "#f5f5f5",
+  white: "#ffffff",
   red: "#ef4444",
   blue: "#3b82f6",
+  lightblue: "#bae6fd",
+  darkblue: "#1e3a8a",
   green: "#22c55e",
   yellow: "#eab308",
   pink: "#ec4899",
+  lightpink: "#fbcfe8",
   purple: "#8b5cf6",
+  darkpurple: "#581c87",
   gold: "#d4af37",
   silver: "#c0c0c0",
   grey: "#9ca3af",
@@ -26,6 +30,9 @@ const COLOR_SWATCH_MAP: Record<string, string> = {
   teal: "#14b8a3",
   maroon: "#7f1d1d",
   ivory: "#fdf6e3",
+  mint: "#a7f3d0",
+  lavender: "#ddd6fe",
+  peach: "#fed7aa",
 };
 
 export function colorToCss(color: string): string {

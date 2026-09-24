@@ -43,13 +43,13 @@ export function VideoAdvert() {
     "Curated pieces for every occasion — quality fabrics, premium fits, and prices that welcome you back for more.";
 
   return (
-    <section className="container-x py-8">
-      <div className="grid grid-cols-1 gap-6 overflow-hidden rounded-3xl border border-border bg-card shadow-sm md:h-80 md:grid-cols-[1fr_1.1fr]">
-        <div className="relative flex items-center justify-center bg-secondary/20">
-          <div className="relative aspect-video w-full max-w-[520px]">
+    <section className="container-x py-6">
+      <div className="grid grid-cols-1 overflow-hidden rounded-2xl border border-border bg-card shadow-sm md:h-64 md:grid-cols-[1fr_1.5fr]">
+        <div className="relative flex items-center justify-center bg-muted/50">
+          <div className="relative aspect-video w-full h-full">
             {hasVideo ? (
               <video
-                className="h-full w-full rounded-2xl object-cover"
+                className="h-full w-full object-cover"
                 src={video_url!}
                 controls
                 playsInline
@@ -61,7 +61,7 @@ export function VideoAdvert() {
               <img
                 src={poster}
                 alt={title}
-                className="h-full w-full rounded-2xl object-cover"
+                className="h-full w-full object-cover"
                 loading="lazy"
                 onError={(event) => {
                   const target = event.currentTarget as HTMLImageElement;
@@ -72,21 +72,21 @@ export function VideoAdvert() {
             {hasVideo && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <span className="rounded-full bg-primary/80 p-3 text-primary-foreground shadow-lg">
-                  <Play size={24} />
+                  <Play size={20} />
                 </span>
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center gap-4 p-2 text-center md:items-start md:text-left">
-          <h3 className="font-display text-3xl text-primary md:text-4xl">{title}</h3>
-          <p className="max-w-md text-muted-foreground">{description}</p>
+        <div className="flex flex-col items-center justify-center gap-3 p-6 text-center md:items-start md:text-left">
+          <h3 className="font-display text-2xl text-primary md:text-3xl">{title}</h3>
+          <p className="text-sm text-muted-foreground max-w-sm">{description}</p>
           <Link
             to="/shop"
-            className="btn-primary inline-flex items-center gap-2 whitespace-nowrap"
+            className="btn-primary inline-flex items-center gap-2 text-sm"
           >
-            <ShoppingBag size={16} />
+            <ShoppingBag size={14} />
             Shop the Collection
           </Link>
         </div>

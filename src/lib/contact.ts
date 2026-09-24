@@ -16,7 +16,8 @@ export const LAGOS_DELIVERY_NOTE = "Lagos Delivery: Your order will be delivered
 
 export const DELIVERY_INFO = {
   interstate: "Interstate delivery: 2–5 working days",
-  international: "International delivery: 2–14 working days",
+  international:
+    "International Delivery: Orders are weighed by our logistics agent, and you’ll be contacted with the delivery fee. Bus, Express & Cargo options are available. If you have your own logistics agent, provide their details and we’ll send your package with a photo for confirmation.",
   regionalFees: {
     East: "₦5,000",
     South: "₦5,000",
