@@ -1,6 +1,6 @@
 import { type Product, formatNaira } from "@/lib/products";
 import { colorToCss } from "@/lib/colors";
-import { ShoppingBag, Plus, Check } from "lucide-react";
+import { ShoppingBag, Plus, Check, Eye } from "lucide-react";
 import { useState } from "react";
 import { BuyNowDialog } from "./BuyNowDialog";
 import { useCart } from "@/lib/cart";
@@ -8,7 +8,7 @@ import { Link } from "@tanstack/react-router";
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"] as const;
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product, onQuickPreview }: { product: Product; onQuickPreview?: (product: Product) => void }) {
   const { addItem } = useCart();
   const sizes = product.sizes?.length ? product.sizes : [...DEFAULT_SIZES];
   const [size, setSize] = useState<string>(sizes[1] ?? "M");
@@ -56,6 +56,17 @@ export function ProductCard({ product }: { product: Product }) {
              <span key={i} className={`px-3 py-1 text-[10px] font-bold rounded-full text-white backdrop-blur ${b.className}`}>{b.label}</span>
           ))}
         </div>
+        {onQuickPreview && (
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onQuickPreview(product); }}
+            className="absolute top-3 right-3 h-9 w-9 rounded-full bg-background/80 backdrop-blur border border-border/60 flex items-center justify-center text-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-background shadow-sm"
+            aria-label={`Quick view ${product.name}`}
+            title="Quick view"
+          >
+            <Eye size={15} />
+          </button>
+        )}
 
         <BuyNowDialog
           product={product}

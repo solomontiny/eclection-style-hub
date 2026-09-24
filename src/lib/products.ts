@@ -20,7 +20,7 @@ type ProductRowWithCategory = ProductRow & {
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"];
 
-const normalizeProduct = (product: ProductRowWithCategory): Product => ({
+export const normalizeProduct = (product: ProductRowWithCategory): Product => ({
   ...product,
   category: product.category?.name ?? null,
   image_url: product.image_url ?? null,

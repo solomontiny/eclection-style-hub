@@ -5,6 +5,7 @@ import { Minus, Plus, ShoppingBag } from "lucide-react";
 import { type Product, formatNaira } from "@/lib/products";
 import { useCart } from "@/lib/cart";
 import { colorToCss } from "@/lib/colors";
+import { SizeChartDialog } from "@/components/SizeChartDialog";
 
 export function BuyNowDialog({ product, trigger, preselectedColor }: { product: Product; trigger: React.ReactNode; preselectedColor?: string }) {
   const [open, setOpen] = useState(false);
@@ -44,7 +45,10 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
             <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
             <p className="mt-1 font-semibold text-primary">{formatNaira(unitPrice)}</p>
               <div className="mt-3">
-                <p className="text-xs font-medium mb-1.5">Size</p>
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-xs font-medium">Size</p>
+                  <SizeChartDialog />
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                 {sizes.map((s) => (
                   <button

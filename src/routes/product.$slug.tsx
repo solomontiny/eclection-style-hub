@@ -2,11 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Minus, Plus, ShoppingBag } from "lucide-react";
-import { getProductBySlug, formatNaira } from "@/lib/products";
+import { getProductBySlug, formatNaira, normalizeProduct } from "@/lib/products";
 import { colorToCss } from "@/lib/colors";
 import { useCart } from "@/lib/cart";
 import { ProductCard } from "@/components/ProductCard";
 import { BuyNowDialog } from "@/components/BuyNowDialog";
+import { SizeChartDialog } from "@/components/SizeChartDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"];
@@ -50,7 +51,7 @@ function ProductDetails() {
       const query = supabase.from("products").select("*, category:categories(name, active)").eq("status", "active").neq("id", product!.id).limit(4);
       const { data, error } = product?.category_id ? await query.eq("category_id", product.category_id) : await query;
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).map(normalizeProduct);
     },
   });
 
@@ -83,7 +84,10 @@ function ProductDetails() {
         <p className="text-muted-foreground leading-8 text-lg">{product.description || "A carefully selected piece from our current collection."}</p>
         
         <div className="mt-8">
-          <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Select Size</label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Select Size</label>
+            <SizeChartDialog />
+          </div>
           <div className="flex gap-3 mt-3">
             {sizes.map(size => (
               <button 

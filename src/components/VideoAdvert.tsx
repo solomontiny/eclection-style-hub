@@ -69,13 +69,6 @@ export function VideoAdvert() {
                 }}
               />
             )}
-            {hasVideo && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <span className="rounded-full bg-primary/80 p-3 text-primary-foreground shadow-lg">
-                  <Play size={20} />
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
