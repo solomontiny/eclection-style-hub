@@ -2,14 +2,17 @@ import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Minus, Plus, ShoppingBag, Eye } from "lucide-react";
-import { type Product, formatNaira } from "@/lib/products";
+import { type Product } from "@/lib/products";
 import { useCart } from "@/lib/cart";
 import { colorToCss } from "@/lib/colors";
 import { SizeChartDialog } from "@/components/SizeChartDialog";
+import { useStore } from "@/lib/store-context";
+import { formatCurrencyPrice } from "@/lib/currency";
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"];
 
 export function QuickViewModal({ product, isOpen, onClose }: { product: Product | null; isOpen: boolean; onClose: () => void }) {
+  const { currency } = useStore();
   const { addItem } = useCart();
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState("M");
@@ -35,6 +38,10 @@ export function QuickViewModal({ product, isOpen, onClose }: { product: Product 
   const unitPrice = product.sale_price ?? product.price;
   const total = unitPrice * qty;
   const isOutOfStock = product.stock <= 0;
+
+  const displayUnitPrice = formatCurrencyPrice(unitPrice, currency);
+  const displayTotal = formatCurrencyPrice(total, currency);
+  const displayOriginalPrice = product.sale_price != null ? formatCurrencyPrice(product.price, currency) : null;
 
   const handleAddToCart = () => {
     if (isOutOfStock) return;
@@ -71,8 +78,8 @@ export function QuickViewModal({ product, isOpen, onClose }: { product: Product 
             <div>
               <p className="text-xs uppercase tracking-widest text-primary font-bold">{product.category ?? "Collection"}</p>
               <div className="mt-2 flex items-baseline gap-3">
-                <span className="font-display text-3xl">{formatNaira(unitPrice)}</span>
-                {product.sale_price != null && <span className="text-sm text-muted-foreground line-through">{formatNaira(product.price)}</span>}
+                <span className="font-display text-3xl">{displayUnitPrice}</span>
+                {displayOriginalPrice && <span className="text-sm text-muted-foreground line-through">{displayOriginalPrice}</span>}
               </div>
               <p className="mt-4 text-sm text-muted-foreground line-clamp-3">{product.description || "A wonderful curated piece from Supplier Affordable."}</p>
 
@@ -116,7 +123,7 @@ export function QuickViewModal({ product, isOpen, onClose }: { product: Product 
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">Total</p>
-                  <p className="font-display text-xl text-primary font-bold">{formatNaira(total)}</p>
+                  <p className="font-display text-xl text-primary font-bold">{displayTotal}</p>
                 </div>
               </div>
             </div>

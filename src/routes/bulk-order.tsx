@@ -1,16 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { formatNaira, getProducts, type Product } from "@/lib/products";
+import { getProducts, type Product } from "@/lib/products";
 import { colorToCss } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/lib/cart";
-import { Trash2, AlertCircle, CheckCircle, Package, Check } from "lucide-react";
+import { Trash2, AlertCircle, CheckCircle, Package, Check, Calculator } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { formatCurrencyPrice, COUNTRIES } from "@/lib/currency";
+import { useStore } from "@/lib/store-context";
 
 export const Route = createFileRoute("/bulk-order")({
   head: () => ({
@@ -201,6 +203,9 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
 }
 
 function BulkOrderPage() {
+  const { currency, t } = useStore();
+  const currentCountry = COUNTRIES.find((c) => c.code === currency) || COUNTRIES[0];
+
   const { data: products = [] } = useQuery({
     queryKey: ["bulk-bundle-products"],
     queryFn: async () => {
@@ -220,12 +225,17 @@ function BulkOrderPage() {
       return data;
     },
   });
-  const bulkMinQty = Number(settings?.bulk_min_qty ?? 10);
   const bulkUnitPrice = Number(settings?.bulk_unit_price ?? 6000);
 
   const { addItem } = useCart();
   const [bundleItems, setBundleItems] = useState<BundleItem[]>([]);
   const currentBundleTotal = bundleItems.reduce((sum, item) => sum + item.qty, 0);
+
+  // Bundle calculation: FIXED at 10 pieces = 1 bundle
+  const BUNDLE_SIZE = 10;
+  const bundleCount = currentBundleTotal / BUNDLE_SIZE;
+  const isCompleteBundle = currentBundleTotal > 0 && currentBundleTotal % BUNDLE_SIZE === 0;
+  const totalPrice = currentBundleTotal * bulkUnitPrice;
 
   const addToBundle = (product: Product, lines: ColourLine[]) => {
     setBundleItems((current) => {
@@ -245,8 +255,12 @@ function BulkOrderPage() {
   };
 
   const finalizeBundle = () => {
-    if (currentBundleTotal < bulkMinQty) {
-      toast.error(`Minimum bulk order is ${bulkMinQty} pieces.`);
+    if (currentBundleTotal === 0) {
+      toast.error("Select at least one item.");
+      return;
+    }
+    if (!isCompleteBundle) {
+      toast.error(`Total pieces must be a multiple of ${BUNDLE_SIZE} (10 pieces = 1 bundle).`);
       return;
     }
     const bundleId = `bundle_${Date.now()}`;
@@ -257,20 +271,21 @@ function BulkOrderPage() {
     toast.success("Bulk order added to cart!");
   };
 
-  const totalPrice = currentBundleTotal * bulkUnitPrice;
-  const isValid = currentBundleTotal >= bulkMinQty;
-
   return (
     <div className="container-x py-12 space-y-12">
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-display text-primary">Build Your Custom Bulk Order</h1>
-        <p className="text-lg">Minimum bulk order is {bulkMinQty} pieces ({formatNaira(bulkUnitPrice)} / piece)</p>
-        <div className={`mx-auto flex max-w-md items-center justify-center gap-2 p-4 rounded-xl font-bold ${isValid ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" : "bg-primary/10 text-primary"}`}>
-          {isValid ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-          {currentBundleTotal} Pieces Selected {isValid ? "(Ready to order)" : `(Minimum ${bulkMinQty} required)`}
+        <p className="text-lg">
+          {bundleSize} pieces = 1 bundle &nbsp;|&nbsp; {formatCurrencyPrice(bulkUnitPrice, currency)} per piece
+        </p>
+        <div className={`mx-auto flex max-w-md items-center justify-center gap-2 p-4 rounded-xl font-bold ${isCompleteBundle ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" : "bg-primary/10 text-primary"}`}>
+          {isCompleteBundle ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+          {currentBundleTotal} Pieces Selected {isCompleteBundle ? `(Ready: ${bundleCount} Bundle${bundleCount > 1 ? "s" : ""})` : `(Must be multiple of ${bundleSize})`}
         </div>
-        {isValid && (
-          <Button onClick={finalizeBundle} className="btn-accent">Add Bulk Order to Cart ({formatNaira(totalPrice)})</Button>
+        {isCompleteBundle && (
+          <Button onClick={finalizeBundle} className="btn-accent">
+            Add Bulk Order to Cart ({formatCurrencyPrice(totalPrice, currency)})
+          </Button>
         )}
       </div>
 
@@ -292,32 +307,54 @@ function BulkOrderPage() {
           {bundleItems.length === 0 ? (
             <p className="mt-5 text-sm text-muted-foreground italic">Your bulk selection is empty.</p>
           ) : (
-            <div className="mt-5 space-y-3">
-              {bundleItems.map((item, index) => {
-                const image = item.color ? item.product.color_images?.[item.color] : undefined;
-                return (
-                  <div key={`${item.product.id}-${item.color}-${item.size}-${index}`} className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-3">
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
-                      <Package className="absolute inset-0 m-auto h-5 w-5 text-muted-foreground" />
-                      {image && <img src={image} alt={`${item.product.name} ${item.color}`} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
+            <>
+              <div className="mt-5 space-y-3">
+                {bundleItems.map((item, index) => {
+                  const image = item.color ? item.product.color_images?.[item.color] : undefined;
+                  return (
+                    <div key={`${item.product.id}-${item.color}-${item.size}-${index}`} className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-3">
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
+                        <Package className="absolute inset-0 m-auto h-5 w-5 text-muted-foreground" />
+                        {image && <img src={image} alt={`${item.product.name} ${item.color}`} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{item.product.name}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{item.color} · Size {item.size} · {item.qty} piece{item.qty === 1 ? "" : "s"}</p>
+                      </div>
+                      <button type="button" onClick={() => setBundleItems((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="p-1.5 text-destructive hover:bg-destructive/5 rounded" aria-label={`Remove ${item.product.name} ${item.color}`}>
+                        <Trash2 size={16} />
+                      </button>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{item.product.name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{item.color} · Size {item.size} · {item.qty} piece{item.qty === 1 ? "" : "s"}</p>
-                    </div>
-                    <button type="button" onClick={() => setBundleItems((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="p-1.5 text-destructive hover:bg-destructive/5 rounded" aria-label={`Remove ${item.product.name} ${item.color}`}>
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
 
-          <div className="mt-5 rounded-xl bg-background border border-border/60 p-3 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Total price</span><span className="font-semibold text-primary">{formatNaira(totalPrice)}</span></div>
-            <p className="mt-2 text-xs text-muted-foreground">{currentBundleTotal} pcs × {formatNaira(bulkUnitPrice)}</p>
-          </div>
+              <div className="mt-5 rounded-xl bg-background border border-border/60 p-4 text-sm space-y-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Calculator size={16} />
+                  <span className="font-medium">Order Summary</span>
+                </div>
+                <div className="space-y-2 border-t border-border pt-3">
+                  <div className="flex justify-between text-sm">
+                    <span>Total Pieces</span>
+                    <span className="font-semibold">{currentBundleTotal}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Number of Bundles</span>
+                    <span className="font-semibold">{bundleCount}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Price Per Piece</span>
+                    <span className="font-semibold">{formatCurrencyPrice(bulkUnitPrice, currency)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-border pt-3 font-display text-lg">
+                    <span>Grand Total</span>
+                    <span className="text-primary">{formatCurrencyPrice(totalPrice, currency)}</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </aside>
       </div>
     </div>

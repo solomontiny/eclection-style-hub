@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Menu, X, LayoutDashboard } from "lucide-react";
 import { CartDrawer } from "./CartDrawer";
 import { ThemeToggle } from "./ThemeToggle";
+import { CurrencySelector } from "./CurrencySelector";
+import { LanguageSelector } from "./LanguageSelector";
 import { useAuth } from "@/lib/auth";
 import officialLogo from "@/assets/supplier-affordable-logo.png";
 
@@ -71,6 +73,8 @@ export function SiteHeader() {
             </Link>
           )}
           <ThemeToggle />
+          <CurrencySelector />
+          <LanguageSelector />
           <Link to="/shop" className="btn-primary !py-2 !px-6 text-sm">
             Shop Now
           </Link>

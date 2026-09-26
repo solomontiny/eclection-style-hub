@@ -1,7 +1,8 @@
 import { ShoppingCart } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useCart } from "@/lib/cart";
-import { formatNaira } from "@/lib/products";
+import { useStore } from "@/lib/store-context";
+import { formatCurrencyPrice } from "@/lib/currency";
 import {
   Sheet,
   SheetContent,
@@ -13,6 +14,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { cartItemKey } from "@/lib/cart";
 
 export function CartDrawer() {
+  const { currency } = useStore();
   const { items, count, subtotal, open, setOpen, updateQty, removeItem } = useCart();
   const navigate = useNavigate();
 
@@ -68,7 +70,7 @@ export function CartDrawer() {
                     ))}
                     <div className="mt-2 text-sm font-semibold text-primary pt-2 border-t border-primary/10 flex justify-between">
                         <span>Bundle Total</span>
-                        <span>{formatNaira(bundleItems.reduce((s, i) => s + i.price * i.qty, 0))}</span>
+                        <span>{formatCurrencyPrice(bundleItems.reduce((s, i) => s + i.price * i.qty, 0), currency)}</span>
                     </div>
                 </div>
               ))}
@@ -82,7 +84,7 @@ export function CartDrawer() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{item.name}</p>
                     <p className="text-xs text-muted-foreground">{item.color} · Size {item.size}</p>
-                    <p className="text-sm font-semibold text-primary">{formatNaira(item.price)} x {item.qty} = {formatNaira(item.price * item.qty)}</p>
+                    <p className="text-sm font-semibold text-primary">{formatCurrencyPrice(item.price, currency)} x {item.qty} = {formatCurrencyPrice(item.price * item.qty, currency)}</p>
                     <div className="mt-2 flex items-center gap-2">
                       <button type="button" onClick={() => updateQty(cartItemKey(item.id, item.size, item.color, item.bundleId), item.qty - 1)} className="rounded border p-1"><Minus size={12} /></button>
                       <span className="w-8 text-center text-xs">{item.qty}</span>
@@ -98,7 +100,7 @@ export function CartDrawer() {
           <div className="pt-4 border-t border-primary/20">
             <div className="flex justify-between items-center font-semibold text-primary">
               <span>Subtotal</span>
-              <span>{formatNaira(subtotal)}</span>
+              <span>{formatCurrencyPrice(subtotal, currency)}</span>
             </div>
             <button
               disabled={items.length === 0}

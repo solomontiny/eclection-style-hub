@@ -2,12 +2,15 @@ import { useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
-import { type Product, formatNaira } from "@/lib/products";
+import { type Product } from "@/lib/products";
 import { useCart } from "@/lib/cart";
 import { colorToCss } from "@/lib/colors";
 import { SizeChartDialog } from "@/components/SizeChartDialog";
+import { useStore } from "@/lib/store-context";
+import { formatCurrencyPrice } from "@/lib/currency";
 
 export function BuyNowDialog({ product, trigger, preselectedColor }: { product: Product; trigger: React.ReactNode; preselectedColor?: string }) {
+  const { currency } = useStore();
   const [open, setOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState("M");
@@ -21,6 +24,9 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
   const colorImage = color ? product.color_images?.[color] : null;
   const displayImage = colorImage ?? product.images?.[0] ?? product.image_url ?? product.image ?? "";
   const isOutOfStock = product.stock <= 0;
+
+  const displayUnitPrice = formatCurrencyPrice(unitPrice, currency);
+  const displayTotal = formatCurrencyPrice(total, currency);
 
   const handlePayNow = () => {
     addItem(product, size, color || undefined, qty);
@@ -43,7 +49,7 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
           )}
           <div className="flex-1 min-w-0">
             <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
-            <p className="mt-1 font-semibold text-primary">{formatNaira(unitPrice)}</p>
+            <p className="mt-1 font-semibold text-primary">{displayUnitPrice}</p>
               <div className="mt-3">
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-xs font-medium">Size</p>
@@ -82,7 +88,7 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
           </div>
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Total</p>
-            <p className="font-display text-2xl text-primary">{formatNaira(total)}</p>
+            <p className="font-display text-2xl text-primary">{displayTotal}</p>
           </div>
         </div>
 

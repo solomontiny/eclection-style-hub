@@ -1,14 +1,17 @@
-import { type Product, formatNaira } from "@/lib/products";
+import { type Product } from "@/lib/products";
 import { colorToCss } from "@/lib/colors";
 import { ShoppingBag, Plus, Check, Eye } from "lucide-react";
 import { useState } from "react";
 import { BuyNowDialog } from "./BuyNowDialog";
 import { useCart } from "@/lib/cart";
 import { Link } from "@tanstack/react-router";
+import { useStore } from "@/lib/store-context";
+import { formatCurrencyPrice } from "@/lib/currency";
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"] as const;
 
 export function ProductCard({ product, onQuickPreview }: { product: Product; onQuickPreview?: (product: Product) => void }) {
+  const { currency } = useStore();
   const { addItem } = useCart();
   const sizes = product.sizes?.length ? product.sizes : [...DEFAULT_SIZES];
   const [size, setSize] = useState<string>(sizes[1] ?? "M");
@@ -22,6 +25,9 @@ export function ProductCard({ product, onQuickPreview }: { product: Product; onQ
   const isBundle = product.product_type === "bundle";
   const isFeatured = product.featured;
   const selectedImage = product.color_images?.[color ?? ""] ?? product.images?.[0] ?? product.image_url ?? product.image ?? null;
+
+  const displayPrice = formatCurrencyPrice(product.sale_price ?? product.price, currency);
+  const displayOriginalPrice = isSale ? formatCurrencyPrice(product.price, currency) : null;
 
   const handleAdd = () => {
     if (isOutOfStock) return;
@@ -92,9 +98,9 @@ export function ProductCard({ product, onQuickPreview }: { product: Product; onQ
           <Link to="/product/$slug" params={{ slug: product.slug }} className="font-display text-sm sm:text-base mt-0.5 hover:text-primary block leading-tight truncate">{product.name}</Link>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-sm sm:font-semibold text-primary whitespace-nowrap">{formatNaira(product.sale_price ?? product.price)}</p>
-          {isSale && (
-            <p className="text-[10px] sm:text-xs text-muted-foreground line-through whitespace-nowrap">{formatNaira(product.price)}</p>
+          <p className="text-sm sm:font-semibold text-primary whitespace-nowrap">{displayPrice}</p>
+          {isSale && displayOriginalPrice && (
+            <p className="text-[10px] sm:text-xs text-muted-foreground line-through whitespace-nowrap">{displayOriginalPrice}</p>
           )}
         </div>
       </div>

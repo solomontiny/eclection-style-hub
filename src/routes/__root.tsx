@@ -16,6 +16,7 @@ import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { CartProvider } from "@/lib/cart";
 import { AuthProvider } from "@/lib/auth";
 import { MaintenancePage } from "@/components/MaintenancePage";
+import { StoreProvider } from "@/lib/store-context";
 
 function NotFoundComponent() {
   return (
@@ -105,7 +106,9 @@ function RootComponent() {
   if (isPublicDomain) {
     return (
       <QueryClientProvider client={queryClient}>
-        <MaintenancePage />
+        <StoreProvider>
+          <MaintenancePage />
+        </StoreProvider>
       </QueryClientProvider>
     );
   }
@@ -114,15 +117,17 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <div className="min-h-screen flex flex-col">
-            <AnnouncementBar />
-            <SiteHeader />
-            <main className="flex-1">
-              <Outlet />
-            </main>
-            <SiteFooter />
-            <CustomerCareWidget />
-          </div>
+          <StoreProvider>
+            <div className="min-h-screen flex flex-col">
+              <AnnouncementBar />
+              <SiteHeader />
+              <main className="flex-1">
+                <Outlet />
+              </main>
+              <SiteFooter />
+              <CustomerCareWidget />
+            </div>
+          </StoreProvider>
         </CartProvider>
       </AuthProvider>
     </QueryClientProvider>
