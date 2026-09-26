@@ -5,6 +5,7 @@ import heroImg from "@/assets/supplier-affordable-hero.png";
 import { Product, getProducts, getCategories } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
 import { VideoAdvert } from "@/components/VideoAdvert";
+import { LocationSection } from "@/components/LocationSection";
 import { LAGOS_DELIVERY_NOTE } from "@/lib/contact";
 
 export const Route = createFileRoute("/")({
@@ -179,6 +180,9 @@ function Home() {
           </div>
         </div>
       </section>
+
+      {/* Location / map — appears before the footer (rendered by __root.tsx) */}
+      <LocationSection />
     </>
   );
 }

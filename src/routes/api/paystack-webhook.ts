@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import crypto from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase-admin.server";
+import { sendCustomerOrderEmail } from "@/lib/notifications";
 
 export const Route = createFileRoute("/api/paystack-webhook")({
   server: {
@@ -72,6 +73,9 @@ export const Route = createFileRoute("/api/paystack-webhook")({
             return new Response(null, { status: 500 });
           }
 
+          // Idempotent: the `payment_status !== "paid"` guard means a webhook
+          // that arrives more than once never double-marks the order or
+          // double-sends the customer receipt.
           if (
             order &&
             order.payment_status !== "paid" &&
@@ -88,6 +92,10 @@ export const Route = createFileRoute("/api/paystack-webhook")({
               });
               return new Response(null, { status: 500 });
             }
+
+            void sendCustomerOrderEmail(order.id).catch((err: any) =>
+              console.error("Webhook customer receipt email failed:", err?.message)
+            );
           }
         }
 

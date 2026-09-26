@@ -3,6 +3,22 @@ import { z } from "zod";
 import { CONTACT } from "./contact";
 import { getSupabaseAdmin } from "./supabase-admin.server";
 import { newOrderNotification, sendCustomerOrderEmail } from "./notifications";
+import { reserveStock, restoreStock, getOrderStockReservations, emitStockAlerts } from "./stock";
+
+/**
+ * Reads the Paystack LIVE secret key from the server runtime.
+ *
+ * The Cloudflare Worker bindings are injected into `process.env` by the
+ * custom `src/server.ts` worker entry (`bindServerEnvironment`) on every
+ * request, so `process.env.PAYSTACK_SECRET_KEY` is the single supported
+ * access path for this binding. Local dev falls back to the `.env` file
+ * loaded by the same entry.
+ */
+export function getPaystackSecret(): string | undefined {
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  console.log(`PAYSTACK_SECRET_KEY configured: ${secret ? "YES" : "NO"}`);
+  return secret;
+}
 
 /** Wholesale price per piece (1 bundle = 10 pieces = ₦60,000). */
 const BULK_UNIT_PRICE = 6000;
@@ -165,7 +181,17 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       isBulk: z.boolean().optional(),
       bundleId: z.string().optional(),
     })),
-    customer: z.object({ name: z.string(), email: z.string().email(), phone: z.string().optional() }),
+    customer: z.object({
+      name: z.string(),
+      email: z.string().email(),
+      phone: z.string().optional(),
+      address: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      country: z.string().optional(),
+      postalCode: z.string().optional(),
+      deliveryInstructions: z.string().optional(),
+    }),
     callbackUrl: z.string().url().optional(),
   }))
   .handler(async ({ data }) => {
@@ -175,12 +201,21 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     // 1. Fetch products
     const { data: products, error: productError } = await getSupabaseAdmin()
       .from("products")
-      .select("id, name, price, sale_price, discount_percent")
+      .select("id, name, price, sale_price, discount_percent, stock")
       .in("id", items.map(i => i.id));
 
     if (productError || !products) {
       console.error("Failed to fetch products:", productError?.code, productError?.message, productError?.details);
       throw new Error("We could not load your items. Please refresh your cart and try again.");
+    }
+
+    // 1b. Reject out-of-stock items before creating the order.
+    for (const item of items) {
+      const product = products.find((p) => p.id === item.id);
+      if (!product) throw new Error("One of the items in your cart is no longer available.");
+      if (Math.max(0, Number(product.stock ?? 0)) < item.qty) {
+        throw new Error(`${product.name} does not have enough stock. Only ${product.stock} available.`);
+      }
     }
 
     // 2. Calculate totals (authoritative, server-side, no VAT)
@@ -212,11 +247,30 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     const total = subtotal;
     const reference = `ESC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
+    // 2b. Reserve stock atomically. A row-level UPDATE ... WHERE stock >= qty
+    // prevents concurrent checkouts from overselling.
+    const reservation = await reserveStock(supabaseAdmin, items.map(i => ({ productId: i.id, qty: i.qty })));
+    if (!reservation.ok) {
+      throw new Error("One or more items no longer have enough stock. Please refresh your cart and try again.");
+    }
+
     // 3. Insert order
+    const shippingAddress = (customer.address || customer.city || customer.state)
+      ? {
+          address: customer.address ?? null,
+          city: customer.city ?? null,
+          state: customer.state ?? null,
+          country: customer.country ?? null,
+          postal_code: customer.postalCode ?? null,
+          delivery_instructions: customer.deliveryInstructions ?? null,
+        }
+      : null;
+
     const orderData = {
       customer_name: customer.name,
       customer_email: customer.email,
       customer_phone: customer.phone && customer.phone.trim() !== "" ? customer.phone : null,
+      shipping_address: shippingAddress,
       subtotal: subtotal,
       total,
       payment_status: 'pending' as const,
@@ -245,9 +299,17 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         details: orderError.details,
         hint: orderError.hint
       });
+      // Roll back the stock reservation — the order was never saved.
+      void restoreStock(supabaseAdmin, items.map(i => ({ productId: i.id, qty: i.qty }))).catch((err: any) =>
+        console.error("Stock restore after order insert failed:", err?.message)
+      );
       throw new Error(`We could not save your order (${orderError.code || "db_error"}). Please try again.`);
     }
     if (!order) {
+      // Roll back the stock reservation — the order was never saved.
+      void restoreStock(supabaseAdmin, items.map(i => ({ productId: i.id, qty: i.qty }))).catch((err: any) =>
+        console.error("Stock restore after order insert failed:", err?.message)
+      );
       throw new Error("Failed to create order: No data returned");
     }
 
@@ -263,11 +325,21 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         hint: itemsError.hint,
         code: itemsError.code
       });
+      // Roll back the stock reservation — the order is incomplete.
+      void restoreStock(supabaseAdmin, items.map(i => ({ productId: i.id, qty: i.qty }))).catch((err: any) =>
+        console.error("Stock restore after order items failed:", err?.message)
+      );
       throw new Error("Failed to create order items. Please contact support.");
     }
 
     void newOrderNotification({ data: { orderId: order.id } }).catch((err: any) =>
       console.error("Admin notification failed:", err?.message)
+    );
+
+    // 4b. After the order is fully created, emit idempotent stock alerts for
+    // any product that just crossed the low/out threshold.
+    void emitStockAlerts(supabaseAdmin, items.map(i => i.id)).catch((err: any) =>
+      console.error("Stock alert emission failed:", err?.message)
     );
 
     // 5. Initialize Paystack transaction (server-side, secret never leaves the server)
@@ -303,6 +375,11 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
 
       if (!initRes.ok || !initJson?.status || !initJson?.data?.authorization_url) {
         console.error("Paystack initialize failed", initRes.status, initJson);
+        // The order and stock reservation already exist — release the
+        // reservation so a failed payment does not permanently consume stock.
+        void restoreStock(supabaseAdmin, items.map(i => ({ productId: i.id, qty: i.qty }))).catch((err: any) =>
+          console.error("Stock restore after Paystack init failed:", err?.message)
+        );
         return {
           success: false as const,
           orderId: order.id,
@@ -322,6 +399,9 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       };
     } catch (err: any) {
       console.error("Paystack initialize error:", err?.message);
+      void restoreStock(supabaseAdmin, items.map(i => ({ productId: i.id, qty: i.qty }))).catch((err2: any) =>
+        console.error("Stock restore after Paystack init error:", err2?.message)
+      );
       return {
         success: false as const,
         orderId: order.id,
@@ -387,14 +467,31 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
         return { status: "error" as const, message: "Payment amount does not match this order." };
       }
 
-      await getSupabaseAdmin()
-        .from("orders")
-        .update({ payment_status: "paid" })
-        .eq("id", order.id);
+      // Idempotent: only act when the order is not already paid.
+      if (order.payment_status !== "paid") {
+        await getSupabaseAdmin()
+          .from("orders")
+          .update({ payment_status: "paid" })
+          .eq("id", order.id);
 
-      void sendCustomerOrderEmail(order.id).catch((err: any) =>
-        console.error("Customer receipt email failed:", err?.message)
-      );
+        void sendCustomerOrderEmail(order.id).catch((err: any) =>
+          console.error("Customer receipt email failed:", err?.message)
+        );
+
+        // Re-evaluate stock alerts now that the order is paid and stock has
+        // been reserved — a product may have just crossed the low/out line.
+        const { data: paidItems } = await getSupabaseAdmin()
+          .from("order_items")
+          .select("product_id")
+          .eq("order_id", order.id);
+
+        void emitStockAlerts(
+          getSupabaseAdmin(),
+          (paidItems ?? []).map((i: any) => i.product_id).filter(Boolean),
+        ).catch((err: any) =>
+          console.error("Stock alert emission failed:", err?.message)
+        );
+      }
 
       return { status: "paid" as const, orderNumber: order.order_number, total: Number(order.total) };
     } catch (err: any) {

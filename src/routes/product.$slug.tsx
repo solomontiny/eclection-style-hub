@@ -66,6 +66,7 @@ function ProductDetails() {
   const price = product.sale_price ?? product.price;
   const discount = product.sale_price && product.price > 0 ? Math.round((1 - product.sale_price / product.price) * 100) : product.discount_percent;
   const isOutOfStock = product.stock <= 0;
+  const isLowStock = !isOutOfStock && product.stock <= (product.low_stock_threshold ?? 5);
 
   return <section className="container-x py-16 md:py-24">
     <Link to="/shop" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"><ArrowLeft size={16} /> Back to shop</Link>
@@ -79,7 +80,15 @@ function ProductDetails() {
       <div className="flex flex-col">
         <p className="text-xs uppercase tracking-[0.2em] text-primary font-bold">{product.category ?? "Collection"}</p>
         <h1 className="font-display text-4xl md:text-6xl mt-3 leading-tight">{product.name}</h1>
-        <div className="mt-6 flex items-baseline gap-4"><span className="font-display text-4xl">{formatNaira(price)}</span>{product.sale_price != null && <span className="text-lg text-muted-foreground line-through">{formatNaira(product.price)}</span>}{discount > 0 && <span className="text-sm font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">-{discount}%</span>}</div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {isOutOfStock ? (
+            <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-bold text-muted-foreground">OUT OF STOCK</span>
+          ) : isLowStock ? (
+            <span className="inline-flex items-center rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-white">LOW STOCK · {product.stock} left</span>
+          ) : (
+            <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">IN STOCK</span>
+          )}
+        </div>
         <div className="h-px bg-border my-8" />
         <p className="text-muted-foreground leading-8 text-lg">{product.description || "A carefully selected piece from our current collection."}</p>
         

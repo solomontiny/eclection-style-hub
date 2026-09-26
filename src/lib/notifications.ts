@@ -12,6 +12,31 @@ function esc(s: string | undefined | null) {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+type ShippingAddress = {
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  postal_code?: string | null;
+  delivery_instructions?: string | null;
+};
+
+/**
+ * Produce a compact, human-readable delivery location string from an
+ * order's `shipping_address` JSONB column. Never exposes anything beyond
+ * what the customer typed at checkout.
+ */
+function formatOrderLocation(order: {
+  shipping_address?: unknown;
+  customer_phone?: string | null;
+}): string {
+  const addr = order.shipping_address as ShippingAddress | null;
+  if (!addr || typeof addr !== "object") return "";
+  const parts = [addr.city, addr.state, addr.country]
+    .filter((p): p is string => typeof p === "string" && p.trim().length > 0);
+  return parts.join(", ") || addr.address || "";
+}
+
 export const newOrderNotification = createServerFn({ method: "POST" })
   .inputValidator(z.object({
     orderId: z.string().uuid(),
@@ -46,6 +71,8 @@ export const newOrderNotification = createServerFn({ method: "POST" })
     const dateStr = new Date(order.created_at).toLocaleString("en-NG");
     const subject = `New order #${order.order_number} — SupplierAffordable`;
 
+    const locationLine = formatOrderLocation(order);
+
     const adminHtml = `<!doctype html>
 <html><body style="margin:0;padding:24px;background:#fafafa;font-family:Arial,Helvetica,sans-serif;color:#222;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #eee;">
@@ -61,6 +88,7 @@ export const newOrderNotification = createServerFn({ method: "POST" })
     <tr><td style="padding:8px 24px 0;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size:14px;">
         <tr><td style="padding:6px 0;color:#666;">Total</td><td style="padding:6px 0;text-align:right;"><b>${naira(Number(order.total))}</b></td></tr>
+        ${locationLine ? `<tr><td style="padding:6px 0;color:#666;">Delivery location</td><td style="padding:6px 0;text-align:right;">${esc(locationLine)}</td></tr>` : ""}
       </table>
     </td></tr>
     <tr><td style="padding:16px 24px 24px;">
@@ -68,6 +96,7 @@ export const newOrderNotification = createServerFn({ method: "POST" })
       <p style="margin:0;font-size:14px;line-height:1.6;">
         <b>${esc(order.customer_name)}</b><br>
         ${esc(order.customer_email)}${order.customer_phone ? `<br>${esc(order.customer_phone)}` : ""}
+        ${locationLine ? `<br><span style="color:#888;font-size:12px;">📍 ${esc(locationLine)}</span>` : ""}
       </p>
     </td></tr>
     <tr><td style="padding:0 24px 24px;">
@@ -106,7 +135,7 @@ export const newOrderNotification = createServerFn({ method: "POST" })
     await supabaseAdmin.from("notifications").insert({
       type: "new_order",
       title: `New order #${order.order_number}`,
-      message: `${order.customer_name} · ${naira(Number(order.total))}`,
+      message: `${order.customer_name} · ${naira(Number(order.total))}${formatOrderLocation(order) ? ` · ${formatOrderLocation(order)}` : ""}`,
       order_id: order.id,
       sent_email: emailSent,
     });

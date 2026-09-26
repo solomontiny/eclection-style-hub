@@ -3,12 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Search, Eye, CreditCard, Package, MapPin, Mail, Phone } from "lucide-react";
+import { Search, Eye, CreditCard, Package, MapPin, Mail, Phone, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fmtNGN, fmtDate } from "@/lib/admin-utils";
 import { sendDeliveryNotification } from "@/lib/orders.functions";
+import { cancelOrder } from "@/lib/cancel-order.functions";
 import { sendCustomerStatusChangeEmail } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,24 @@ export const Route = createFileRoute("/admin/orders")({ component: OrdersPage })
 
 type OrderStatus = "pending" | "processing" | "shipped" | "out_for_delivery" | "delivered" | "cancelled";
 type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+
+type ShippingAddress = {
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  postal_code?: string | null;
+  delivery_instructions?: string | null;
+};
+
+/** Open the customer's delivery address in an external map service. */
+function buildDirectionsUrl(addr: ShippingAddress | null): string {
+  if (!addr || !addr.address) return "#";
+  const parts = [addr.address, addr.city, addr.state, addr.country, addr.postal_code]
+    .filter((p): p is string => typeof p === "string" && p.trim().length > 0);
+  const query = parts.join(", ");
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
 
 type Order = {
   id: string;
@@ -124,6 +143,20 @@ function OrdersPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const cancelOrderMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const result = await cancelOrder({ data: { orderId: id } });
+      return result;
+    },
+    onSuccess: (result) => {
+      toast.success(result.stockRestored ? "Order cancelled and stock restored" : "Order cancelled");
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["admin-order", viewing] });
+      qc.invalidateQueries({ queryKey: ["unread-notifications"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
     return orders.filter((o) => {
@@ -199,6 +232,11 @@ function OrdersPage() {
                     <button type="button" onClick={() => setViewing(o.id)} className="inline-flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg px-3 text-sm text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`View order ${o.order_number}`}>
                       <Eye className="h-4 w-4" /> View
                     </button>
+                    {o.status !== "cancelled" && (
+                      <button type="button" onClick={() => cancelOrderMutation.mutate(o.id)} disabled={cancelOrderMutation.isPending} className="inline-flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg px-3 text-sm text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" aria-label={`Cancel order ${o.order_number}`}>
+                        <XCircle className="h-4 w-4" /> Cancel
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -315,11 +353,36 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
             </section>
 
             <section className="space-y-3">
-              <h4 className="font-medium text-foreground flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /> Delivery details</h4>
+              <h4 className="font-medium text-foreground flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /> Delivery location</h4>
               <div className="space-y-2.5 p-3 rounded-lg bg-muted/30 border border-border/50">
-                <div className="flex justify-between gap-3"><span className="text-muted-foreground">Shipping address</span><span className="font-medium text-right">{valueOrUnavailable(order.shipping_address)}</span></div>
-                {order.shipping_address != null && <pre className="whitespace-pre-wrap text-xs leading-relaxed">{JSON.stringify(order.shipping_address, null, 2) ?? ""}</pre>}
-                <div className="flex flex-col gap-2 sm:flex-row">
+                {order.shipping_address ? (
+                  <>
+                    <div className="flex justify-between gap-3"><span className="text-muted-foreground">Address</span><span className="font-medium text-right">{valueOrUnavailable((order.shipping_address as any)?.address)}</span></div>
+                    <div className="flex justify-between gap-3"><span className="text-muted-foreground">City</span><span className="font-medium text-right">{valueOrUnavailable((order.shipping_address as any)?.city)}</span></div>
+                    <div className="flex justify-between gap-3"><span className="text-muted-foreground">State / Region</span><span className="font-medium text-right">{valueOrUnavailable((order.shipping_address as any)?.state)}</span></div>
+                    <div className="flex justify-between gap-3"><span className="text-muted-foreground">Country</span><span className="font-medium text-right">{valueOrUnavailable((order.shipping_address as any)?.country)}</span></div>
+                    <div className="flex justify-between gap-3"><span className="text-muted-foreground">Postal / ZIP</span><span className="font-medium text-right">{valueOrUnavailable((order.shipping_address as any)?.postal_code)}</span></div>
+                    {(order.shipping_address as any)?.delivery_instructions && (
+                      <div className="pt-2 border-t border-border/50">
+                        <span className="text-xs text-muted-foreground">Delivery instructions</span>
+                        <p className="mt-1 text-xs whitespace-pre-wrap">{(order.shipping_address as any).delivery_instructions}</p>
+                      </div>
+                    )}
+                    <div className="pt-2">
+                      <a
+                        href={buildDirectionsUrl(order.shipping_address as any)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                      >
+                        <MapPin className="h-3.5 w-3.5" /> Get directions
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground text-sm">No delivery address was provided for this order.</p>
+                )}
+                <div className="flex flex-col gap-2 sm:flex-row pt-2 border-t border-border/50">
                   <Input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Enter tracking number" aria-label="Tracking number" />
                   <Button type="button" onClick={() => updateTracking.mutate()} disabled={updateTracking.isPending || !tracking.trim()}>
                     {updateTracking.isPending ? "Saving…" : "Save tracking"}

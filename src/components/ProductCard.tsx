@@ -15,6 +15,8 @@ export function ProductCard({ product, onQuickPreview }: { product: Product; onQ
   const [color, setColor] = useState<string | undefined>(product.colors?.[0]);
   const [justAdded, setJustAdded] = useState(false);
   const isOutOfStock = product.stock <= 0;
+  const lowStockThreshold = product.low_stock_threshold ?? 5;
+  const isLowStock = !isOutOfStock && product.stock <= lowStockThreshold;
   const isNew = new Date(product.created_at).getTime() > Date.now() - 1000 * 60 * 60 * 24 * 7;
   const isSale = product.sale_price != null && product.sale_price < product.price;
   const isBundle = product.product_type === "bundle";
@@ -30,6 +32,7 @@ export function ProductCard({ product, onQuickPreview }: { product: Product; onQ
 
   const badges = [
     isOutOfStock && { label: "OUT OF STOCK", className: "bg-muted text-muted-foreground" },
+    isLowStock && { label: "LOW STOCK", className: "bg-amber-500" },
     isNew && { label: "NEW", className: "bg-blue-600" },
     isBundle && { label: "BUNDLE", className: "bg-purple-600" },
     isSale && { label: "SALE", className: "bg-red-600" },

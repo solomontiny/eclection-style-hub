@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { parseColorsString } from "@/lib/colors";
+import { generateUniqueSlug } from "@/lib/slug";
 
 export default function AddProduct() {
   const navigate = useNavigate();
@@ -33,12 +34,9 @@ export default function AddProduct() {
     const sizesArr = parseColorsString(data.sizes);
     const colorImages = data.color_images ?? null;
 
-    const baseSlug = data.name.toLowerCase().replace(/\s+/g, "-");
-    let productSlug = baseSlug;
-    const { data: existing } = await supabase.from("products").select("id").eq("slug", productSlug).maybeSingle();
-    if (existing) {
-      productSlug = `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
-    }
+    // Generate a unique, URL-safe slug. The DB unique constraint is the
+    // final guard; this just avoids hitting it in the common case.
+    const productSlug = await generateUniqueSlug(supabase, data.name);
 
     const { error } = await supabase.from("products").insert([{
       ...data,

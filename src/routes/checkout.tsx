@@ -6,6 +6,8 @@ import { formatNaira } from "@/lib/products";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createOrderServerFn, getTaxSettings } from "@/lib/orders.functions";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -17,6 +19,12 @@ const CustomerSchema = z.object({
   name: z.string().min(2, "Name is required"),
   email: z.string().email("Invalid email"),
   phone: z.string().min(10, "Phone number is required"),
+  address: z.string().min(5, "Delivery address is required"),
+  city: z.string().min(2, "City is required"),
+  state: z.string().min(2, "State/Region is required"),
+  country: z.string().min(2, "Country is required"),
+  postalCode: z.string().optional(),
+  deliveryInstructions: z.string().optional(),
 });
 
 type CustomerForm = z.infer<typeof CustomerSchema>;
@@ -32,7 +40,7 @@ function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const form = useForm<CustomerForm>({
     resolver: zodResolver(CustomerSchema),
-    defaultValues: { name: "", email: "", phone: "" },
+    defaultValues: { name: "", email: "", phone: "", address: "", city: "", state: "", country: "Nigeria", postalCode: "", deliveryInstructions: "" },
   });
 
   if (!user) {
@@ -96,6 +104,42 @@ function CheckoutPage() {
             <Label>Phone</Label>
             <Input {...form.register("phone")} />
             {form.formState.errors.phone && <p className="text-red-500 text-sm">{form.formState.errors.phone.message}</p>}
+          </div>
+
+          <div className="pt-2 border-t border-border">
+            <h3 className="font-medium mb-3">Delivery address</h3>
+          </div>
+          <div>
+            <Label>Full delivery address</Label>
+            <Input {...form.register("address")} placeholder="Street, building, apartment" />
+            {form.formState.errors.address && <p className="text-red-500 text-sm">{form.formState.errors.address.message}</p>}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label>City</Label>
+              <Input {...form.register("city")} />
+              {form.formState.errors.city && <p className="text-red-500 text-sm">{form.formState.errors.city.message}</p>}
+            </div>
+            <div>
+              <Label>State / Region</Label>
+              <Input {...form.register("state")} />
+              {form.formState.errors.state && <p className="text-red-500 text-sm">{form.formState.errors.state.message}</p>}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label>Country</Label>
+              <Input {...form.register("country")} />
+              {form.formState.errors.country && <p className="text-red-500 text-sm">{form.formState.errors.country.message}</p>}
+            </div>
+            <div>
+              <Label>Postal / ZIP code (optional)</Label>
+              <Input {...form.register("postalCode")} />
+            </div>
+          </div>
+          <div>
+            <Label>Delivery instructions (optional)</Label>
+            <Textarea {...form.register("deliveryInstructions")} placeholder="Gate code, floor, dispatch contact, etc." rows={2} />
           </div>
           <Button type="submit" disabled={loading || items.length === 0}>
             {loading ? "Processing..." : "Pay with Paystack"}

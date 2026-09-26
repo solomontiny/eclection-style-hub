@@ -17,6 +17,7 @@ import { Route as ShopRouteImport } from './routes/shop'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as BulkOrderRouteImport } from './routes/bulk-order'
@@ -37,6 +38,8 @@ import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminBulkRequestsRouteImport } from './routes/admin.bulk-requests'
+import { Route as AdminBulkOrderRouteImport } from './routes/admin.bulk-order'
+import { Route as AdminBulkBundlesRouteImport } from './routes/admin.bulk-bundles'
 import { Route as AdminAddProductRouteImport } from './routes/admin.add-product'
 import { Route as AccountOrdersRouteImport } from './routes/account.orders'
 import { Route as AdminEditProductIdRouteImport } from './routes/admin.edit-product.$id'
@@ -80,6 +83,11 @@ const LoginRoute = LoginRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FavoritesRoute = FavoritesRouteImport.update({
+  id: '/favorites',
+  path: '/favorites',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactRoute = ContactRouteImport.update({
@@ -182,6 +190,16 @@ const AdminBulkRequestsRoute = AdminBulkRequestsRouteImport.update({
   path: '/bulk-requests',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminBulkOrderRoute = AdminBulkOrderRouteImport.update({
+  id: '/bulk-order',
+  path: '/bulk-order',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBulkBundlesRoute = AdminBulkBundlesRouteImport.update({
+  id: '/bulk-bundles',
+  path: '/bulk-bundles',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAddProductRoute = AdminAddProductRouteImport.update({
   id: '/add-product',
   path: '/add-product',
@@ -211,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/bulk-order': typeof BulkOrderRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/favorites': typeof FavoritesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -221,6 +240,8 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof VerifyEmailRoute
   '/account/orders': typeof AccountOrdersRouteWithChildren
   '/admin/add-product': typeof AdminAddProductRoute
+  '/admin/bulk-bundles': typeof AdminBulkBundlesRoute
+  '/admin/bulk-order': typeof AdminBulkOrderRoute
   '/admin/bulk-requests': typeof AdminBulkRequestsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
@@ -244,6 +265,7 @@ export interface FileRoutesByTo {
   '/bulk-order': typeof BulkOrderRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/favorites': typeof FavoritesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -254,6 +276,8 @@ export interface FileRoutesByTo {
   '/verify-email': typeof VerifyEmailRoute
   '/account/orders': typeof AccountOrdersRouteWithChildren
   '/admin/add-product': typeof AdminAddProductRoute
+  '/admin/bulk-bundles': typeof AdminBulkBundlesRoute
+  '/admin/bulk-order': typeof AdminBulkOrderRoute
   '/admin/bulk-requests': typeof AdminBulkRequestsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
@@ -279,6 +303,7 @@ export interface FileRoutesById {
   '/bulk-order': typeof BulkOrderRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/favorites': typeof FavoritesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -289,6 +314,8 @@ export interface FileRoutesById {
   '/verify-email': typeof VerifyEmailRoute
   '/account/orders': typeof AccountOrdersRouteWithChildren
   '/admin/add-product': typeof AdminAddProductRoute
+  '/admin/bulk-bundles': typeof AdminBulkBundlesRoute
+  '/admin/bulk-order': typeof AdminBulkOrderRoute
   '/admin/bulk-requests': typeof AdminBulkRequestsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
@@ -315,6 +342,7 @@ export interface FileRouteTypes {
     | '/bulk-order'
     | '/checkout'
     | '/contact'
+    | '/favorites'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
@@ -325,6 +353,8 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/account/orders'
     | '/admin/add-product'
+    | '/admin/bulk-bundles'
+    | '/admin/bulk-order'
     | '/admin/bulk-requests'
     | '/admin/categories'
     | '/admin/coupons'
@@ -348,6 +378,7 @@ export interface FileRouteTypes {
     | '/bulk-order'
     | '/checkout'
     | '/contact'
+    | '/favorites'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
@@ -358,6 +389,8 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/account/orders'
     | '/admin/add-product'
+    | '/admin/bulk-bundles'
+    | '/admin/bulk-order'
     | '/admin/bulk-requests'
     | '/admin/categories'
     | '/admin/coupons'
@@ -382,6 +415,7 @@ export interface FileRouteTypes {
     | '/bulk-order'
     | '/checkout'
     | '/contact'
+    | '/favorites'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
@@ -392,6 +426,8 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/account/orders'
     | '/admin/add-product'
+    | '/admin/bulk-bundles'
+    | '/admin/bulk-order'
     | '/admin/bulk-requests'
     | '/admin/categories'
     | '/admin/coupons'
@@ -417,6 +453,7 @@ export interface RootRouteChildren {
   BulkOrderRoute: typeof BulkOrderRoute
   CheckoutRoute: typeof CheckoutRoute
   ContactRoute: typeof ContactRoute
+  FavoritesRoute: typeof FavoritesRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -485,6 +522,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/favorites': {
+      id: '/favorites'
+      path: '/favorites'
+      fullPath: '/favorites'
+      preLoaderRoute: typeof FavoritesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contact': {
@@ -627,6 +671,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBulkRequestsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/bulk-order': {
+      id: '/admin/bulk-order'
+      path: '/bulk-order'
+      fullPath: '/admin/bulk-order'
+      preLoaderRoute: typeof AdminBulkOrderRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/bulk-bundles': {
+      id: '/admin/bulk-bundles'
+      path: '/bulk-bundles'
+      fullPath: '/admin/bulk-bundles'
+      preLoaderRoute: typeof AdminBulkBundlesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/add-product': {
       id: '/admin/add-product'
       path: '/add-product'
@@ -683,6 +741,8 @@ const AccountRouteWithChildren =
 
 interface AdminRouteChildren {
   AdminAddProductRoute: typeof AdminAddProductRoute
+  AdminBulkBundlesRoute: typeof AdminBulkBundlesRoute
+  AdminBulkOrderRoute: typeof AdminBulkOrderRoute
   AdminBulkRequestsRoute: typeof AdminBulkRequestsRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCouponsRoute: typeof AdminCouponsRoute
@@ -699,6 +759,8 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAddProductRoute: AdminAddProductRoute,
+  AdminBulkBundlesRoute: AdminBulkBundlesRoute,
+  AdminBulkOrderRoute: AdminBulkOrderRoute,
   AdminBulkRequestsRoute: AdminBulkRequestsRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCouponsRoute: AdminCouponsRoute,
@@ -723,6 +785,7 @@ const rootRouteChildren: RootRouteChildren = {
   BulkOrderRoute: BulkOrderRoute,
   CheckoutRoute: CheckoutRoute,
   ContactRoute: ContactRoute,
+  FavoritesRoute: FavoritesRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
