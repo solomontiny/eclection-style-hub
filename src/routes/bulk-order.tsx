@@ -10,6 +10,7 @@ import { useCart } from "@/lib/cart";
 import { Trash2, AlertCircle, CheckCircle, Package, Check } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/bulk-order")({
   head: () => ({
@@ -21,7 +22,6 @@ export const Route = createFileRoute("/bulk-order")({
 });
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"] as const;
-const BUNDLE_SIZE = 10;
 
 type BundleItem = {
   product: Product;
@@ -38,11 +38,10 @@ type ColourLine = {
 
 type ProductEntryProps = {
   product: Product;
-  remaining: number;
   onAdd: (product: Product, lines: ColourLine[]) => void;
 };
 
-function ProductEntry({ product, remaining, onAdd }: ProductEntryProps) {
+function ProductEntry({ product, onAdd }: ProductEntryProps) {
   const productSizes = product.sizes?.length ? product.sizes : DEFAULT_SIZES;
   const defaultSize = productSizes[1] ?? "M";
   const colours = product.colors?.length ? product.colors : ["Default"];
@@ -55,7 +54,6 @@ function ProductEntry({ product, remaining, onAdd }: ProductEntryProps) {
 
   const selectedLines = Object.values(lines).filter((line) => line.qty > 0);
   const selectedTotal = selectedLines.reduce((sum, line) => sum + line.qty, 0);
-  const canAdd = selectedTotal > 0 && selectedTotal <= remaining;
 
   const updateLine = (color: string, changes: Partial<ColourLine>) => {
     setLines((current) => ({
@@ -66,17 +64,13 @@ function ProductEntry({ product, remaining, onAdd }: ProductEntryProps) {
 
   const updateQuantity = (color: string, value: string) => {
     const nextValue = Number.parseInt(value, 10);
-    const qty = Number.isFinite(nextValue) ? Math.max(0, Math.min(BUNDLE_SIZE, Math.floor(nextValue))) : 0;
+    const qty = Number.isFinite(nextValue) ? Math.max(0, Math.floor(nextValue)) : 0;
     updateLine(color, { qty });
   };
 
   const handleAdd = () => {
     if (selectedTotal === 0) {
       toast.error("Select at least one colour and quantity.");
-      return;
-    }
-    if (selectedTotal > remaining) {
-      toast.error(`Only ${remaining} more pieces can be added to this bundle.`);
       return;
     }
     onAdd(product, selectedLines);
@@ -97,7 +91,6 @@ function ProductEntry({ product, remaining, onAdd }: ProductEntryProps) {
               <p className="font-display text-lg leading-tight">{product.name}</p>
               <p className="mt-1 text-sm text-muted-foreground">Choose a quantity for each colour or design.</p>
             </div>
-            <p className="text-sm font-semibold text-primary whitespace-nowrap">{formatNaira(60000)} / {BUNDLE_SIZE}</p>
           </div>
 
           <div className="mt-4 space-y-3">
@@ -176,7 +169,6 @@ function ProductEntry({ product, remaining, onAdd }: ProductEntryProps) {
                         id={`quantity-${product.id}-${color}`}
                         type="number"
                         min={0}
-                        max={BUNDLE_SIZE}
                         step={1}
                         value={line.qty}
                         onChange={(event) => updateQuantity(color, event.target.value)}
@@ -188,7 +180,7 @@ function ProductEntry({ product, remaining, onAdd }: ProductEntryProps) {
                       />
                     </div>
                   </div>
-                  <p id={`quantity-help-${product.id}-${color}`} className="mt-1.5 text-[11px] text-muted-foreground">Use 0 to skip this colour. Each included colour must be at least 1 piece.</p>
+                  <p id={`quantity-help-${product.id}-${color}`} className="mt-1.5 text-[11px] text-muted-foreground">Use 0 to skip this colour.</p>
                 </div>
               );
             })}
@@ -198,7 +190,7 @@ function ProductEntry({ product, remaining, onAdd }: ProductEntryProps) {
             <p className="text-sm font-medium text-muted-foreground">
               {selectedTotal > 0 ? `${selectedTotal} selected from this design` : "No quantities selected"}
             </p>
-            <Button type="button" size="sm" className="btn-accent" onClick={handleAdd} disabled={remaining <= 0 || !canAdd}>
+            <Button type="button" size="sm" className="btn-accent" onClick={handleAdd} disabled={selectedTotal === 0}>
               Add selected colours
             </Button>
           </div>
@@ -209,22 +201,37 @@ function ProductEntry({ product, remaining, onAdd }: ProductEntryProps) {
 }
 
 function BulkOrderPage() {
-  const { data: products = [] } = useQuery({ queryKey: ["products"], queryFn: getProducts });
+  const { data: products = [] } = useQuery({
+    queryKey: ["bulk-bundle-products"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("product_type", "bundle")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Product[];
+    },
+  });
+  const { data: settings } = useQuery({
+    queryKey: ["shop_settings_bulk"],
+    queryFn: async () => {
+      const { data } = await supabase.from("shop_settings").select("bulk_unit_price, bulk_min_qty").eq("id", "default").maybeSingle();
+      return data;
+    },
+  });
+  const bulkMinQty = Number(settings?.bulk_min_qty ?? 10);
+  const bulkUnitPrice = Number(settings?.bulk_unit_price ?? 6000);
+
   const { addItem } = useCart();
   const [bundleItems, setBundleItems] = useState<BundleItem[]>([]);
   const currentBundleTotal = bundleItems.reduce((sum, item) => sum + item.qty, 0);
-  const remaining = BUNDLE_SIZE - currentBundleTotal;
 
   const addToBundle = (product: Product, lines: ColourLine[]) => {
-    const lineTotal = lines.reduce((sum, line) => sum + line.qty, 0);
-    if (lineTotal > remaining) {
-      toast.error(`Only ${remaining} more pieces can be added to this bundle.`);
-      return;
-    }
-
     setBundleItems((current) => {
       const next = [...current];
       lines.forEach((line) => {
+        if (line.qty <= 0) return;
         const existing = next.find((item) => item.product.id === product.id && item.color === line.color && item.size === line.size);
         if (existing) {
           existing.qty += line.qty;
@@ -234,32 +241,36 @@ function BulkOrderPage() {
       });
       return next;
     });
+    toast.success("Added to bundle selection");
   };
 
   const finalizeBundle = () => {
-    if (currentBundleTotal !== BUNDLE_SIZE) {
-      toast.error("Bundle must contain exactly 10 pieces.");
+    if (currentBundleTotal < bulkMinQty) {
+      toast.error(`Minimum bulk order is ${bulkMinQty} pieces.`);
       return;
     }
     const bundleId = `bundle_${Date.now()}`;
     bundleItems.forEach((item) => {
-      addItem(item.product, item.size, item.color, item.qty, true, bundleId);
+      addItem(item.product, item.size, item.color, item.qty, true, bundleId, bulkUnitPrice);
     });
     setBundleItems([]);
-    toast.success("Bundle added to cart!");
+    toast.success("Bulk order added to cart!");
   };
+
+  const totalPrice = currentBundleTotal * bulkUnitPrice;
+  const isValid = currentBundleTotal >= bulkMinQty;
 
   return (
     <div className="container-x py-12 space-y-12">
       <div className="text-center space-y-4">
-        <h1 className="text-4xl font-display text-primary">Build Your Custom Bundle</h1>
-        <p className="text-lg">10 pieces for {formatNaira(60000)}</p>
-        <div className={`mx-auto flex max-w-md items-center justify-center gap-2 p-4 rounded-xl font-bold ${currentBundleTotal === BUNDLE_SIZE ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" : "bg-primary/10 text-primary"}`}>
-          {currentBundleTotal === BUNDLE_SIZE ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-          {currentBundleTotal} / {BUNDLE_SIZE} Pieces Selected
+        <h1 className="text-4xl font-display text-primary">Build Your Custom Bulk Order</h1>
+        <p className="text-lg">Minimum bulk order is {bulkMinQty} pieces ({formatNaira(bulkUnitPrice)} / piece)</p>
+        <div className={`mx-auto flex max-w-md items-center justify-center gap-2 p-4 rounded-xl font-bold ${isValid ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" : "bg-primary/10 text-primary"}`}>
+          {isValid ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+          {currentBundleTotal} Pieces Selected {isValid ? "(Ready to order)" : `(Minimum ${bulkMinQty} required)`}
         </div>
-        {currentBundleTotal === BUNDLE_SIZE && (
-          <Button onClick={finalizeBundle} className="btn-accent">Add Bundle to Cart ({formatNaira(60000)})</Button>
+        {isValid && (
+          <Button onClick={finalizeBundle} className="btn-accent">Add Bulk Order to Cart ({formatNaira(totalPrice)})</Button>
         )}
       </div>
 
@@ -270,19 +281,16 @@ function BulkOrderPage() {
             <p className="mt-1 text-sm text-muted-foreground">Each colour or design gets its own quantity and becomes a separate order line.</p>
           </div>
           {products.map((product) => (
-            <ProductEntry key={product.id} product={product} remaining={remaining} onAdd={addToBundle} />
+            <ProductEntry key={product.id} product={product} onAdd={addToBundle} />
           ))}
         </div>
 
         <aside className="rounded-2xl border border-border/70 bg-secondary/10 p-5 shadow-sm lg:sticky lg:top-20">
-          <h2 className="text-2xl font-display">Your Bundle</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{currentBundleTotal} of {BUNDLE_SIZE} pieces selected</p>
-          <div className="mt-4 h-2 rounded-full bg-muted overflow-hidden">
-            <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(100, (currentBundleTotal / BUNDLE_SIZE) * 100)}%` }} />
-          </div>
+          <h2 className="text-2xl font-display">Your Bulk Order</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{currentBundleTotal} total pieces selected</p>
 
           {bundleItems.length === 0 ? (
-            <p className="mt-5 text-sm text-muted-foreground italic">Your bundle is empty.</p>
+            <p className="mt-5 text-sm text-muted-foreground italic">Your bulk selection is empty.</p>
           ) : (
             <div className="mt-5 space-y-3">
               {bundleItems.map((item, index) => {
@@ -307,8 +315,8 @@ function BulkOrderPage() {
           )}
 
           <div className="mt-5 rounded-xl bg-background border border-border/60 p-3 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Bundle price</span><span className="font-semibold text-primary">{formatNaira(60000)}</span></div>
-            <p className="mt-2 text-xs text-muted-foreground">Colour/design quantities are kept as separate lines in your cart and order.</p>
+            <div className="flex justify-between"><span className="text-muted-foreground">Total price</span><span className="font-semibold text-primary">{formatNaira(totalPrice)}</span></div>
+            <p className="mt-2 text-xs text-muted-foreground">{currentBundleTotal} pcs × {formatNaira(bulkUnitPrice)}</p>
           </div>
         </aside>
       </div>

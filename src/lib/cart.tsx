@@ -19,7 +19,7 @@ type CartContextValue = {
   subtotal: number;
   open: boolean;
   setOpen: (v: boolean) => void;
-  addItem: (product: Product, size?: string, color?: string, qty?: number, isBulk?: boolean, bundleId?: string) => void;
+  addItem: (product: Product, size?: string, color?: string, qty?: number, isBulk?: boolean, bundleId?: string, customPrice?: number) => void;
   updateQty: (key: string, qty: number) => void;
   removeItem: (key: string) => void;
   clear: () => void;
@@ -34,13 +34,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [open, setOpen] = useState(false);
 
-  const addItem = (product: Product, size = "M", color?: string, qty = 1, isBulk = false, bundleId?: string) => {
+  const addItem = (product: Product, size = "M", color?: string, qty = 1, isBulk = false, bundleId?: string, customPrice?: number) => {
+    const itemPrice = isBulk ? (customPrice ?? 6000) : (product.sale_price ?? product.price);
     setItems((arr) => {
       const key = itemKey(product.id, size, color, bundleId);
       const existing = arr.find((it) => itemKey(it.id, it.size, it.color, it.bundleId) === key);
       if (existing) {
         return arr.map((it) => {
-          return itemKey(it.id, it.size, it.color, it.bundleId) === key ? { ...it, price: isBulk ? 6000 : (product.sale_price ?? product.price), qty: it.qty + qty } : it;
+          return itemKey(it.id, it.size, it.color, it.bundleId) === key ? { ...it, price: itemPrice, qty: it.qty + qty } : it;
         });
       }
       return [
@@ -48,7 +49,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         {
           id: product.id,
           name: product.name,
-          price: isBulk ? 6000 : (product.sale_price ?? product.price),
+          price: itemPrice,
           image: (color && product.color_images?.[color]) ?? product.image ?? product.image_url ?? "",
           size,
           color,
