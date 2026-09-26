@@ -12,6 +12,7 @@ export const COUNTRIES: CountryCurrency[] = [
   { country: "Ghana", code: "GHS", currencyName: "Ghanaian cedi", flag: "🇬🇭", rateToNGN: 0.012, paystackSupported: true },
   { country: "Kenya", code: "KES", currencyName: "Kenyan shilling", flag: "🇰🇪", rateToNGN: 0.095, paystackSupported: true },
   { country: "South Africa", code: "ZAR", currencyName: "South African rand", flag: "🇿🇦", rateToNGN: 0.012, paystackSupported: true },
+  { country: "United States", code: "USD", currencyName: "US dollar", flag: "🇺🇸", rateToNGN: 0.00065, paystackSupported: true },
   { country: "Senegal", code: "XOF", currencyName: "West African CFA franc", flag: "🇸🇳", rateToNGN: 0.58, paystackSupported: false },
   { country: "Côte d'Ivoire", code: "XOF", currencyName: "West African CFA franc", flag: "🇨🇮", rateToNGN: 0.58, paystackSupported: false },
   { country: "Mali", code: "XOF", currencyName: "West African CFA franc", flag: "🇲🇱", rateToNGN: 0.58, paystackSupported: false },
@@ -64,6 +65,18 @@ export const COUNTRIES: CountryCurrency[] = [
   { country: "Mozambique", code: "MZN", currencyName: "Mozambican metical", flag: "🇲🇿", rateToNGN: 0.011, paystackSupported: false },
 ];
 
+// Paystack supported currencies (based on typical Paystack Nigeria merchant integration)
+// Only these currencies can be used for actual Paystack payment processing
+export const PAYSTACK_SUPPORTED_CURRENCIES = ["NGN", "GHS", "KES", "ZAR", "USD"] as const;
+
+export function isPaystackSupportedCurrency(currency: string): boolean {
+  return PAYSTACK_SUPPORTED_CURRENCIES.includes(currency as any);
+}
+
+export function getPaymentCurrency(displayCurrency: string): string {
+  return isPaystackSupportedCurrency(displayCurrency) ? displayCurrency : "NGN";
+}
+
 export function convertAmount(amountInNGN: number, targetCurrency: string): number {
   const item = COUNTRIES.find((c) => c.code === targetCurrency) || COUNTRIES[0];
   return Math.round(amountInNGN * item.rateToNGN * 100) / 100;
@@ -76,4 +89,51 @@ export function formatCurrencyPrice(amountInNGN: number, targetCurrency: string)
     currency: targetCurrency,
     maximumFractionDigits: 2,
   }).format(converted);
+}
+
+// Paystack subunit configuration for directly supported currencies
+export const PAYSTACK_SUBUNITS: Record<string, number> = {
+  NGN: 100,  // kobo
+  GHS: 100,  // pesewas
+  KES: 100,  // cents
+  ZAR: 100,  // cents
+  USD: 100,  // cents
+};
+
+/**
+ * Convert NGN base amount to payment currency major units (e.g., GHS, KES)
+ * Uses the configured exchange rates in COUNTRIES.
+ */
+export function convertToPaymentCurrency(amountInNGN: number, paymentCurrency: string): number {
+  if (paymentCurrency === "NGN") return Math.round(amountInNGN);
+  const converted = convertAmount(amountInNGN, paymentCurrency);
+  // Round to 2 decimal places for major currency units
+  return Math.round(converted * 100) / 100;
+}
+
+/**
+ * Calculate the exact integer Paystack subunit amount for a given NGN base amount and payment currency.
+ * This is the single source of truth for Paystack amount calculation.
+ */
+export function calculatePaystackAmount(baseNgnAmount: number, paymentCurrency: string): number {
+  const majorAmount = convertToPaymentCurrency(baseNgnAmount, paymentCurrency);
+  const subunitMultiplier = PAYSTACK_SUBUNITS[paymentCurrency] ?? 100;
+  return Math.round(majorAmount * subunitMultiplier);
+}
+
+/**
+ * Get the expected Paystack subunit amount for an order (handles legacy orders).
+ */
+export function getExpectedPaystackAmount(order: { total: number; payment_currency?: string | null; currency?: string | null }): number {
+  const paymentCurrency = order.payment_currency || 
+    (order.currency && PAYSTACK_SUPPORTED_CURRENCIES.includes(order.currency) ? order.currency : "NGN");
+  return calculatePaystackAmount(Number(order.total), paymentCurrency);
+}
+
+/**
+ * Get the payment currency for an order (handles legacy orders).
+ */
+export function getOrderPaymentCurrency(order: { payment_currency?: string | null; currency?: string | null }): string {
+  return order.payment_currency || 
+    (order.currency && PAYSTACK_SUPPORTED_CURRENCIES.includes(order.currency) ? order.currency : "NGN");
 }

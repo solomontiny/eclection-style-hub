@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
+import { useSearch, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Search, Eye, CreditCard, Package, MapPin, Mail, Phone, XCircle, Trash2 } from "lucide-react";
+import { Search, Eye, CreditCard, Package, MapPin, Mail, Phone, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { fmtNGN, fmtDate } from "@/lib/admin-utils";
 import { sendDeliveryNotification } from "@/lib/orders.functions";
 import { cancelOrder } from "@/lib/cancel-order.functions";
@@ -14,7 +16,6 @@ import { sendCustomerStatusChangeEmail } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 
 export const Route = createFileRoute("/admin/orders")({ component: OrdersPage });
 
@@ -47,85 +48,81 @@ type Order = {
   customer_phone: string | null;
   total: number;
   status: OrderStatus;
-  created_at: string;
-  updated_at: string;
   payment_status: PaymentStatus;
-  paystack_reference: string | null;
-  subtotal: number;
-  discount: number;
-  shipping: number;
-  currency: string;
-  coupon_code: string | null;
-  notes: string | null;
-  shipping_address: unknown;
-  tracking_number: string | null;
-  user_id: string | null;
+  created_at: string;
+  shipping_address?: ShippingAddress | null;
+  tracking_number?: string | null;
+  paystack_reference?: string | null;
 };
 
 type OrderItem = {
   id: string;
-  order_id: string;
-  product_id: string | null;
   product_name: string;
-  unit_price: number;
   quantity: number;
   subtotal: number;
-  size: string;
-  color: string;
-  bundle_id: string | null;
-  product?: {
-    name?: string;
-    images?: string[];
-  } | null;
+  size?: string;
+  color?: string;
+  is_bulk?: boolean;
+  product?: { name: string; images?: string[] } | null;
 };
 
-const STATUS_CLASSES: Record<string, string> = {
+const STATUS_CLASSES: Record<OrderStatus, string> = {
   pending: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
   processing: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
-  shipped: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200",
-  out_for_delivery: "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200",
+  shipped: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200",
+  out_for_delivery: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200",
   delivered: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
-  cancelled: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
+  cancelled: "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
 };
 
-const PAYMENT_CLASSES: Record<string, string> = {
+const PAYMENT_CLASSES: Record<PaymentStatus, string> = {
   pending: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
   paid: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
-  failed: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
-  refunded: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
+  failed: "bg-destructive/10 text-destructive",
+  refunded: "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
 };
 
-function getStatusClass(status: string) {
-  return STATUS_CLASSES[status] || "bg-muted text-muted-foreground";
-}
-
-function getPaymentClass(status: string) {
-  return PAYMENT_CLASSES[status] || "bg-muted text-muted-foreground";
-}
-
-function valueOrUnavailable(value: unknown) {
-  return value === null || value === undefined || value === "" ? "Not provided" : String(value);
+function valueOrUnavailable(val?: string | null) {
+  if (!val || !val.trim()) return "—";
+  return val;
 }
 
 function OrdersPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false });
+  const urlOrderId = search.orderId as string | undefined;
   const [q, setQ] = useState("");
-  const [paymentFilter, setPaymentFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [viewing, setViewing] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingBusy, setDeletingBusy] = useState(false);
+
+  // Auto-open order detail dialog from URL query parameter
+  useEffect(() => {
+    if (urlOrderId && urlOrderId !== viewing) {
+      setViewing(urlOrderId);
+    } else if (!urlOrderId && viewing) {
+      setViewing(null);
+    }
+  }, [urlOrderId, viewing]);
+
+  // Sync URL when dialog opens/closes via UI
+  useEffect(() => {
+    if (viewing) {
+      navigate({ search: { ...search, orderId: viewing } }, { replace: true });
+    } else if (urlOrderId) {
+      navigate({ search: { ...search, orderId: undefined } }, { replace: true });
+    }
+  }, [viewing, urlOrderId, search, navigate]);
+
   const { data: orders = [], isLoading, isError } = useQuery({
     queryKey: ["admin-orders"],
     queryFn: async () => {
       const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Order[];
-    },
-  });
-  const { data: unreadCount = 0 } = useQuery({
-    queryKey: ["unread-notifications"],
-    queryFn: async () => {
-      const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("is_read", false);
-      return count ?? 0;
     },
     refetchInterval: 30000,
   });
@@ -175,7 +172,7 @@ function OrdersPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Order permanently deleted");
+      toast.success("Order deleted successfully.");
       qc.invalidateQueries({ queryKey: ["admin-orders"] });
       qc.invalidateQueries({ queryKey: ["admin-customers"] });
     },
@@ -248,9 +245,22 @@ function OrdersPage() {
                   <td className="p-3 text-muted-foreground whitespace-nowrap">{fmtDate(o.created_at)}</td>
                   <td className="p-3"><Badge className={getPaymentClass(o.payment_status)}>{o.payment_status}</Badge></td>
                   <td className="p-3">
-                    <Select value={o.status} onValueChange={(v) => updateStatus.mutate({ id: o.id, status: v as OrderStatus })}>
+                    <Select
+                      value={o.status}
+                      onValueChange={(v) => {
+                        if (v === "__delete__") {
+                          setConfirmDeleteId(o.id);
+                        } else {
+                          updateStatus.mutate({ id: o.id, status: v as OrderStatus });
+                        }
+                      }}
+                    >
                       <SelectTrigger className="h-8 w-[140px] text-xs" aria-label={`Status for order ${o.order_number}`}><SelectValue /></SelectTrigger>
-                      <SelectContent>{Object.keys(STATUS_CLASSES).map((status) => <SelectItem key={status} value={status}>{status.replace("_", " ")}</SelectItem>)}</SelectContent>
+                      <SelectContent className="z-[100]">
+                        {Object.keys(STATUS_CLASSES).map((status) => <SelectItem key={status} value={status}>{status.replace("_", " ")}</SelectItem>)}
+                        <div className="my-1 border-t border-border" />
+                        <SelectItem value="__delete__" className="text-destructive font-medium focus:text-destructive focus:bg-destructive/10">Delete Order</SelectItem>
+                      </SelectContent>
                     </Select>
                   </td>
                   <td className="p-3 text-right space-x-1 whitespace-nowrap">
@@ -262,17 +272,6 @@ function OrdersPage() {
                         <XCircle className="h-4 w-4" /> Cancel
                       </button>
                     )}
-                    <ConfirmDialog
-                      trigger={
-                        <button type="button" className="inline-flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg px-3 text-sm text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Delete order ${o.order_number}`}>
-                          <Trash2 className="h-4 w-4" /> Delete
-                        </button>
-                      }
-                      title={`Delete order ${o.order_number}?`}
-                      description="This action is permanent and cannot be undone. This will permanently remove the order record and its items."
-                      confirmLabel="Delete Permanently"
-                      onConfirm={() => deleteOrderMutation.mutateAsync(o.id)}
-                    />
                   </td>
                 </tr>
               ))}
@@ -282,6 +281,37 @@ function OrdersPage() {
       </div>
 
       <OrderDetailDialog orderId={viewing} onClose={() => setViewing(null)} />
+
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => !open && setConfirmDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this order from the Orders list. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletingBusy}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!confirmDeleteId) return;
+                setDeletingBusy(true);
+                try {
+                  await deleteOrderMutation.mutateAsync(confirmDeleteId);
+                  setConfirmDeleteId(null);
+                } finally {
+                  setDeletingBusy(false);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingBusy ? "Deleting…" : "Delete Order"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -330,159 +360,92 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
   const order = data?.order;
 
   return (
-    <Dialog open={!!orderId} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[88vh] overflow-y-auto p-4 sm:p-6">
+    <Dialog open={!!orderId} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl">{order?.order_number ?? "Order details"}</DialogTitle>
+          <DialogTitle>Order {order?.order_number}</DialogTitle>
         </DialogHeader>
 
-        {isLoading && <div className="py-10 text-center text-sm text-muted-foreground">Loading order…</div>}
-        {isError && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 text-center text-sm text-destructive">Could not load this order.</div>}
-        {!isLoading && !isError && !order && <div className="py-10 text-center text-sm text-muted-foreground">Order not found.</div>}
-
-        {order && (
-          <div className="space-y-5 text-sm">
-            <div className="flex flex-wrap items-center gap-3 p-4 rounded-xl bg-mutated/30 bg-muted/30 border border-border/60">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Status:</span>
-                <Badge className={getStatusClass(order.status)}>{order.status.replace(/_/g, " ")}</Badge>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">Loading order details…</p>
+        ) : isError || !order ? (
+          <p className="text-sm text-destructive py-6 text-center">Failed to load order details.</p>
+        ) : (
+          <div className="space-y-6">
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl border border-border bg-muted/20">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Customer</p>
+                <p className="font-semibold mt-1">{valueOrUnavailable(order.customer_name)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{valueOrUnavailable(order.customer_email)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{valueOrUnavailable(order.customer_phone)}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Payment:</span>
-                <Badge className={getPaymentClass(order.payment_status)}>{order.payment_status}</Badge>
+              <div className="p-4 rounded-xl border border-border bg-muted/20">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Payment</p>
+                <p className="font-semibold mt-1 capitalize">{order.payment_status}</p>
+                {order.paystack_reference && <p className="text-xs text-muted-foreground mt-0.5 truncate">Ref: {order.paystack_reference}</p>}
+                <p className="text-xs text-muted-foreground mt-0.5">{fmtDate(order.created_at)}</p>
               </div>
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-xs text-muted-foreground">Total:</span>
-                <span className="font-display text-xl text-primary">{fmtNGN(order.total)}</span>
+              <div className="p-4 rounded-xl border border-border bg-muted/20">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Total Amount</p>
+                <p className="font-display text-lg text-primary mt-1">{fmtNGN(order.total)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 capitalize status-badge">Status: {order.status.replace("_", " ")}</p>
               </div>
             </div>
 
-            <Separator />
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <section className="space-y-3">
-                <h4 className="font-medium text-foreground flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /> Customer details</h4>
-                <div className="space-y-2.5 p-3 rounded-lg bg-muted/30 border border-border/50">
-                  <div className="flex justify-between gap-3"><span className="text-muted-foreground">Name</span><span className="font-medium text-right">{valueOrUnavailable(order.customer_name)}</span></div>
-                  <div className="flex justify-between gap-3"><span className="text-muted-foreground">Email</span><span className="font-medium text-right break-all">{valueOrUnavailable(order.customer_email)}</span></div>
-                  <div className="flex justify-between gap-3"><span className="text-muted-foreground">Phone</span><span className="font-medium text-right">{valueOrUnavailable(order.customer_phone)}</span></div>
-                </div>
-              </section>
-
-              <section className="space-y-3">
-                <h4 className="font-medium text-foreground flex items-center gap-2"><Package className="h-4 w-4 text-muted-foreground" /> Order information</h4>
-                <div className="space-y-2.5 p-3 rounded-lg bg-muted/30 border border-border/50">
-                  <div className="flex justify-between gap-3"><span className="text-muted-foreground">Order date</span><span className="font-medium text-right">{fmtDate(order.created_at)}</span></div>
-                  <div className="flex justify-between gap-3"><span className="text-muted-foreground">Order number</span><span className="font-medium font-mono text-xs text-right">{order.order_number}</span></div>
-                  <div className="flex justify-between gap-3"><span className="text-muted-foreground">Currency</span><span className="font-medium text-right">{valueOrUnavailable(order.currency)}</span></div>
-                  {order.coupon_code && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Coupon</span><span className="font-medium text-right">{order.coupon_code}</span></div>}
-                </div>
-              </section>
-            </div>
-
-            <section className="space-y-3">
-              <h4 className="font-medium text-foreground flex items-center gap-2"><CreditCard className="h-4 w-4 text-muted-foreground" /> Payment details</h4>
-              <div className="grid gap-2.5 p-3 rounded-lg bg-muted/30 border border-border/50 sm:grid-cols-2">
-                <div className="flex justify-between gap-3"><span className="text-muted-foreground">Payment status</span><Badge className={getPaymentClass(order.payment_status)}>{order.payment_status}</Badge></div>
-                <div className="flex justify-between gap-3"><span className="text-muted-foreground">Paystack reference</span><span className="font-medium text-right break-all">{valueOrUnavailable(order.paystack_reference)}</span></div>
-              </div>
-            </section>
-
-            <section className="space-y-3">
-              <h4 className="font-medium text-foreground flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /> Delivery location</h4>
-              <div className="space-y-2.5 p-3 rounded-lg bg-muted/30 border border-border/50">
-                {order.shipping_address ? (
-                  <>
-                    <div className="flex justify-between gap-3"><span className="text-muted-foreground">Address</span><span className="font-medium text-right">{valueOrUnavailable((order.shipping_address as any)?.address)}</span></div>
-                    <div className="flex justify-between gap-3"><span className="text-muted-foreground">City</span><span className="font-medium text-right">{valueOrUnavailable((order.shipping_address as any)?.city)}</span></div>
-                    <div className="flex justify-between gap-3"><span className="text-muted-foreground">State / Region</span><span className="font-medium text-right">{valueOrUnavailable((order.shipping_address as any)?.state)}</span></div>
-                    <div className="flex justify-between gap-3"><span className="text-muted-foreground">Country</span><span className="font-medium text-right">{valueOrUnavailable((order.shipping_address as any)?.country)}</span></div>
-                    <div className="flex justify-between gap-3"><span className="text-muted-foreground">Postal / ZIP</span><span className="font-medium text-right">{valueOrUnavailable((order.shipping_address as any)?.postal_code)}</span></div>
-                    {(order.shipping_address as any)?.delivery_instructions && (
-                      <div className="pt-2 border-t border-border/50">
-                        <span className="text-xs text-muted-foreground">Delivery instructions</span>
-                        <p className="mt-1 text-xs whitespace-pre-wrap">{(order.shipping_address as any).delivery_instructions}</p>
-                      </div>
-                    )}
-                    <div className="pt-2">
-                      <a
-                        href={buildDirectionsUrl(order.shipping_address as any)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-                      >
-                        <MapPin className="h-3.5 w-3.5" /> Get directions
-                      </a>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-muted-foreground text-sm">No delivery address was provided for this order.</p>
+            {order.shipping_address && (
+              <div className="p-4 rounded-xl border border-border">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Shipping Address</p>
+                <p className="text-sm mt-1">{order.shipping_address.address || "—"}</p>
+                <p className="text-sm text-muted-foreground">{[order.shipping_address.city, order.shipping_address.state, order.shipping_address.country].filter(Boolean).join(", ")} {order.shipping_address.postal_code}</p>
+                {order.shipping_address.delivery_instructions && <p className="text-xs text-muted-foreground mt-2 italic">Note: "{order.shipping_address.delivery_instructions}"</p>}
+                {order.shipping_address.address && (
+                  <a href={buildDirectionsUrl(order.shipping_address)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 mt-3 text-xs text-primary font-medium hover:underline">
+                    <MapPin className="h-3.5 w-3.5" /> Open in Google Maps
+                  </a>
                 )}
-                <div className="flex flex-col gap-2 sm:flex-row pt-2 border-t border-border/50">
-                  <Input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Enter tracking number" aria-label="Tracking number" />
-                  <Button type="button" onClick={() => updateTracking.mutate()} disabled={updateTracking.isPending || !tracking.trim()}>
-                    {updateTracking.isPending ? "Saving…" : "Save tracking"}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">Tracking number: {valueOrUnavailable(order.tracking_number)}</p>
               </div>
-            </section>
-
-            {order.notes && (
-              <section className="space-y-2">
-                <h4 className="font-medium text-foreground flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> Order notes</h4>
-                <p className="whitespace-pre-wrap rounded-lg border border-border/50 bg-muted/20 p-3 text-sm">{order.notes}</p>
-              </section>
             )}
 
-            <Separator />
-
-            <section className="space-y-3">
-              <h4 className="font-medium text-foreground flex items-center gap-2"><Package className="h-4 w-4 text-muted-foreground" /> Order items ({items.length})</h4>
-              <div className="space-y-2.5">
-                {items.length === 0 && <p className="rounded-lg border border-dashed border-border p-4 text-center text-muted-foreground">No items are attached to this order.</p>}
-                {items.map((it) => {
-                  const productImage = it.product?.images?.[0];
-                  return (
-                    <div key={it.id} className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex min-w-0 items-start gap-3 flex-1">
-                          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
-                            <Package className="absolute inset-0 m-auto h-6 w-6 text-muted-foreground" />
-                            {productImage && <img src={productImage} alt={it.product?.name ?? it.product_name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium leading-snug">{it.product_name}</p>
-                            <div className="mt-1.5 flex flex-wrap gap-1.5">
-                              {it.size && <span className="rounded border border-border/60 bg-background px-2 py-0.5 text-xs">Size: {it.size}</span>}
-                              {it.color && <span className="rounded border border-border/60 bg-background px-2 py-0.5 text-xs">Colour: {it.color}</span>}
-                              {it.bundle_id && <span className="rounded border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs text-primary">Bundle: {it.bundle_id}</span>}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex justify-between gap-4 border-t border-border/50 pt-2 text-right sm:w-36 sm:flex-col sm:justify-start sm:border-t-0 sm:pt-0">
-                          <span className="text-xs text-muted-foreground">Qty: {it.quantity}</span>
-                          <span>{fmtNGN(it.unit_price)} each</span>
-                          <span className="font-semibold text-primary">{fmtNGN(it.subtotal)}</span>
-                        </div>
+            <div className="space-y-3">
+              <h3 className="font-display text-lg">Order Items ({items.length})</h3>
+              <div className="divide-y divide-border border border-border rounded-xl overflow-hidden">
+                {items.map((item) => (
+                  <div key={item.id} className="p-3 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      {item.product?.images?.[0] ? (
+                        <img src={item.product.images[0]} alt={item.product_name} className="h-12 w-12 rounded object-cover border border-border" />
+                      ) : (
+                        <div className="h-12 w-12 rounded bg-muted flex items-center justify-center"><Package className="h-5 w-5 text-muted-foreground" /></div>
+                      )}
+                      <div>
+                        <p className="font-medium text-sm">{item.product_name}</p>
+                        <p className="text-xs text-muted-foreground">Qty: {item.quantity} {item.size ? `· Size ${item.size}` : ""} {item.color ? `· Color ${item.color}` : ""}</p>
                       </div>
                     </div>
-                  );
-                })}
+                    <div className="text-right">
+                      <p className="font-semibold text-sm">{fmtNGN(item.subtotal)}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </section>
+            </div>
 
-            <Separator />
-
-            <div className="space-y-2 rounded-lg border border-border/50 bg-muted/20 p-3">
-              <div className="flex justify-between gap-3"><span className="text-muted-foreground">Subtotal</span><span>{fmtNGN(order.subtotal)}</span></div>
-              {Number(order.discount) > 0 && <div className="flex justify-between gap-3 text-green-700 dark:text-green-400"><span>Discount</span><span>-{fmtNGN(order.discount)}</span></div>}
-              <div className="flex justify-between gap-3"><span className="text-muted-foreground">Shipping</span><span>{fmtNGN(order.shipping)}</span></div>
-              <div className="flex justify-between gap-3 border-t border-border/60 pt-2 font-display text-lg"><span>Total</span><span className="text-primary">{fmtNGN(order.total)}</span></div>
+            <div className="p-4 rounded-xl border border-border space-y-3">
+              <h3 className="font-display text-base">Fulfillment & Tracking</h3>
+              <div className="flex gap-3">
+                <Input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Enter tracking number or courier info..." className="flex-1" />
+                <Button onClick={() => updateTracking.mutate()} disabled={updateTracking.isPending}>
+                  {updateTracking.isPending ? "Saving..." : "Save & Notify Customer"}
+                </Button>
+              </div>
             </div>
           </div>
         )}
       </DialogContent>
     </Dialog>
   );
+}
+
+function getPaymentClass(status: PaymentStatus) {
+  return PAYMENT_CLASSES[status] ?? "bg-muted text-muted-foreground";
 }

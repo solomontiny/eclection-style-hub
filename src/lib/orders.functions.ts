@@ -4,6 +4,7 @@ import { CONTACT } from "./contact";
 import { getSupabaseAdmin } from "./supabase-admin.server";
 import { newOrderNotification, sendCustomerOrderEmail } from "./notifications";
 import { reserveStock, restoreStock, getOrderStockReservations, emitStockAlerts } from "./stock";
+import { getPaymentCurrency, PAYSTACK_SUPPORTED_CURRENCIES, calculatePaystackAmount, getExpectedPaystackAmount, getOrderPaymentCurrency } from "./currency";
 
 /**
  * Reads the Paystack LIVE secret key from the server runtime.
@@ -193,10 +194,14 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       deliveryInstructions: z.string().optional(),
     }),
     callbackUrl: z.string().url().optional(),
+    currency: z.string().optional().default("NGN"),
   }))
   .handler(async ({ data }) => {
-    const { items, customer, callbackUrl } = data;
+    const { items, customer, callbackUrl, currency } = data;
     const supabaseAdmin = getSupabaseAdmin();
+
+    // Determine payment currency: use display currency if supported, otherwise NGN
+    const paymentCurrency = PAYSTACK_SUPPORTED_CURRENCIES.includes(currency) ? currency : "NGN";
 
     // 1. Fetch products
     const { data: products, error: productError } = await getSupabaseAdmin()
@@ -266,6 +271,9 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         }
       : null;
 
+    // Calculate payment amount in payment currency major units
+    const paymentAmountMajor = convertToPaymentCurrency(total, paymentCurrency);
+
     const orderData = {
       customer_name: customer.name,
       customer_email: customer.email,
@@ -275,6 +283,9 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       total,
       payment_status: 'pending' as const,
       paystack_reference: reference,
+      currency: currency.toUpperCase(), // display currency
+      payment_currency: paymentCurrency, // actual Paystack payment currency
+      payment_amount: paymentAmountMajor, // payment amount in major units
       notes: items.map(i => {
         const p = products.find((p) => p.id === i.id);
         const parts = [p?.name];
@@ -355,6 +366,9 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       };
     }
 
+    // Calculate the exact Paystack subunit amount
+    const paystackAmount = calculatePaystackAmount(total, paymentCurrency);
+
     try {
       const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
@@ -364,11 +378,11 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         },
         body: JSON.stringify({
           email: customer.email,
-          amount: Math.round(total * 100),
-          currency: "NGN",
+          amount: paystackAmount,
+          currency: paymentCurrency,
           reference,
           ...(callbackUrl ? { callback_url: callbackUrl } : {}),
-          metadata: { order_id: order.id, customer_name: customer.name },
+          metadata: { order_id: order.id, customer_name: customer.name, payment_currency: paymentCurrency, display_currency: currency },
         }),
       });
       const initJson: any = await initRes.json().catch(() => ({}));
@@ -394,6 +408,8 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         orderId: order.id,
         reference,
         total,
+        paymentCurrency,
+        displayCurrency: currency,
         authorization_url: initJson.data.authorization_url as string,
         access_code: initJson.data.access_code as string,
       };
@@ -450,7 +466,7 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
 
       const { data: order } = await getSupabaseAdmin()
         .from("orders")
-        .select("id, order_number, total, payment_status")
+        .select("id, order_number, total, payment_status, currency, payment_currency, payment_amount")
         .eq("paystack_reference", data.reference)
         .maybeSingle();
 
@@ -458,12 +474,19 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
         return { status: "error" as const, message: "We could not find this order." };
       }
       if (order.payment_status === "paid") {
-        return { status: "paid" as const, orderNumber: order.order_number, total: Number(order.total) };
+        return { status: "paid" as const, orderNumber: order.order_number, total: Number(order.total), paymentCurrency: getOrderPaymentCurrency(order) };
       }
       if (!res.ok || txn?.status !== "success") {
         return { status: "pending" as const, message: "Payment not confirmed yet." };
       }
-      if (Math.abs(Number(txn.amount ?? 0) - Math.round(Number(order.total) * 100)) > 100) {
+      // Verify the transaction currency matches the order's payment currency
+      const orderPaymentCurrency = getOrderPaymentCurrency(order);
+      if (txn.currency !== orderPaymentCurrency) {
+        return { status: "error" as const, message: `Payment currency mismatch. Expected ${orderPaymentCurrency}, got ${txn.currency}.` };
+      }
+      // Verify the transaction amount matches the expected Paystack subunit amount
+      const expectedPaystackAmount = getExpectedPaystackAmount(order);
+      if (Math.abs(Number(txn.amount ?? 0) - expectedPaystackAmount) > 100) {
         return { status: "error" as const, message: "Payment amount does not match this order." };
       }
 
@@ -493,7 +516,7 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
         );
       }
 
-      return { status: "paid" as const, orderNumber: order.order_number, total: Number(order.total) };
+      return { status: "paid" as const, orderNumber: order.order_number, total: Number(order.total), paymentCurrency: orderPaymentCurrency };
     } catch (err: any) {
       console.error("confirmPaystackPayment failed:", err?.message);
       return { status: "error" as const, message: "Could not verify the payment right now." };

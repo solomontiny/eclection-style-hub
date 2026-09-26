@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import crypto from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase-admin.server";
 import { sendCustomerOrderEmail } from "@/lib/notifications";
+import { PAYSTACK_SUPPORTED_CURRENCIES, getExpectedPaystackAmount, getOrderPaymentCurrency } from "@/lib/currency";
 
 export const Route = createFileRoute("/api/paystack-webhook")({
   server: {
@@ -54,7 +55,7 @@ export const Route = createFileRoute("/api/paystack-webhook")({
             typeof reference !== "string" ||
             typeof amount !== "number" ||
             status !== "success" ||
-            currency !== "NGN"
+            !PAYSTACK_SUPPORTED_CURRENCIES.includes(currency as any)
           ) {
             console.warn("Paystack webhook received an invalid charge.success payload");
             return new Response(null, { status: 400 });
@@ -62,7 +63,7 @@ export const Route = createFileRoute("/api/paystack-webhook")({
 
           const { data: order, error: orderError } = await getSupabaseAdmin()
             .from("orders")
-            .select("id, total, payment_status")
+            .select("id, total, payment_status, currency, payment_currency, payment_amount")
             .eq("paystack_reference", reference)
             .maybeSingle();
 
@@ -79,7 +80,8 @@ export const Route = createFileRoute("/api/paystack-webhook")({
           if (
             order &&
             order.payment_status !== "paid" &&
-            Math.abs(amount - order.total * 100) < 100
+            currency === getOrderPaymentCurrency(order) &&
+            Math.abs(amount - getExpectedPaystackAmount(order)) < 100
           ) {
             const { error: updateError } = await getSupabaseAdmin()
               .from("orders")

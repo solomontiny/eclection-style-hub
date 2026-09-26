@@ -2,7 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { useCart, cartItemKey } from "@/lib/cart";
+import { useStore } from "@/lib/store-context";
 import { formatNaira } from "@/lib/products";
+import { formatCurrencyPrice, getPaymentCurrency, convertToPaymentCurrency } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +37,7 @@ export const Route = createFileRoute("/checkout")({
 
 function CheckoutPage() {
   const { user } = useAuth();
+  const { currency } = useStore();
   const { items, subtotal, clear } = useCart();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -55,6 +58,10 @@ function CheckoutPage() {
     );
   }
 
+  const paymentCurrency = getPaymentCurrency(currency);
+  const isMultiCurrency = paymentCurrency !== currency;
+  const displayTotal = isMultiCurrency ? convertToPaymentCurrency(subtotal, paymentCurrency) : subtotal;
+
   const handleCheckout = async (data: CustomerForm) => {
     if (items.length === 0 || loading) return;
     setLoading(true);
@@ -64,6 +71,7 @@ function CheckoutPage() {
           items: items.map((i) => ({ id: i.id, size: i.size, color: i.color, qty: i.qty, isBulk: !!i.isBulk, bundleId: i.bundleId })),
           customer: data,
           callbackUrl: `${window.location.origin}/thank-you`,
+          currency,
         },
       });
 
@@ -157,18 +165,36 @@ function CheckoutPage() {
                     : `Size ${item.size} · Qty ${item.qty} ${item.color ? `· ${item.color}` : ""}`}
                 </span>
               </span>
-              <span className="shrink-0 text-sm font-medium tabular-nums">{formatNaira(item.price * item.qty)}</span>
+              <span className="shrink-0 text-sm font-medium tabular-nums">{isMultiCurrency ? formatCurrencyPrice(item.price * item.qty, currency) : formatNaira(item.price * item.qty)}</span>
             </div>
           ))}
           <div className="border-t mt-4 pt-4 font-bold flex flex-col gap-2">
             <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>{formatNaira(subtotal)}</span>
+                <span>{isMultiCurrency ? formatCurrencyPrice(subtotal, currency) : formatNaira(subtotal)}</span>
             </div>
             <div className="flex justify-between text-lg pt-2 border-t">
                 <span>Total</span>
-                <span>{formatNaira(totalWithVat)}</span>
+                <span>{isMultiCurrency ? formatCurrencyPrice(totalWithVat, currency) : formatNaira(totalWithVat)}</span>
             </div>
+            {isMultiCurrency && (
+              <div className="flex justify-between text-sm text-muted-foreground pt-2 border-t">
+                <span>Payment currency</span>
+                <span className="font-medium">{paymentCurrency}</span>
+              </div>
+            )}
+            {isMultiCurrency && (
+              <div className="flex justify-between text-sm pt-2 border-t text-primary">
+                <span>Amount to pay</span>
+                <span className="font-bold">{formatCurrencyPrice(displayTotal, paymentCurrency)}</span>
+              </div>
+            )}
+            {!isMultiCurrency && (
+              <div className="flex justify-between text-sm pt-2 border-t text-primary">
+                <span>Amount to pay</span>
+                <span className="font-bold">{formatNaira(totalWithVat)}</span>
+              </div>
+            )}
           </div>
 
           <div className="mt-4 p-3 bg-secondary/30 rounded text-sm text-muted-foreground space-y-2">
