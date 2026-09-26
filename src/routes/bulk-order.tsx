@@ -66,13 +66,19 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
 
   const updateQuantity = (color: string, value: string) => {
     const nextValue = Number.parseInt(value, 10);
-    const qty = Number.isFinite(nextValue) ? Math.max(0, Math.floor(nextValue)) : 0;
+    const qty = Number.isFinite(nextValue) ? Math.max(0, Math.min(10, Math.floor(nextValue))) : 0;
     updateLine(color, { qty });
   };
 
   const handleAdd = () => {
     if (selectedTotal === 0) {
       toast.error("Select at least one colour and quantity.");
+      return;
+    }
+    // Validate max 10 per individual bundle product selection
+    const overLimit = selectedLines.some((line) => line.qty > 10);
+    if (overLimit) {
+      toast.error("Maximum 10 pieces per bundle selection.");
       return;
     }
     onAdd(product, selectedLines);
@@ -171,6 +177,7 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
                         id={`quantity-${product.id}-${color}`}
                         type="number"
                         min={0}
+                        max={10}
                         step={1}
                         value={line.qty}
                         onChange={(event) => updateQuantity(color, event.target.value)}
@@ -182,7 +189,7 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
                       />
                     </div>
                   </div>
-                  <p id={`quantity-help-${product.id}-${color}`} className="mt-1.5 text-[11px] text-muted-foreground">Use 0 to skip this colour.</p>
+                  <p id={`quantity-help-${product.id}-${color}`} className="mt-1.5 text-[11px] text-muted-foreground">Use 0 to skip this colour. Max 10 per selection.</p>
                 </div>
               );
             })}
