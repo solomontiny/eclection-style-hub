@@ -62,13 +62,6 @@ async function slugExists(
  *   2. If it is not taken, use it.
  *   3. Otherwise append "-2", "-3", ... until a free one is found.
  *   4. Fall back to a random suffix only if the numeric suffixes are exhausted.
- *
- * Race conditions are handled as safely as practical: the check + insert
- * happen on the same database, and Supabase's UNIQUE constraint is the
- * final guard. If a rare race wins the check but loses the insert, the
- * caller should re-run generation with the failed base slug.
- *
- * `excludeId` lets an existing product keep its own slug when editing.
  */
 export async function generateUniqueSlug(
   supabase: SupabaseClient<Database>,
@@ -90,4 +83,60 @@ export async function generateUniqueSlug(
 
   // Exhausted numeric suffixes — fall back to a random suffix.
   return `${base}-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+/**
+ * Check whether a SKU is already taken by another product row.
+ */
+async function skuExists(
+  supabase: SupabaseClient<Database>,
+  sku: string,
+  excludeId?: string,
+): Promise<boolean> {
+  let query = supabase
+    .from("products")
+    .select("id")
+    .eq("sku", sku)
+    .limit(1);
+
+  if (excludeId) {
+    query = query.neq("id", excludeId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+  if (error) {
+    console.error("SKU existence check failed:", error.message);
+    return true;
+  }
+  return !!data;
+}
+
+/**
+ * Generate a unique SKU for a product.
+ *
+ * Algorithm:
+ *   1. Trim and uppercase the base SKU.
+ *   2. If not taken, use it.
+ *   3. Otherwise append "-2", "-3", ... until a free one is found.
+ *   4. Fall back to a random suffix if exhausted.
+ */
+export async function generateUniqueSku(
+  supabase: SupabaseClient<Database>,
+  baseSkuInput: string,
+  excludeId?: string,
+): Promise<string> {
+  const base = (baseSkuInput || "PRD").trim().toUpperCase();
+
+  if (!(await skuExists(supabase, base, excludeId))) {
+    return base;
+  }
+
+  for (let n = 2; n <= 999; n++) {
+    const candidate = `${base}-${n}`;
+    if (!(await skuExists(supabase, candidate, excludeId))) {
+      return candidate;
+    }
+  }
+
+  return `${base}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
 }

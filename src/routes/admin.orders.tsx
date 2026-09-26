@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Search, Eye, CreditCard, Package, MapPin, Mail, Phone, XCircle } from "lucide-react";
+import { Search, Eye, CreditCard, Package, MapPin, Mail, Phone, XCircle, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,6 +14,7 @@ import { sendCustomerStatusChangeEmail } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 
 export const Route = createFileRoute("/admin/orders")({ component: OrdersPage });
 
@@ -157,6 +158,30 @@ function OrdersPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const deleteOrderMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { data: ord } = await supabase.from("orders").select("status, payment_status").eq("id", id).single();
+      if (ord && ord.status !== "cancelled" && ord.payment_status !== "refunded") {
+        const { data: items } = await supabase.from("order_items").select("product_id, quantity").eq("order_id", id);
+        if (items && items.length > 0) {
+          for (const item of items) {
+            if (item.product_id) {
+              await supabase.rpc("restore_stock", { p_product_id: item.product_id, p_qty: Number(item.quantity) });
+            }
+          }
+        }
+      }
+      const { error } = await supabase.from("orders").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Order permanently deleted");
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["admin-customers"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
     return orders.filter((o) => {
@@ -228,7 +253,7 @@ function OrdersPage() {
                       <SelectContent>{Object.keys(STATUS_CLASSES).map((status) => <SelectItem key={status} value={status}>{status.replace("_", " ")}</SelectItem>)}</SelectContent>
                     </Select>
                   </td>
-                  <td className="p-3 text-right">
+                  <td className="p-3 text-right space-x-1 whitespace-nowrap">
                     <button type="button" onClick={() => setViewing(o.id)} className="inline-flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg px-3 text-sm text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`View order ${o.order_number}`}>
                       <Eye className="h-4 w-4" /> View
                     </button>
@@ -237,6 +262,17 @@ function OrdersPage() {
                         <XCircle className="h-4 w-4" /> Cancel
                       </button>
                     )}
+                    <ConfirmDialog
+                      trigger={
+                        <button type="button" className="inline-flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg px-3 text-sm text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Delete order ${o.order_number}`}>
+                          <Trash2 className="h-4 w-4" /> Delete
+                        </button>
+                      }
+                      title={`Delete order ${o.order_number}?`}
+                      description="This action is permanent and cannot be undone. This will permanently remove the order record and its items."
+                      confirmLabel="Delete Permanently"
+                      onConfirm={() => deleteOrderMutation.mutateAsync(o.id)}
+                    />
                   </td>
                 </tr>
               ))}

@@ -47,7 +47,11 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
               <div className="mt-3">
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-xs font-medium">Size</p>
-                  <SizeChartDialog />
+                  <SizeChartDialog
+                    selectedSize={size}
+                    onSelectSize={setSize}
+                    closeOnSelect={true}
+                  />
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                 {sizes.map((s) => (

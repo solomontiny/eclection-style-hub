@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect, type ChangeEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Search, Pencil, Trash2, X, Upload, ArrowUp, ArrowDown, Star, Copy } from "lucide-react";
-import { generateUniqueSlug } from "@/lib/slug";
+import { generateUniqueSlug, generateUniqueSku } from "@/lib/slug";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -103,11 +103,15 @@ function ProductsPage() {
     setOpen(true);
   }
 
-  function openDuplicateAsBundle(p: Product) {
+  async function openDuplicateAsBundle(p: Product) {
+    const baseSku = p.sku ? `${p.sku}-BDL` : `${slugify(p.name).toUpperCase()}-BDL`;
+    const uniqueSku = await generateUniqueSku(supabase, baseSku);
+
     setEditing({
       name: p.name,
       description: p.description,
       category_id: p.category_id,
+      sku: uniqueSku,
       price: 0,
       sale_price: null,
       stock: 0,

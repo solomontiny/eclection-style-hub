@@ -3,9 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Search, Eye } from "lucide-react";
+import { Search, Eye, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fmtNGN, fmtDate } from "@/lib/admin-utils";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export const Route = createFileRoute("/admin/customers")({ component: CustomersPage });
 
@@ -17,28 +18,59 @@ function CustomersPage() {
     queryKey: ["admin-customers"],
     queryFn: async () => {
       const { data: profiles } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
-      const { data: orders } = await supabase.from("orders").select("user_id, total, customer_email");
-      const map = new Map<string, { count: number; total: number }>();
+      const { data: orders } = await supabase.from("orders").select("user_id, total, customer_email, customer_name, customer_phone, created_at");
+
+      const profileMap = new Map<string, any>();
+      (profiles ?? []).forEach((p) => {
+        if (p.user_id) profileMap.set(p.user_id, p);
+      });
+
+      const orderMap = new Map<string, { count: number; total: number; email: string; name: string; phone: string }>();
       (orders ?? []).forEach((o) => {
         const key = o.user_id ?? o.customer_email;
         if (!key) return;
-        const cur = map.get(key) ?? { count: 0, total: 0 };
-        cur.count += 1; cur.total += Number(o.total || 0);
-        map.set(key, cur);
+        const cur = orderMap.get(key) ?? { count: 0, total: 0, email: o.customer_email ?? "", name: o.customer_name ?? "", phone: o.customer_phone ?? "" };
+        cur.count += 1;
+        cur.total += Number(o.total || 0);
+        if (!cur.email && o.customer_email) cur.email = o.customer_email;
+        if (!cur.name && o.customer_name) cur.name = o.customer_name;
+        if (!cur.phone && o.customer_phone) cur.phone = o.customer_phone;
+        orderMap.set(key, cur);
+
+        if (o.user_id && !profileMap.has(o.user_id)) {
+          profileMap.set(o.user_id, {
+            id: o.user_id,
+            user_id: o.user_id,
+            display_name: o.customer_name || "Customer",
+            phone: o.customer_phone,
+            avatar_url: null,
+            created_at: o.created_at,
+          });
+        }
       });
-      return (profiles ?? []).map((p) => ({ ...p, email: orders?.find((o) => o.user_id === p.user_id)?.customer_email ?? "", stats: map.get(p.user_id) ?? { count: 0, total: 0 } }));
+
+      const allProfiles = Array.from(profileMap.values());
+      return allProfiles.map((p) => {
+        const stats = orderMap.get(p.user_id) ?? { count: 0, total: 0 };
+        const email = p.email || orders?.find((o) => o.user_id === p.user_id)?.customer_email || "";
+        return {
+          ...p,
+          email,
+          stats: { count: stats.count, total: stats.total },
+        };
+      });
     },
   });
 
-  const filtered = useMemo(() => data.filter((c) => !q || (c.display_name?.toLowerCase().includes(q.toLowerCase()) || c.phone?.includes(q))), [data, q]);
+  const filtered = useMemo(() => data.filter((c) => !q || (c.display_name?.toLowerCase().includes(q.toLowerCase()) || c.phone?.includes(q) || c.email?.toLowerCase().includes(q.toLowerCase()))), [data, q]);
 
   return (
     <div className="space-y-6">
-      <div><h1 className="font-display text-3xl">Customers</h1><p className="text-sm text-muted-foreground mt-1">{filtered.length} of {data.length}</p></div>
+      <div><h1 className="font-display text-3xl">Customers</h1><p className="text-sm text-muted-foreground mt-1">{filtered.length} of {data.length} registered customers</p></div>
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Search customers…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <Input className="pl-9" placeholder="Search customers by name, email, phone…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
       <div className="bg-background rounded-2xl border border-border overflow-hidden">
@@ -46,22 +78,30 @@ function CustomersPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="text-left">
-                <th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Phone</th>
+                <th className="p-3">Customer</th><th className="p-3">Email</th><th className="p-3">Phone</th>
                 <th className="p-3">Orders</th><th className="p-3">Spent</th><th className="p-3">Joined</th><th className="p-3"></th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Loading…</td></tr> :
-               filtered.length === 0 ? <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No customers.</td></tr> :
+               filtered.length === 0 ? <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No customers found.</td></tr> :
                filtered.map((c) => (
-                <tr key={c.id} className="border-t border-border">
-                  <td className="p-3 font-medium">{c.display_name ?? "—"}</td>
+                <tr key={c.id ?? c.user_id} className="border-t border-border hover:bg-muted/20">
+                  <td className="p-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={c.avatar_url ?? undefined} alt={c.display_name ?? "Customer"} />
+                        <AvatarFallback className="bg-primary/10 text-primary font-medium">{c.display_name ? c.display_name.charAt(0).toUpperCase() : <User className="h-4 w-4" />}</AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">{c.display_name ?? "—"}</span>
+                    </div>
+                  </td>
                   <td className="p-3 text-muted-foreground">{c.email || "—"}</td>
                   <td className="p-3 text-muted-foreground">{c.phone ?? "—"}</td>
                   <td className="p-3">{c.stats.count}</td>
-                  <td className="p-3">{fmtNGN(c.stats.total)}</td>
+                  <td className="p-3 font-semibold text-primary">{fmtNGN(c.stats.total)}</td>
                   <td className="p-3 text-muted-foreground">{fmtDate(c.created_at)}</td>
-                  <td className="p-3 text-right"><button onClick={() => setViewing(c.user_id)} className="p-2 hover:bg-muted rounded" title="View order history"><Eye className="h-4 w-4" /></button></td>
+                  <td className="p-3 text-right"><button onClick={() => setViewing(c.user_id)} className="p-2 hover:bg-muted rounded inline-flex items-center gap-1 text-sm text-primary" title="View order history"><Eye className="h-4 w-4" /> View</button></td>
                 </tr>
               ))}
             </tbody>

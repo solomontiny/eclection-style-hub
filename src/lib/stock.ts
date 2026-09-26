@@ -27,9 +27,8 @@ export function isPurchasable(stock: number | null | undefined): boolean {
 /**
  * Atomically reserve stock for an order.
  *
- * Uses a row-level `UPDATE ... WHERE stock >= qty` so a concurrent checkout
- * can never oversell. Returns the number of rows updated (0 = insufficient
- * stock for at least one item).
+ * Calls the `reserve_stock` database function which atomically decrements
+ * stock only when stock >= qty. Returns failure if insufficient stock.
  */
 export async function reserveStock(
   supabase: SupabaseClient<Database>,
@@ -38,18 +37,17 @@ export async function reserveStock(
   const insufficient: string[] = [];
 
   for (const { productId, qty } of reservations) {
-    const { count, error } = await supabase
-      .from("products")
-      .update({ stock: supabase.raw("GREATEST(stock - :qty, 0)", { qty }) })
-      .eq("id", productId)
-      .gte("stock", qty)
-      .select("id", { count: "exact", head: true });
+    const { data, error } = await supabase.rpc("reserve_stock", {
+      p_product_id: productId,
+      p_qty: qty,
+    });
 
     if (error) {
       console.error("reserveStock failed for product", productId, error.message);
       return { ok: false, insufficient: [productId, ...insufficient] };
     }
-    if (!count) {
+    // reserve_stock returns 1 on success, 0 on insufficient stock
+    if (data !== 1) {
       insufficient.push(productId);
     }
   }
@@ -61,16 +59,19 @@ export async function reserveStock(
 
 /**
  * Restore stock when an order is cancelled/refunded/failed.
+ *
+ * Calls the `restore_stock` database function which atomically adds
+ * the quantity back to the product's stock.
  */
 export async function restoreStock(
   supabase: SupabaseClient<Database>,
   reservations: { productId: string; qty: number }[],
 ): Promise<void> {
   for (const { productId, qty } of reservations) {
-    const { error } = await supabase
-      .from("products")
-      .update({ stock: supabase.raw("stock + :qty", { qty }) })
-      .eq("id", productId);
+    const { error } = await supabase.rpc("restore_stock", {
+      p_product_id: productId,
+      p_qty: qty,
+    });
 
     if (error) {
       console.error("restoreStock failed for product", productId, error.message);

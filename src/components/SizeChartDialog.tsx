@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Ruler } from "lucide-react";
+import { Ruler, Check } from "lucide-react";
 
 const SIZE_CHART_DATA = [
   { uk: "Size 8", letter: "S/M" },
@@ -12,8 +12,32 @@ const SIZE_CHART_DATA = [
   { uk: "Size 20", letter: "3XL" },
 ];
 
-export function SizeChartDialog({ trigger }: { trigger?: ReactNode }) {
+interface SizeChartDialogProps {
+  trigger?: ReactNode;
+  /** Currently selected letter size (e.g., "M", "L", "XL") */
+  selectedSize?: string;
+  /** Callback when user selects a size from the chart */
+  onSelectSize?: (letterSize: string) => void;
+  /** Whether to close the dialog after selecting a size */
+  closeOnSelect?: boolean;
+}
+
+export function SizeChartDialog({
+  trigger,
+  selectedSize,
+  onSelectSize,
+  closeOnSelect = true,
+}: SizeChartDialogProps) {
   const [open, setOpen] = useState(false);
+
+  const handleRowClick = (letterSize: string) => {
+    onSelectSize?.(letterSize);
+    if (closeOnSelect) {
+      setOpen(false);
+    }
+  };
+
+  const isRowSelected = (letterSize: string) => selectedSize === letterSize;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -34,7 +58,7 @@ export function SizeChartDialog({ trigger }: { trigger?: ReactNode }) {
           </DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">
-          Use this reference table to find your ideal letter size based on standard UK sizing. This guide helps you choose the right fit without altering individual product sizes.
+          Use this reference table to find your ideal letter size based on standard UK sizing. Click a row to select it.
         </p>
         <div className="mt-4 rounded-xl border border-border overflow-hidden">
           <table className="w-full text-left text-sm">
@@ -45,12 +69,22 @@ export function SizeChartDialog({ trigger }: { trigger?: ReactNode }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {SIZE_CHART_DATA.map((row, idx) => (
-                <tr key={idx} className="hover:bg-muted/40 transition-colors">
-                  <td className="px-4 py-3 font-medium">{row.uk}</td>
-                  <td className="px-4 py-3 font-bold text-primary">{row.letter}</td>
-                </tr>
-              ))}
+              {SIZE_CHART_DATA.map((row, idx) => {
+                const isSelected = isRowSelected(row.letter);
+                return (
+                  <tr
+                    key={idx}
+                    className={`hover:bg-muted/40 transition-colors cursor-pointer ${isSelected ? "bg-primary/10" : ""}`}
+                    onClick={() => handleRowClick(row.letter)}
+                  >
+                    <td className="px-4 py-3 font-medium">{row.uk}</td>
+                    <td className="px-4 py-3 font-bold text-primary flex items-center gap-2">
+                      {row.letter}
+                      {isRowSelected(row.letter) && <Check size={16} className="text-primary" />}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
