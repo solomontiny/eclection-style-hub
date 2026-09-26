@@ -1,10 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Menu, X, LayoutDashboard } from "lucide-react";
+import { Menu, X, Globe, Languages } from "lucide-react";
 import { CartDrawer } from "./CartDrawer";
 import { ThemeToggle } from "./ThemeToggle";
-import { CurrencySelector } from "./CurrencySelector";
-import { LanguageSelector } from "./LanguageSelector";
+import { useStore } from "@/lib/store-context";
+import { COUNTRIES } from "@/lib/currency";
+import { LANGUAGES } from "@/lib/i18n";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
 import officialLogo from "@/assets/supplier-affordable-logo.png";
 
@@ -36,6 +38,10 @@ const NavLinks = ({ onClick }: { onClick?: () => void }) => (
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const { currency, setCurrency, language, setLanguage } = useStore();
+
+  const currentCountry = COUNTRIES.find((c) => c.code === currency) || COUNTRIES[0];
+  const currentLang = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-background/90 border-b border-border/50 shadow-sm">
@@ -73,8 +79,54 @@ export function SiteHeader() {
             </Link>
           )}
           <ThemeToggle />
-          <CurrencySelector />
-          <LanguageSelector />
+          
+          {/* Compact Currency Selector */}
+          <Select
+            value={currency}
+            onValueChange={setCurrency}
+            className="w-[140px]"
+          >
+            <SelectTrigger className="h-8 text-xs gap-1" aria-label="Select currency">
+              <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+              <SelectValue placeholder={currentCountry.flag} />
+            </SelectTrigger>
+            <SelectContent className="w-[260px] max-h-72" position="popper">
+              {COUNTRIES.map((c) => (
+                <SelectItem key={c.country} value={c.code} className="flex items-center gap-2 py-1.5 text-xs">
+                  <span className="text-sm">{c.flag}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate font-medium">{c.country}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{c.currencyName} ({c.code})</p>
+                  </div>
+                  {currency === c.code && <span className="text-primary text-xs">✓</span>}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Compact Language Selector */}
+          <Select
+            value={language}
+            onValueChange={setLanguage}
+            className="w-[120px]"
+          >
+            <SelectTrigger className="h-8 text-xs gap-1" aria-label="Select language">
+              <Languages className="h-3.5 w-3.5 text-muted-foreground" />
+              <SelectValue placeholder={currentLang.flag} />
+            </SelectTrigger>
+            <SelectContent className="w-[180px]" position="popper">
+              {LANGUAGES.map((l) => (
+                <SelectItem key={l.code} value={l.code} className="flex items-center gap-2 py-1.5 text-xs">
+                  <span className="text-sm">{l.flag}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate font-medium">{l.label}</p>
+                  </div>
+                  {language === l.code && <span className="text-primary text-xs">✓</span>}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Link to="/shop" className="btn-primary !py-2 !px-6 text-sm">
             Shop Now
           </Link>

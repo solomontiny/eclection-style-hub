@@ -276,11 +276,11 @@ function BulkOrderPage() {
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-display text-primary">Build Your Custom Bulk Order</h1>
         <p className="text-lg">
-          {bundleSize} pieces = 1 bundle &nbsp;|&nbsp; {formatCurrencyPrice(bulkUnitPrice, currency)} per piece
+          {BUNDLE_SIZE} pieces = 1 bundle &nbsp;|&nbsp; {formatCurrencyPrice(bulkUnitPrice, currency)} per piece
         </p>
         <div className={`mx-auto flex max-w-md items-center justify-center gap-2 p-4 rounded-xl font-bold ${isCompleteBundle ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" : "bg-primary/10 text-primary"}`}>
           {isCompleteBundle ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-          {currentBundleTotal} Pieces Selected {isCompleteBundle ? `(Ready: ${bundleCount} Bundle${bundleCount > 1 ? "s" : ""})` : `(Must be multiple of ${bundleSize})`}
+          {currentBundleTotal} Pieces Selected {isCompleteBundle ? `(Ready: ${bundleCount} Bundle${bundleCount > 1 ? "s" : ""})` : `(Must be multiple of ${BUNDLE_SIZE})`}
         </div>
         {isCompleteBundle && (
           <Button onClick={finalizeBundle} className="btn-accent">
