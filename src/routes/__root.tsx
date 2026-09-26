@@ -15,6 +15,7 @@ import { CustomerCareWidget } from "@/components/CustomerCareWidget";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { CartProvider } from "@/lib/cart";
 import { AuthProvider } from "@/lib/auth";
+import { MaintenancePage } from "@/components/MaintenancePage";
 
 function NotFoundComponent() {
   return (
@@ -93,6 +94,22 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // Maintenance mode: only show on public Supplier Affordable domains
+  // Worker URL (supplieraffordable.scotttinys.workers.dev) and localhost remain fully accessible
+  const isPublicDomain = typeof window !== "undefined" && (
+    window.location.hostname === "www.supplieraffordable.com" ||
+    window.location.hostname === "supplieraffordable.com"
+  );
+
+  if (isPublicDomain) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <MaintenancePage />
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
