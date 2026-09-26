@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Minus, Plus, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Minus, Plus, ShoppingBag, Heart } from "lucide-react";
 import { getProductBySlug, formatNaira, normalizeProduct } from "@/lib/products";
 import { colorToCss } from "@/lib/colors";
 import { useCart } from "@/lib/cart";
@@ -9,6 +9,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { BuyNowDialog } from "@/components/BuyNowDialog";
 import { SizeChartDialog } from "@/components/SizeChartDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useFavorites } from "@/lib/favorites";
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"];
 
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/product/$slug")({
 function ProductDetails() {
   const { slug } = Route.useParams();
   const { addItem } = useCart();
+  const { isFavorited, toggleFavorite } = useFavorites();
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState("M");
   const [selectedColor, setSelectedColor] = useState<string | undefined>();
@@ -67,6 +69,8 @@ function ProductDetails() {
   const discount = product.sale_price && product.price > 0 ? Math.round((1 - product.sale_price / product.price) * 100) : product.discount_percent;
   const isOutOfStock = product.stock <= 0;
   const isLowStock = !isOutOfStock && product.stock <= (product.low_stock_threshold ?? 5);
+
+  const isFavorite = product ? isFavorited(product.id) : false;
 
   return <section className="container-x py-16 md:py-24">
     <Link to="/shop" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"><ArrowLeft size={16} /> Back to shop</Link>
@@ -142,6 +146,15 @@ function ProductDetails() {
                 <button type="button" onClick={() => setQuantity((value) => value + 1)} className="p-4 hover:text-primary"><Plus size={18} /></button>
             </div>
             <button type="button" disabled={product.stock === 0} onClick={() => addItem(product, selectedSize, selectedColor, quantity)} className="btn-primary flex-1 justify-center disabled:opacity-50 !py-4 !text-base">Add to cart</button>
+            <button
+              type="button"
+              onClick={() => toggleFavorite(product.id)}
+              disabled={isOutOfStock}
+              className={`h-14 rounded-full border flex items-center justify-center transition-colors ${isFavorite ? "bg-red-500 text-white border-red-500" : "border-border hover:border-primary/50 hover:bg-background"} ${product.stock === 0 ? "cursor-not-allowed opacity-60" : ""}`}
+              aria-label={isFavorite ? `Remove ${product.name} from favorites` : `Add ${product.name} to favorites`}
+            >
+              <Heart size={20} className={isFavorite ? "fill-current" : ""} />
+            </button>
         </div>
         <div className="mt-4"><BuyNowDialog product={product} preselectedColor={selectedColor} trigger={<button type="button" className="btn-outline w-full justify-center !py-4 !text-base">Buy now</button>} /></div>
         <p className="mt-8 text-sm text-muted-foreground border-t pt-6">Lagos delivery: Delivery fee is paid directly to the rider upon arrival. It is separate from your online order payment.</p>

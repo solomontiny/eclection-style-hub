@@ -1,19 +1,21 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Minus, Plus, ShoppingBag, Eye } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Eye, Heart } from "lucide-react";
 import { type Product } from "@/lib/products";
 import { useCart } from "@/lib/cart";
 import { colorToCss } from "@/lib/colors";
 import { SizeChartDialog } from "@/components/SizeChartDialog";
 import { useStore } from "@/lib/store-context";
 import { formatCurrencyPrice } from "@/lib/currency";
+import { useFavorites } from "@/lib/favorites";
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"];
 
 export function QuickViewModal({ product, isOpen, onClose }: { product: Product | null; isOpen: boolean; onClose: () => void }) {
   const { currency } = useStore();
   const { addItem } = useCart();
+  const { isFavorited, toggleFavorite } = useFavorites();
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState("M");
   const [color, setColor] = useState<string | undefined>();
@@ -43,6 +45,8 @@ export function QuickViewModal({ product, isOpen, onClose }: { product: Product 
   const displayTotal = formatCurrencyPrice(total, currency);
   const displayOriginalPrice = product.sale_price != null ? formatCurrencyPrice(product.price, currency) : null;
 
+  const isFavorite = isFavorited(product.id);
+
   const handleAddToCart = () => {
     if (isOutOfStock) return;
     addItem(product, size, color, qty);
@@ -52,8 +56,17 @@ export function QuickViewModal({ product, isOpen, onClose }: { product: Product 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="flex justify-between items-start">
           <DialogTitle className="font-display text-2xl">{product.name}</DialogTitle>
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(product.id); }}
+            disabled={isOutOfStock}
+            className={`h-9 w-9 rounded-full bg-background/80 backdrop-blur border border-border/60 flex items-center justify-center text-foreground hover:bg-background shadow-sm transition-colors ${isFavorite ? "text-red-500" : ""} ${isOutOfStock ? "opacity-60" : ""}`}
+            aria-label={isFavorite ? `Remove ${product.name} from favorites` : `Add ${product.name} to favorites`}
+          >
+            <Heart size={18} className={isFavorite ? "fill-current" : ""} />
+          </button>
         </DialogHeader>
         <div className="grid md:grid-cols-2 gap-6 mt-2">
           <div className="space-y-3">

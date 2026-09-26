@@ -1,16 +1,18 @@
 import { useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Minus, Plus, ShoppingBag } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Heart } from "lucide-react";
 import { type Product } from "@/lib/products";
 import { useCart } from "@/lib/cart";
 import { colorToCss } from "@/lib/colors";
 import { SizeChartDialog } from "@/components/SizeChartDialog";
 import { useStore } from "@/lib/store-context";
 import { formatCurrencyPrice } from "@/lib/currency";
+import { useFavorites } from "@/lib/favorites";
 
 export function BuyNowDialog({ product, trigger, preselectedColor }: { product: Product; trigger: React.ReactNode; preselectedColor?: string }) {
   const { currency } = useStore();
+  const { isFavorited, toggleFavorite } = useFavorites();
   const [open, setOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState("M");
@@ -28,6 +30,8 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
   const displayUnitPrice = formatCurrencyPrice(unitPrice, currency);
   const displayTotal = formatCurrencyPrice(total, currency);
 
+  const isFavorite = isFavorited(product.id);
+
   const handlePayNow = () => {
     addItem(product, size, color || undefined, qty);
     setOpen(false);
@@ -38,8 +42,17 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+        <DialogHeader className="flex justify-between items-start">
           <DialogTitle className="font-display text-2xl">{product.name}</DialogTitle>
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(product.id); }}
+            disabled={isOutOfStock}
+            className={`h-9 w-9 rounded-full bg-background/80 backdrop-blur border border-border/60 flex items-center justify-center text-foreground hover:bg-background shadow-sm transition-colors ${isFavorite ? "text-red-500" : ""} ${isOutOfStock ? "opacity-60" : ""}`}
+            aria-label={isFavorite ? `Remove ${product.name} from favorites` : `Add ${product.name} to favorites`}
+          >
+            <Heart size={18} className={isFavorite ? "fill-current" : ""} />
+          </button>
         </DialogHeader>
         <div className="flex gap-4">
           {displayImage ? (

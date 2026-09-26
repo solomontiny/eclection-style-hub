@@ -1,18 +1,20 @@
 import { type Product } from "@/lib/products";
 import { colorToCss } from "@/lib/colors";
-import { ShoppingBag, Plus, Check, Eye } from "lucide-react";
+import { ShoppingBag, Plus, Check, Eye, Heart } from "lucide-react";
 import { useState } from "react";
 import { BuyNowDialog } from "./BuyNowDialog";
 import { useCart } from "@/lib/cart";
 import { Link } from "@tanstack/react-router";
 import { useStore } from "@/lib/store-context";
 import { formatCurrencyPrice } from "@/lib/currency";
+import { useFavorites } from "@/lib/favorites";
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"] as const;
 
 export function ProductCard({ product, onQuickPreview }: { product: Product; onQuickPreview?: (product: Product) => void }) {
   const { currency } = useStore();
   const { addItem } = useCart();
+  const { isFavorited, toggleFavorite } = useFavorites();
   const sizes = product.sizes?.length ? product.sizes : [...DEFAULT_SIZES];
   const [size, setSize] = useState<string>(sizes[1] ?? "M");
   const [color, setColor] = useState<string | undefined>(product.colors?.[0]);
@@ -28,6 +30,8 @@ export function ProductCard({ product, onQuickPreview }: { product: Product; onQ
 
   const displayPrice = formatCurrencyPrice(product.sale_price ?? product.price, currency);
   const displayOriginalPrice = isSale ? formatCurrencyPrice(product.price, currency) : null;
+
+  const isFavorite = isFavorited(product.id);
 
   const handleAdd = () => {
     if (isOutOfStock) return;
@@ -65,19 +69,29 @@ export function ProductCard({ product, onQuickPreview }: { product: Product; onQ
              <span key={i} className={`px-3 py-1 text-[10px] font-bold rounded-full text-white backdrop-blur ${b.className}`}>{b.label}</span>
           ))}
         </div>
-        {onQuickPreview && (
+{onQuickPreview && (
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onQuickPreview(product); }}
+              className="absolute top-3 right-3 h-9 w-9 rounded-full bg-background/80 backdrop-blur border border-border/60 flex items-center justify-center text-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-background shadow-sm"
+              aria-label={`Quick view ${product.name}`}
+              title="Quick view"
+            >
+              <Eye size={15} />
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onQuickPreview(product); }}
-            className="absolute top-3 right-3 h-9 w-9 rounded-full bg-background/80 backdrop-blur border border-border/60 flex items-center justify-center text-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-background shadow-sm"
-            aria-label={`Quick view ${product.name}`}
-            title="Quick view"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(product.id); }}
+            className={`absolute top-3 right-3 h-9 w-9 rounded-full bg-background/80 backdrop-blur border border-border/60 flex items-center justify-center text-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-background shadow-sm ${isFavorite ? "text-red-500" : ""}`}
+            aria-label={isFavorite ? `Remove ${product.name} from favorites` : `Add ${product.name} to favorites`}
+            title={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
-            <Eye size={15} />
+            <Heart size={15} className={isFavorite ? "fill-current" : ""} />
           </button>
-        )}
 
-        <BuyNowDialog
+          <BuyNowDialog
           product={product}
           preselectedColor={color}
           trigger={

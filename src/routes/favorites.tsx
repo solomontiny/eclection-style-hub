@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getProducts } from "@/lib/products";
 import { useFavorites } from "@/lib/favorites";
 import { ProductCard } from "@/components/ProductCard";
-import { Heart, ShoppingBag, ArrowRight } from "lucide-react";
+import { Heart, ShoppingBag, ArrowRight, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { QuickViewModal } from "@/components/QuickViewModal";
 import type { Product } from "@/lib/products";
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/favorites")({
 });
 
 function FavoritesPage() {
-  const { favorites } = useFavorites();
+  const { favorites, toggleFavorite } = useFavorites();
   const { data: allProducts = [] } = useQuery({ queryKey: ["products"], queryFn: getProducts });
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
 
@@ -52,7 +52,18 @@ function FavoritesPage() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {favoriteProducts.map((p) => (
-            <ProductCard key={p.id} product={p} onQuickPreview={(prod) => setQuickProduct(prod)} />
+            <div key={p.id} className="relative group">
+              <ProductCard key={p.id} product={p} onQuickPreview={setQuickProduct} />
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(p.id); }}
+                className="absolute top-2 right-2 h-8 w-8 rounded-full bg-background/90 backdrop-blur border border-border/60 flex items-center justify-center text-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background shadow-sm text-red-500"
+                aria-label={`Remove ${p.name} from favorites`}
+                title="Remove from favorites"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           ))}
         </div>
       )}

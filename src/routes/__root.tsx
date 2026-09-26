@@ -17,6 +17,7 @@ import { CartProvider } from "@/lib/cart";
 import { AuthProvider } from "@/lib/auth";
 import { MaintenancePage } from "@/components/MaintenancePage";
 import { StoreProvider } from "@/lib/store-context";
+import { FavoritesProvider } from "@/lib/favorites";
 
 function NotFoundComponent() {
   return (
@@ -118,15 +119,17 @@ function RootComponent() {
       <AuthProvider>
         <CartProvider>
           <StoreProvider>
-            <div className="min-h-screen flex flex-col">
-              <AnnouncementBar />
-              <SiteHeader />
-              <main className="flex-1">
-                <Outlet />
-              </main>
-              <SiteFooter />
-              <CustomerCareWidget />
-            </div>
+            <FavoritesProvider>
+              <div className="min-h-screen flex flex-col">
+                <AnnouncementBar />
+                <SiteHeader />
+                <main className="flex-1">
+                  <Outlet />
+                </main>
+                <SiteFooter />
+                <CustomerCareWidget />
+              </div>
+            </FavoritesProvider>
           </StoreProvider>
         </CartProvider>
       </AuthProvider>
