@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useEffect, type ChangeEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Search, Pencil, Trash2, X, Upload, ArrowUp, ArrowDown, Star } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Upload, ArrowUp, ArrowDown, Star, Copy } from "lucide-react";
+import { generateUniqueSlug } from "@/lib/slug";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,6 +100,26 @@ function ProductsPage() {
 
   function openEdit(p: Product) {
     setEditing(p);
+    setOpen(true);
+  }
+
+  function openDuplicateAsBundle(p: Product) {
+    setEditing({
+      name: p.name,
+      description: p.description,
+      category_id: p.category_id,
+      price: 0,
+      sale_price: null,
+      stock: 0,
+      images: p.images || [],
+      status: "active",
+      featured: false,
+      product_type: "bundle",
+      promotion_status: p.promotion_status || "regular",
+      colors: p.colors,
+      sizes: p.sizes,
+      color_images: p.color_images,
+    });
     setOpen(true);
   }
 
@@ -227,7 +248,11 @@ function ProductsPage() {
 
                     <td className="p-3 text-right">
                       <div className="inline-flex gap-1">
-                        <button onClick={() => openEdit(p)} className="p-2 hover:bg-muted rounded">
+                        <button onClick={() => openDuplicateAsBundle(p)} className="p-2 hover:bg-muted rounded text-primary" title="Duplicate as Bundle">
+                          <Copy className="h-4 w-4" />
+                        </button>
+
+                        <button onClick={() => openEdit(p)} className="p-2 hover:bg-muted rounded" title="Edit">
                           <Pencil className="h-4 w-4" />
                         </button>
 
@@ -237,7 +262,7 @@ function ProductsPage() {
 
                         <ConfirmDialog
                           trigger={
-                            <button className="p-2 hover:bg-muted rounded text-destructive">
+                            <button className="p-2 hover:bg-muted rounded text-destructive" title="Delete">
                               <Trash2 className="h-4 w-4" />
                             </button>
                           }
@@ -381,9 +406,13 @@ function ProductDialog({
             }
         }
 
+        const productSlug = form.id
+          ? await generateUniqueSlug(supabase, form.name, form.id)
+          : await generateUniqueSlug(supabase, form.name);
+
         const payload = {
             name: form.name,
-            slug: form.slug || slugify(form.name),
+            slug: productSlug,
             description: form.description ?? null,
             category_id: form.category_id || null,
             sku: form.sku?.trim() || null,
