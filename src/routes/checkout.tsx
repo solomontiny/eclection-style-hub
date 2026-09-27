@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { useCart, cartItemKey } from "@/lib/cart";
 import { useStore } from "@/lib/store-context";
 import { formatNaira } from "@/lib/products";
-import { formatCurrencyPrice, getPaymentCurrency, convertToPaymentCurrency } from "@/lib/currency-browser";
+import { formatCurrencyPrice, convertAmountToPaymentCurrency, PAYSTACK_SUPPORTED_CURRENCIES } from "@/lib/currency-browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,9 +58,9 @@ function CheckoutPage() {
     );
   }
 
-  const paymentCurrency = getPaymentCurrency(currency);
+  const paymentCurrency = PAYSTACK_SUPPORTED_CURRENCIES.includes(currency) ? currency : "NGN";
   const isMultiCurrency = paymentCurrency !== currency;
-  const displayTotal = isMultiCurrency ? convertToPaymentCurrency(subtotal, paymentCurrency) : subtotal;
+  const displayTotal = isMultiCurrency ? convertAmountToPaymentCurrency(subtotal, paymentCurrency) : subtotal;
 
   const handleCheckout = async (data: CustomerForm) => {
     if (items.length === 0 || loading) return;

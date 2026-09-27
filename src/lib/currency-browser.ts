@@ -97,7 +97,7 @@ export const PAYSTACK_SUBUNITS: Record<string, number> = {
   USD: 100,
 };
 
-export function convertToPaymentCurrency(amountInNGN: number, paymentCurrency: string): number {
+export function convertAmountToPaymentCurrency(amountInNGN: number, paymentCurrency: string): number {
   if (paymentCurrency === "NGN") return Math.round(amountInNGN);
   const converted = convertAmount(amountInNGN, paymentCurrency);
   return Math.round(converted * 100) / 100;
