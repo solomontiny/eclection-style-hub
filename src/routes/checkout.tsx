@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { useCart, cartItemKey } from "@/lib/cart";
 import { useStore } from "@/lib/store-context";
 import { formatNaira } from "@/lib/products";
-import { formatCurrencyPrice, getPaymentCurrency, convertToPaymentCurrency } from "@/lib/currency";
+import { formatCurrencyPrice, getPaymentCurrency, convertToPaymentCurrency } from "@/lib/currency-browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
