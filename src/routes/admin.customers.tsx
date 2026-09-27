@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Search, Eye, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fmtNGN, fmtDate } from "@/lib/admin-utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { getAdminCustomersServerFn } from "@/lib/orders.functions";
 
 export const Route = createFileRoute("/admin/customers")({ component: CustomersPage });
 
@@ -17,48 +17,8 @@ function CustomersPage() {
   const { data = [], isLoading } = useQuery({
     queryKey: ["admin-customers"],
     queryFn: async () => {
-      const { data: profiles } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
-      const { data: orders } = await supabase.from("orders").select("user_id, total, customer_email, customer_name, customer_phone, created_at");
-
-      const profileMap = new Map<string, any>();
-      (profiles ?? []).forEach((p) => {
-        if (p.user_id) profileMap.set(p.user_id, p);
-      });
-
-      const orderMap = new Map<string, { count: number; total: number; email: string; name: string; phone: string }>();
-      (orders ?? []).forEach((o) => {
-        const key = o.user_id ?? o.customer_email;
-        if (!key) return;
-        const cur = orderMap.get(key) ?? { count: 0, total: 0, email: o.customer_email ?? "", name: o.customer_name ?? "", phone: o.customer_phone ?? "" };
-        cur.count += 1;
-        cur.total += Number(o.total || 0);
-        if (!cur.email && o.customer_email) cur.email = o.customer_email;
-        if (!cur.name && o.customer_name) cur.name = o.customer_name;
-        if (!cur.phone && o.customer_phone) cur.phone = o.customer_phone;
-        orderMap.set(key, cur);
-
-        if (o.user_id && !profileMap.has(o.user_id)) {
-          profileMap.set(o.user_id, {
-            id: o.user_id,
-            user_id: o.user_id,
-            display_name: o.customer_name || "Customer",
-            phone: o.customer_phone,
-            avatar_url: null,
-            created_at: o.created_at,
-          });
-        }
-      });
-
-      const allProfiles = Array.from(profileMap.values());
-      return allProfiles.map((p) => {
-        const stats = orderMap.get(p.user_id) ?? { count: 0, total: 0 };
-        const email = p.email || orders?.find((o) => o.user_id === p.user_id)?.customer_email || "";
-        return {
-          ...p,
-          email,
-          stats: { count: stats.count, total: stats.total },
-        };
-      });
+      const result = await getAdminCustomersServerFn({ data: {} });
+      return result;
     },
   });
 

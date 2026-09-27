@@ -593,3 +593,70 @@ export const sendOrderReceipt = createServerFn({ method: "POST" })
       };
     }
   });
+
+/**
+ * Server function to fetch all customers for admin panel.
+ * Uses admin client to bypass RLS and return all profiles with order stats.
+ */
+export const getAdminCustomersServerFn = createServerFn({ method: "POST" })
+  .inputValidator(z.object({}))
+  .handler(async () => {
+    const supabaseAdmin = getSupabaseAdmin();
+
+    // Fetch all profiles
+    const { data: profiles, error: profilesError } = await supabaseAdmin
+      .from("profiles")
+      .select("id, user_id, display_name, email, phone, avatar_url, created_at")
+      .order("created_at", { ascending: false });
+
+    if (profilesError) {
+      console.error("Failed to fetch profiles:", profilesError);
+      throw new Error("Failed to load customers");
+    }
+
+    // Fetch all orders for stats
+    const { data: orders, error: ordersError } = await supabaseAdmin
+      .from("orders")
+      .select("user_id, total, customer_email, customer_name, customer_phone, created_at");
+
+    if (ordersError) {
+      console.error("Failed to fetch orders:", ordersError);
+      throw new Error("Failed to load order stats");
+    }
+
+    // Map profiles by user_id
+    const profileMap = new Map<string, any>();
+    (profiles ?? []).forEach((p) => {
+      if (p.user_id) profileMap.set(p.user_id, p);
+    });
+
+    // Aggregate order stats by user_id and customer_email
+    const orderMap = new Map<string, { count: number; total: number; email: string; name: string; phone: string }>();
+    (orders ?? []).forEach((o) => {
+      const key = o.user_id ?? o.customer_email;
+      if (!key) return;
+      const cur = orderMap.get(key) ?? { count: 0, total: 0, email: o.customer_email ?? "", name: o.customer_name ?? "", phone: o.customer_phone ?? "" };
+      cur.count += 1;
+      cur.total += Number(o.total || 0);
+      if (!cur.email && o.customer_email) cur.email = o.customer_email;
+      if (!cur.name && o.customer_name) cur.name = o.customer_name;
+      if (!cur.phone && o.customer_phone) cur.phone = o.customer_phone;
+      orderMap.set(key, cur);
+    });
+
+    const allProfiles = Array.from(profileMap.values());
+    return allProfiles.map((p) => {
+      const stats = orderMap.get(p.user_id) ?? { count: 0, total: 0, email: "", name: "", phone: "" };
+      const email = p.email || stats.email || "";
+      return {
+        id: p.id,
+        user_id: p.user_id,
+        display_name: p.display_name,
+        email,
+        phone: p.phone || stats.phone,
+        avatar_url: p.avatar_url,
+        created_at: p.created_at,
+        stats: { count: stats.count, total: stats.total },
+      };
+    });
+  });
