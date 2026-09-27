@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useSearch, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Search, Eye, CreditCard, Package, MapPin, Mail, Phone, XCircle } from "lucide-react";
+import { Search, Eye, CreditCard, Package, MapPin, Mail, Phone, XCircle, RotateCcw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -127,6 +127,57 @@ function OrdersPage() {
     refetchInterval: 30000,
   });
 
+  // Supabase Realtime subscription for instant order updates
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-orders-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+        },
+        (payload) => {
+          qc.setQueryData<Order[]>(["admin-orders"], (old) => {
+            if (!old) return [];
+            const newOrder = payload.new as Order | null;
+            const oldOrder = payload.old as Order | null;
+
+            switch (payload.eventType) {
+              case "INSERT":
+                if (newOrder) {
+                  // Add new order at the top (newest first)
+                  return [newOrder, ...old];
+                }
+                return old;
+              case "UPDATE":
+                if (newOrder) {
+                  return old.map((o) => (o.id === newOrder.id ? newOrder : o));
+                }
+                return old;
+              case "DELETE":
+                if (oldOrder) {
+                  return old.filter((o) => o.id !== oldOrder.id);
+                }
+                return old;
+              default:
+                return old;
+            }
+          });
+          // Also invalidate the specific order detail query if open
+          if (payload.new && typeof payload.new === "object" && "id" in payload.new) {
+            qc.invalidateQueries({ queryKey: ["admin-order", (payload.new as Order).id] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
+
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: OrderStatus }) => {
       const { error } = await supabase.from("orders").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
@@ -216,6 +267,9 @@ function OrdersPage() {
             {Object.keys(STATUS_CLASSES).map((status) => <SelectItem key={status} value={status}>{status.replace("_", " ")}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Button variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ["admin-orders"] })} disabled={isLoading} aria-label="Refresh orders">
+          <RotateCcw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} /> Refresh
+        </Button>
       </div>
 
       {isError && <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center text-sm text-destructive">Could not load orders. Please refresh and try again.</div>}
@@ -332,6 +386,34 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
       return { order: orderResult.data as Order | null, items: (itemsResult.data ?? []) as OrderItem[] };
     },
   });
+
+  // Supabase Realtime subscription for instant order detail updates
+  useEffect(() => {
+    if (!orderId) return;
+    const channel = supabase
+      .channel(`admin-order-detail-${orderId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
+          filter: `id=eq.${orderId}`,
+        },
+        (payload) => {
+          qc.setQueryData(["admin-order", orderId], (old: any) => {
+            if (!old) return old;
+            const updatedOrder = payload.new as Order;
+            return { ...old, order: updatedOrder };
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [orderId, qc]);
 
   useEffect(() => {
     if (orderId) {
