@@ -2,7 +2,7 @@ import { ShoppingCart } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useCart } from "@/lib/cart";
 import { useStore } from "@/lib/store-context";
-import { formatCurrencyPrice } from "@/lib/currency";
+import { formatCurrencyPrice } from "@/lib/currency-browser";
 import {
   Sheet,
   SheetContent,

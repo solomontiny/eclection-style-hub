@@ -2,7 +2,7 @@
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useStore } from "@/lib/store-context";
-import { COUNTRIES } from "@/lib/currency";
+import { COUNTRIES } from "@/lib/currency-browser";
 import { ChevronDown, Globe } from "lucide-react";
 
 export function CurrencySelector() {

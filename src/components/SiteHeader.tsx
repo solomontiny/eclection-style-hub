@@ -4,7 +4,7 @@ import { Menu, X, Globe, Languages, CreditCard, Shield, Heart, ShoppingBag } fro
 import { CartDrawer } from "./CartDrawer";
 import { ThemeToggle } from "./ThemeToggle";
 import { useStore } from "@/lib/store-context";
-import { COUNTRIES } from "@/lib/currency";
+import { COUNTRIES } from "@/lib/currency-browser";
 import { LANGUAGES } from "@/lib/i18n";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";

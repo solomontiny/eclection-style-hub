@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { COUNTRIES } from "./currency";
+import { COUNTRIES } from "./currency-browser";
 import { LANGUAGES, type Language, translate } from "./i18n";
 
 type StoreContextType = {

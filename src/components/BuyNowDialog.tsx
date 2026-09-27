@@ -7,7 +7,7 @@ import { useCart } from "@/lib/cart";
 import { colorToCss } from "@/lib/colors";
 import { SizeChartDialog } from "@/components/SizeChartDialog";
 import { useStore } from "@/lib/store-context";
-import { formatCurrencyPrice } from "@/lib/currency";
+import { formatCurrencyPrice } from "@/lib/currency-browser";
 import { useFavorites } from "@/lib/favorites";
 
 export function BuyNowDialog({ product, trigger, preselectedColor }: { product: Product; trigger: React.ReactNode; preselectedColor?: string }) {

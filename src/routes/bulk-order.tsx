@@ -11,7 +11,7 @@ import { Trash2, AlertCircle, CheckCircle, Package, Check, Calculator } from "lu
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCurrencyPrice, COUNTRIES } from "@/lib/currency";
+import { formatCurrencyPrice, COUNTRIES } from "@/lib/currency-browser";
 import { useStore } from "@/lib/store-context";
 
 export const Route = createFileRoute("/bulk-order")({

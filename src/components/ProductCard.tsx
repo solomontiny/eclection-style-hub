@@ -6,7 +6,7 @@ import { BuyNowDialog } from "./BuyNowDialog";
 import { useCart } from "@/lib/cart";
 import { Link } from "@tanstack/react-router";
 import { useStore } from "@/lib/store-context";
-import { formatCurrencyPrice } from "@/lib/currency";
+import { formatCurrencyPrice } from "@/lib/currency-browser";
 import { useFavorites } from "@/lib/favorites";
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"] as const;
