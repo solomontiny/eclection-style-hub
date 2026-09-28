@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmtDate } from "@/lib/admin-utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, Phone, Mail, Package, MessageSquare, UserRound } from "lucide-react";
+import { MapPin, Phone, Mail, Package, MessageSquare, UserRound, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/bulk-requests")({ component: BulkRequestsPage });
 
@@ -90,6 +91,9 @@ function parseProductRequests(value: unknown): ProductRequest[] {
 function BulkRequestsPage() {
   const qc = useQueryClient();
   const [viewing, setViewing] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingBusy, setDeletingBusy] = useState(false);
+
   const { data: requests = [], isLoading, isError } = useQuery({
     queryKey: ["admin-bulk-requests"],
     queryFn: async () => {
@@ -98,6 +102,49 @@ function BulkRequestsPage() {
       return (data ?? []) as BulkRequest[];
     },
   });
+
+  // Supabase Realtime subscription for instant bulk request updates/inserts/deletes
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-bulk-requests-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bulk_requests",
+        },
+        (payload) => {
+          qc.setQueryData<BulkRequest[]>(["admin-bulk-requests"], (old) => {
+            if (!old) return [];
+            const newReq = payload.new as BulkRequest | null;
+            const oldReq = payload.old as BulkRequest | null;
+
+            switch (payload.eventType) {
+              case "INSERT":
+                if (newReq) return [newReq, ...old];
+                return old;
+              case "UPDATE":
+                if (newReq) return old.map((r) => (r.id === newReq.id ? newReq : r));
+                return old;
+              case "DELETE":
+                if (oldReq) return old.filter((r) => r.id !== oldReq.id);
+                return old;
+              default:
+                return old;
+            }
+          });
+          if (payload.new && typeof payload.new === "object" && "id" in payload.new) {
+            qc.invalidateQueries({ queryKey: ["admin-bulk-request", (payload.new as BulkRequest).id] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: Status }) => {
@@ -108,6 +155,19 @@ function BulkRequestsPage() {
       toast.success("Status updated");
       qc.invalidateQueries({ queryKey: ["admin-bulk-requests"] });
       qc.invalidateQueries({ queryKey: ["admin-bulk-request", viewing] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await bulkRequestsTable().delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Bulk request deleted successfully.");
+      qc.invalidateQueries({ queryKey: ["admin-bulk-requests"] });
+      if (viewing === confirmDeleteId) setViewing(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -151,9 +211,14 @@ function BulkRequestsPage() {
                     </Select>
                   </td>
                   <td className="p-3 text-right">
-                    <button type="button" onClick={() => setViewing(r.id)} className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg px-3 text-sm text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                      View
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button type="button" onClick={() => setViewing(r.id)} className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg px-3 text-sm text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        View
+                      </button>
+                      <button type="button" onClick={() => setConfirmDeleteId(r.id)} className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg p-2 text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title="Delete request" aria-label={`Delete request from ${r.customer_name || "customer"}`}>
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -163,6 +228,37 @@ function BulkRequestsPage() {
       </div>
 
       <BulkRequestDetailDialog requestId={viewing} onClose={() => setViewing(null)} />
+
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => !open && setConfirmDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this bulk request?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this bulk/wholesale request. This action cannot be undone and does not affect any customer accounts or orders.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletingBusy}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!confirmDeleteId) return;
+                setDeletingBusy(true);
+                try {
+                  await deleteMutation.mutateAsync(confirmDeleteId);
+                  setConfirmDeleteId(null);
+                } finally {
+                  setDeletingBusy(false);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingBusy ? "Deleting…" : "Delete Request"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

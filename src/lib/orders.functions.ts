@@ -4,7 +4,7 @@ import { CONTACT } from "./contact";
 import { getSupabaseAdmin } from "./supabase-admin.server";
 import { newOrderNotification, sendCustomerOrderEmail } from "./notifications";
 import { reserveStock, restoreStock, getOrderStockReservations, emitStockAlerts } from "./stock";
-import { getPaymentCurrency, PAYSTACK_SUPPORTED_CURRENCIES, calculatePaystackAmount, getExpectedPaystackAmount, getOrderPaymentCurrency } from "./currency";
+import { getPaymentCurrency, PAYSTACK_SUPPORTED_CURRENCIES, calculatePaystackAmount, getExpectedPaystackAmount, getOrderPaymentCurrency, convertToPaymentCurrency } from "./currency";
 
 /**
  * Reads the Paystack LIVE secret key from the server runtime.
