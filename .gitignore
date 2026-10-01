@@ -21,6 +21,9 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Local Supabase Storage maintenance reports (never commit)
+.storage-manifest/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

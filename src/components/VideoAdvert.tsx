@@ -54,6 +54,7 @@ export function VideoAdvert() {
                 controls
                 playsInline
                 muted
+                preload="none"
                 poster={poster}
                 onError={() => setMediaError(true)}
               />

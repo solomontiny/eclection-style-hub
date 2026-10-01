@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { supabase } from "@/integrations/supabase/client";
 import { getCategories } from "@/lib/products";
 import { ImageUploader } from "./ImageUploader";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Upload, X } from "lucide-react";
 import { colorsToString, parseColorsString, colorToCss } from "@/lib/colors";
+import { uploadProductImage } from "@/lib/image-upload";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -75,21 +75,12 @@ export function ProductForm({ initialData, onSubmit, loading }: ProductFormProps
   const handleColorImageUpload = async (colorName: string, file: File) => {
     setUploadingColor(colorName);
     try {
-      const fileName = `${Date.now()}-${crypto.randomUUID()}-${file.name.replace(/\s+/g, "-")}`;
-      const { data: uploadData, error } = await supabase.storage
-        .from("product-images")
-        .upload(fileName, file);
-
-      if (error) {
-        alert("Image upload failed: " + error.message);
-        return;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("product-images")
-        .getPublicUrl(uploadData.path);
-
-      setColorImages((prev) => ({ ...prev, [colorName]: publicUrl }));
+      // Compressed in the browser and stored under a brand-new path, so the
+      // one-year cache lifetime can never serve a stale image.
+      const { url } = await uploadProductImage(file);
+      setColorImages((prev) => ({ ...prev, [colorName]: url }));
+    } catch (err) {
+      alert("Image upload failed: " + ((err as Error)?.message ?? "unknown error"));
     } finally {
       setUploadingColor(null);
     }
@@ -164,7 +155,7 @@ export function ProductForm({ initialData, onSubmit, loading }: ProductFormProps
               <span className="w-24 text-sm font-medium">{colorName}</span>
               {colorImages[colorName] ? (
                 <div className="flex items-center gap-2">
-                  <img src={colorImages[colorName]} alt={colorName} className="w-16 h-16 object-cover rounded border" />
+                  <img src={colorImages[colorName]} alt={colorName} className="w-16 h-16 object-cover rounded border" loading="lazy" decoding="async" />
                   <button
                     type="button"
                     onClick={() => removeColorImage(colorName)}

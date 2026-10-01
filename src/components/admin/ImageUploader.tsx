@@ -90,7 +90,7 @@ export function ImageUploader({ images, setImages, maxFiles = 5 }: ImageUploader
         <div className="grid grid-cols-3 gap-4">
           {images.map((img, index) => (
             <div key={index} className="relative group aspect-square">
-              <img src={img.url} className="w-full h-full object-cover rounded-md" />
+              <img src={img.url} alt="" className="w-full h-full object-cover rounded-md" loading="lazy" decoding="async" />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 rounded-md transition-opacity">
                 <Button size="sm" variant="destructive" onClick={() => removeImage(index)}><X size={16} /></Button>
                 <Button size="sm" onClick={() => setPrimary(index)} disabled={img.isPrimary}>Primary</Button>

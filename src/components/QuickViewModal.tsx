@@ -72,7 +72,7 @@ export function QuickViewModal({ product, isOpen, onClose }: { product: Product 
           <div className="space-y-3">
             <div className="aspect-[4/5] rounded-2xl overflow-hidden bg-muted">
               {primaryImage ? (
-                <img src={primaryImage} alt={product.name} className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                <img src={primaryImage} alt={product.name} className="h-full w-full object-cover" loading="eager" decoding="async" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
               ) : (
                 <div className="h-full w-full grid place-items-center text-xs text-muted-foreground">No image</div>
               )}
@@ -81,7 +81,7 @@ export function QuickViewModal({ product, isOpen, onClose }: { product: Product 
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {images.map((img, idx) => (
                   <button key={idx} type="button" onClick={() => setSelectedImage(idx)} className={`w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 ${selectedImage === idx ? "border-primary" : "border-border"}`}>
-                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   </button>
                 ))}
               </div>

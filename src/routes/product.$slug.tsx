@@ -77,9 +77,9 @@ function ProductDetails() {
     <div className="mt-10 grid lg:grid-cols-2 gap-12 lg:gap-20">
       <div className="space-y-4">
         <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-muted shadow-sm">
-          {primaryImage ? <img src={primaryImage} alt={product.name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <span className="text-sm text-muted-foreground">No image available</span>}
+          {primaryImage ? <img src={primaryImage} alt={product.name} className="h-full w-full object-cover" loading="eager" decoding="async" fetchPriority="high" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <span className="text-sm text-muted-foreground">No image available</span>}
         </div>
-        {product.images && product.images.length > 1 && <div className="grid grid-cols-5 gap-3">{product.images.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setSelectedImage(index)} className={`aspect-square overflow-hidden rounded-xl border-2 transition-all ${selectedImage === index ? "border-primary shadow-sm" : "border-border hover:border-border/80"}`}>{image ? <img src={image} alt={`${product.name} ${index + 1}`} className="h-full w-full object-cover" /> : <span className="text-xs text-muted-foreground">No image</span>}</button>)}</div>}
+        {product.images && product.images.length > 1 && <div className="grid grid-cols-5 gap-3">{product.images.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setSelectedImage(index)} className={`aspect-square overflow-hidden rounded-xl border-2 transition-all ${selectedImage === index ? "border-primary shadow-sm" : "border-border hover:border-border/80"}`}>{image ? <img src={image} alt={`${product.name} ${index + 1}`} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <span className="text-xs text-muted-foreground">No image</span>}</button>)}</div>}
       </div>
       <div className="flex flex-col">
         <p className="text-xs uppercase tracking-[0.2em] text-primary font-bold">{product.category ?? "Collection"}</p>

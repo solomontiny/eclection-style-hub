@@ -180,7 +180,28 @@ function OrdersPage() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: OrderStatus }) => {
-      const { error } = await supabase.from("orders").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
+      // Moving an order out of Pending is the admin's payment confirmation for
+      // manual bank transfers, so mirror it onto `payment_status`. Nothing in
+      // the customer flow can do this — it only happens here, in the admin UI.
+      const { data: current } = await supabase
+        .from("orders")
+        .select("payment_status")
+        .eq("id", id)
+        .maybeSingle();
+
+      const paymentStatus: PaymentStatus =
+        status === "cancelled"
+          ? (current?.payment_status as PaymentStatus) ?? "pending"
+          : status === "pending"
+            ? current?.payment_status === "paid"
+              ? "pending"
+              : ((current?.payment_status as PaymentStatus) ?? "pending")
+            : "paid";
+
+      const { error } = await supabase
+        .from("orders")
+        .update({ status, payment_status: paymentStatus, updated_at: new Date().toISOString() })
+        .eq("id", id);
       if (error) throw error;
       await sendCustomerStatusChangeEmail({ data: { orderId: id } });
     },
@@ -495,7 +516,7 @@ function OrderDetailDialog({ orderId, onClose }: { orderId: string | null; onClo
                   <div key={item.id} className="p-3 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       {item.product?.images?.[0] ? (
-                        <img src={item.product.images[0]} alt={item.product_name} className="h-12 w-12 rounded object-cover border border-border" />
+                        <img src={item.product.images[0]} alt={item.product_name} className="h-12 w-12 rounded object-cover border border-border" loading="lazy" decoding="async" />
                       ) : (
                         <div className="h-12 w-12 rounded bg-muted flex items-center justify-center"><Package className="h-5 w-5 text-muted-foreground" /></div>
                       )}

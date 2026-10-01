@@ -90,7 +90,7 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
         <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted sm:h-24 sm:w-24">
           <Package className="absolute inset-0 m-auto h-7 w-7 text-muted-foreground" />
           {product.images?.[0] && (
-            <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+            <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} />
           )}
         </div>
         <div className="min-w-0 flex-1">
@@ -135,6 +135,8 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
                           src={colourImage}
                           alt={color}
                           className="h-full w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
                           onError={(event) => {
                             event.currentTarget.style.display = "none";
                           }}
@@ -322,7 +324,7 @@ function BulkOrderPage() {
                     <div key={`${item.product.id}-${item.color}-${item.size}-${index}`} className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-3">
                       <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
                         <Package className="absolute inset-0 m-auto h-5 w-5 text-muted-foreground" />
-                        {image && <img src={image} alt={`${item.product.name} ${item.color}`} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
+                        {image && <img src={image} alt={`${item.product.name} ${item.color}`} className="h-full w-full object-cover" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{item.product.name}</p>

@@ -22,6 +22,7 @@ function Home() {
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["products"],
     queryFn: getProducts,
+    staleTime: 30_000,
   });
 
   const { data: categories = [] } = useQuery<any[]>({

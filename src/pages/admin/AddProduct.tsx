@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { parseColorsString } from "@/lib/colors";
 import { generateUniqueSlug } from "@/lib/slug";
+import { uploadProductImage } from "@/lib/image-upload";
 
 export default function AddProduct() {
   const navigate = useNavigate();
@@ -15,16 +16,10 @@ export default function AddProduct() {
     const uploadedUrls: string[] = [];
     for (const img of images) {
       if (img.file) {
-        const { data: uploadData, error } = await supabase.storage
-          .from("product-images")
-          .upload(`${crypto.randomUUID()}-${img.file.name}`, img.file);
-        
-        if (error) {
-          alert("Image upload failed");
-          setLoading(false);
-          return;
-        }
-        uploadedUrls.push(uploadData.path);
+        // Compressed in the browser and stored under a brand-new path, so the
+        // one-year cache lifetime can never serve a stale image.
+        const { url } = await uploadProductImage(img.file);
+        uploadedUrls.push(url);
       } else {
         uploadedUrls.push(img.url);
       }

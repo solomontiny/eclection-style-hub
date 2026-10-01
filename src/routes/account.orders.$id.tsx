@@ -42,6 +42,21 @@ function OrderDetailsPage() {
       <h1 className="font-display text-3xl">Order #{order.order_number}</h1>
       <p className="text-muted-foreground mt-1">Placed on {fmtDate(order.created_at)}</p>
 
+      {order.payment_status === "paid" && (
+        <div className="mt-6 rounded-2xl border border-primary/30 bg-primary/5 p-5 text-center space-y-1">
+          <p className="font-display text-xl">Order Successful!</p>
+          <p className="text-sm">Thank you for patronizing Supplier Affordable.</p>
+          <p className="text-sm text-muted-foreground">Your payment has been confirmed.</p>
+        </div>
+      )}
+
+      {order.payment_status !== "paid" && order.status !== "cancelled" && (
+        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm dark:border-amber-900/60 dark:bg-amber-950/30">
+          Your order is <strong>pending payment</strong>. We will confirm it as soon as our team
+          verifies your payment.
+        </div>
+      )}
+
       {/* Timeline */}
       <div className="mt-8 border rounded-2xl p-6">
         <h2 className="font-semibold mb-6">Order Status</h2>

@@ -216,7 +216,7 @@ function ProductsPage() {
                     <td className="p-3">
                       <div className="flex items-center gap-3">
                         {p.images[0] ? (
-                          <img src={p.images[0]} className="h-10 w-10 rounded object-cover" />
+                          <img src={p.images[0]} alt="" className="h-10 w-10 rounded object-cover" loading="lazy" decoding="async" />
                         ) : (
                           <div className="h-10 w-10 rounded bg-muted" />
                         )}
@@ -401,7 +401,7 @@ function ProductDialog({
                 const fileName = `${Date.now()}-${crypto.randomUUID()}-${img.file.name.replace(/\s+/g, "-")}`;
                 const { data: uploadData, error } = await supabase.storage
                   .from("product-images")
-                  .upload(fileName, img.file);
+                  .upload(fileName, img.file, { cacheControl: "31536000" });
                 if (error) throw error;
                 const { data: publicData } = supabase.storage.from("product-images").getPublicUrl(uploadData.path);
                 uploadedUrls.push(publicData.publicUrl);
@@ -484,7 +484,7 @@ function ProductDialog({
       const fileName = `${Date.now()}-${crypto.randomUUID()}-${file.name.replace(/\s+/g, "-")}`;
       const { data: uploadData, error } = await supabase.storage
         .from("product-images")
-        .upload(fileName, file);
+        .upload(fileName, file, { cacheControl: "31536000" });
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(uploadData.path);
       setColorImages((prev) => ({ ...prev, [colorName]: publicUrl }));
@@ -644,7 +644,7 @@ function ProductDialog({
                    <span className="w-24 text-sm font-medium">{colorName}</span>
                    {colorImages[colorName] ? (
                      <div className="flex items-center gap-2">
-                       <img src={colorImages[colorName]} alt={colorName} className="w-16 h-16 object-cover rounded border" />
+                        <img src={colorImages[colorName]} alt={colorName} className="w-16 h-16 object-cover rounded border" loading="lazy" decoding="async" />
                        <button
                          type="button"
                          onClick={() => removeColorImage(colorName)}

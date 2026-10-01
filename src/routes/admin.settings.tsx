@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Upload, Trash2, Play, Image as ImageIcon } from "lucide-react";
+import { Upload, Trash2, Play, Image as ImageIcon, Plus, Banknote, MessageCircle } from "lucide-react";
+import { getDefaultBankAccounts, isActivePaymentMethod, normalizeBankAccounts, type BankAccount } from "@/lib/payment-config";
 
 export const Route = createFileRoute("/admin/settings")({ component: SettingsPage });
 
@@ -37,6 +38,8 @@ function SettingsPage() {
     is_video_advert_enabled: false as boolean | null,
   });
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(getDefaultBankAccounts());
+  const [whatsappNumber, setWhatsappNumber] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -50,7 +53,14 @@ function SettingsPage() {
       .single()
       .then(({ data, error }) => {
         if (error) toast.error(error.message);
-        if (data) setSettings({ ...settings, ...data });
+        if (data) {
+          setSettings({ ...settings, ...data });
+          // Falls back to the built-in account until the admin saves payment settings.
+          const stored = normalizeBankAccounts(data.bank_accounts);
+          if (stored.length > 0) setBankAccounts(stored);
+          const wa = data.whatsapp_number ?? data.contact_phone;
+          if (typeof wa === "string" && wa.trim()) setWhatsappNumber(wa.trim());
+        }
         setLoadingSettings(false);
       });
   }, []);
@@ -75,6 +85,41 @@ function SettingsPage() {
     }
   }
 
+  /** Bank accounts + WhatsApp number, stored on the same shop_settings row. */
+  async function savePaymentSettings() {
+    setBusy(true);
+    const payload = {
+      bank_accounts: bankAccounts.map(({ id, ...rest }) => rest),
+      whatsapp_number: whatsappNumber.trim() || null,
+    };
+    const { error } = await supabase.from("shop_settings").update(payload).eq("id", "default");
+    setBusy(false);
+    if (error) {
+      console.error(error);
+      toast.error(
+        "Could not save payment settings. If you have not applied the payment settings database migration yet, please apply it first.",
+      );
+      return;
+    }
+    toast.success("Payment settings saved");
+    qc.invalidateQueries({ queryKey: ["payment-settings"] });
+  }
+
+  function addBankAccount() {
+    setBankAccounts((prev) => [
+      ...prev,
+      { id: `bank-${Date.now()}`, bankName: "", accountName: "", accountNumber: "", active: true },
+    ]);
+  }
+
+  function updateBankAccount(id: string, patch: Partial<BankAccount>) {
+    setBankAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+  }
+
+  function removeBankAccount(id: string) {
+    setBankAccounts((prev) => prev.filter((a) => a.id !== id));
+  }
+
   async function uploadMedia(
     file: File,
     setUploading: (v: boolean) => void,
@@ -94,10 +139,10 @@ function SettingsPage() {
     try {
       const fileName = `${Date.now()}-${crypto.randomUUID()}-${file.name.replace(/\s+/g, "-")}`;
       const { data: uploadData, error: uploadError } = await supabase.storage.from("site-media").upload(fileName, file, {
-          cacheControl: "3600",
+          cacheControl: "31536000",
           upsert: false,
-          contentType: file.type,
         });
+
       if (uploadError) throw uploadError;
       const { data: publicData } = supabase.storage.from("site-media").getPublicUrl(uploadData.path);
       if (type === "video") {
@@ -190,6 +235,105 @@ function SettingsPage() {
           </div>
           <button onClick={saveSettings} disabled={busy} className="btn-primary">{busy ? "Saving…" : "Save shop settings"}</button>
         </>}
+      </div>
+
+      <div className="bg-background rounded-2xl border border-border p-6 space-y-4">
+        <div>
+          <h2 className="font-display text-lg">Payment settings</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            {isActivePaymentMethod("bank_transfer")
+              ? "Customers currently pay by bank transfer and send their receipt on WhatsApp. Card payments (Paystack) are paused, not removed."
+              : "Customers currently pay online via Paystack."}
+          </p>
+        </div>
+
+        <div>
+          <Label className="flex items-center gap-1.5">
+            <MessageCircle size={14} /> WhatsApp payment / support number
+          </Label>
+          <Input
+            value={whatsappNumber}
+            onChange={(e) => setWhatsappNumber(e.target.value)}
+            placeholder="e.g. +234 800 123 4567"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Customers use this number to send their payment receipt. Leave blank to fall back to the
+            contact phone above.
+          </p>
+        </div>
+
+        <div className="pt-2 border-t border-border space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-medium flex items-center gap-1.5">
+              <Banknote size={15} /> Bank accounts
+            </h3>
+            <Button type="button" variant="outline" size="sm" onClick={addBankAccount}>
+              <Plus size={14} className="mr-1" /> Add account
+            </Button>
+          </div>
+
+          {bankAccounts.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No bank accounts yet. Add at least one account so customers can pay.
+            </p>
+          )}
+
+          {bankAccounts.map((account) => (
+            <div key={account.id} className="rounded-xl border border-border p-3 space-y-3">
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div>
+                  <Label>Bank name</Label>
+                  <Input
+                    value={account.bankName}
+                    onChange={(e) => updateBankAccount(account.id, { bankName: e.target.value })}
+                    placeholder="GTBank"
+                  />
+                </div>
+                <div>
+                  <Label>Account name</Label>
+                  <Input
+                    value={account.accountName}
+                    onChange={(e) => updateBankAccount(account.id, { accountName: e.target.value })}
+                    placeholder="Supplier Affordable"
+                  />
+                </div>
+                <div>
+                  <Label>Account number</Label>
+                  <Input
+                    value={account.accountNumber}
+                    onChange={(e) => updateBankAccount(account.id, { accountNumber: e.target.value })}
+                    placeholder="0123456789"
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={`active-${account.id}`}
+                    checked={account.active}
+                    onChange={(e) => updateBankAccount(account.id, { active: e.target.checked })}
+                  />
+                  <Label htmlFor={`active-${account.id}`}>Active (shown to customers)</Label>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeBankAccount(account.id)}
+                  aria-label="Remove bank account"
+                >
+                  <Trash2 size={14} className="text-destructive" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={savePaymentSettings} disabled={busy} className="btn-primary">
+          {busy ? "Saving…" : "Save payment settings"}
+        </button>
       </div>
 
       <div className="bg-background rounded-2xl border border-border p-6 space-y-4">

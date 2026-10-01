@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { parseColorsString } from "@/lib/colors";
+import { storagePathsFromUrls, uploadProductImage } from "@/lib/image-upload";
 
 export default function EditProduct() {
   const navigate = useNavigate();
@@ -22,16 +23,10 @@ export default function EditProduct() {
 
     for (const img of images) {
       if (img.file) {
-        const { data: uploadData, error } = await supabase.storage
-          .from("product-images")
-          .upload(`${crypto.randomUUID()}-${img.file.name}`, img.file);
-        
-        if (error) {
-          alert("Image upload failed");
-          setLoading(false);
-          return;
-        }
-        uploadedUrls.push(uploadData.path);
+        // Compressed in the browser and stored under a brand-new path, so the
+        // one-year cache lifetime can never serve a stale image.
+        const { url } = await uploadProductImage(img.file);
+        uploadedUrls.push(url);
       } else {
         uploadedUrls.push(img.url);
       }
@@ -55,9 +50,11 @@ export default function EditProduct() {
       return;
     }
 
-    // Cleanup removed images from storage
-    if (removedImages.length > 0) {
-      await supabase.storage.from("product-images").remove(removedImages);
+    // Cleanup removed images from storage. remove() needs bucket-relative
+    // paths, and the stored references are public URLs.
+    const reclaimable = storagePathsFromUrls(removedImages);
+    if (reclaimable.length > 0) {
+      await supabase.storage.from("product-images").remove(reclaimable);
     }
 
     setLoading(false);

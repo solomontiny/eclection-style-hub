@@ -174,7 +174,7 @@ function BulkOrderAdminPage() {
                     <td className="p-3">
                       <div className="flex items-center gap-3">
                         {p.images?.[0] ? (
-                          <img src={p.images[0]} className="h-10 w-10 rounded object-cover" />
+                          <img src={p.images[0]} alt="" className="h-10 w-10 rounded object-cover" loading="lazy" decoding="async" />
                         ) : (
                           <div className="h-10 w-10 rounded bg-muted grid place-items-center text-muted-foreground"><Package size={16} /></div>
                         )}
@@ -310,7 +310,7 @@ function BulkItemDialog({
           const fileName = `${Date.now()}-${crypto.randomUUID()}-${img.file.name.replace(/\s+/g, "-")}`;
           const { data: uploadData, error } = await supabase.storage
             .from("product-images")
-            .upload(fileName, img.file);
+            .upload(fileName, img.file, { cacheControl: "31536000" });
           if (error) throw error;
           const { data: publicData } = supabase.storage.from("product-images").getPublicUrl(uploadData.path);
           uploadedUrls.push(publicData.publicUrl);
@@ -364,7 +364,7 @@ function BulkItemDialog({
       const fileName = `${Date.now()}-${crypto.randomUUID()}-${file.name.replace(/\s+/g, "-")}`;
       const { data: uploadData, error } = await supabase.storage
         .from("product-images")
-        .upload(fileName, file);
+        .upload(fileName, file, { cacheControl: "31536000" });
       if (error) throw error;
       const { data: publicData } = supabase.storage.from("product-images").getPublicUrl(uploadData.path);
       setColorImages((prev) => ({ ...prev, [colorName]: publicData.publicUrl }));
@@ -509,7 +509,7 @@ function BulkItemDialog({
                       </label>
                     </div>
                     {colorImages[col] && (
-                      <img src={colorImages[col]} alt={col} className="h-9 w-9 rounded object-cover border border-border" />
+                      <img src={colorImages[col]} alt={col} className="h-9 w-9 rounded object-cover border border-border" loading="lazy" decoding="async" />
                     )}
                   </div>
                 ))}

@@ -444,6 +444,8 @@ export type Database = {
            video_url: string | null
            is_video_advert_enabled: boolean | null
            poster_image_url: string | null
+           bank_accounts: Json | null
+           whatsapp_number: string | null
          }
          Insert: {
            contact_email?: string
@@ -462,6 +464,8 @@ export type Database = {
            video_url?: string | null
            is_video_advert_enabled?: boolean | null
            poster_image_url?: string | null
+           bank_accounts?: Json | null
+           whatsapp_number?: string | null
          }
          Update: {
            contact_email?: string
@@ -480,6 +484,8 @@ export type Database = {
            video_url?: string | null
            is_video_advert_enabled?: boolean | null
            poster_image_url?: string | null
+           bank_accounts?: Json | null
+           whatsapp_number?: string | null
          }
          Relationships: []
        }

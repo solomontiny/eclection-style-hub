@@ -195,13 +195,49 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     }),
     callbackUrl: z.string().url().optional(),
     currency: z.string().optional().default("NGN"),
+    /**
+     * Which customer-facing payment flow to run after the order is created.
+     * Defaults to "paystack" so every existing caller keeps the original
+     * Paystack behaviour untouched.
+     */
+    paymentMethod: z.enum(["paystack", "bank_transfer"]).optional().default("paystack"),
+    /**
+     * The signed-in customer's Supabase access token.
+     *
+     * The order is linked to the account only after the server verifies this
+     * token, so a caller can never claim someone else's order history. The
+     * field is optional so a guest checkout keeps working exactly as before
+     * (such an order simply has no `user_id`).
+     */
+    authToken: z.string().optional(),
   }))
   .handler(async ({ data }) => {
-    const { items, customer, callbackUrl, currency } = data;
+    const { items, customer, callbackUrl, currency, paymentMethod, authToken } = data;
     const supabaseAdmin = getSupabaseAdmin();
 
-    // Determine payment currency: use display currency if supported, otherwise NGN
-    const paymentCurrency = PAYSTACK_SUPPORTED_CURRENCIES.includes(currency) ? currency : "NGN";
+    // Resolve the owning account from the verified token only.
+    let userId: string | null = null;
+    if (authToken) {
+      const { data: userData, error: userError } =
+        await supabaseAdmin.auth.getUser(authToken);
+      if (userError || !userData?.user?.id) {
+        console.error(
+          "Order auth token rejected, creating unlinked order:",
+          userError?.message,
+        );
+      } else {
+        userId = userData.user.id;
+      }
+    }
+
+    // Determine payment currency: use display currency if supported, otherwise NGN.
+    // Manual bank transfers are always settled in NGN.
+    const paymentCurrency =
+      paymentMethod === "bank_transfer"
+        ? "NGN"
+        : PAYSTACK_SUPPORTED_CURRENCIES.includes(currency)
+          ? currency
+          : "NGN";
 
     // 1. Fetch products
     const { data: products, error: productError } = await getSupabaseAdmin()
@@ -275,6 +311,9 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     const paymentAmountMajor = convertToPaymentCurrency(total, paymentCurrency);
 
     const orderData = {
+      // Only attach the account when the token was verified, so guest orders
+      // keep the column default instead of writing an explicit null.
+      ...(userId ? { user_id: userId } : {}),
       customer_name: customer.name,
       customer_email: customer.email,
       customer_phone: customer.phone && customer.phone.trim() !== "" ? customer.phone : null,
@@ -300,7 +339,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     const { data: order, error: orderError } = await getSupabaseAdmin()
       .from("orders")
       .insert(orderData)
-      .select("id")
+      .select("id, order_number")
       .single();
 
     if (orderError) {
@@ -352,6 +391,23 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     void emitStockAlerts(supabaseAdmin, items.map(i => i.id)).catch((err: any) =>
       console.error("Stock alert emission failed:", err?.message)
     );
+
+    // 5b. Manual bank transfer: the order stays `pending` until an admin
+    // verifies the transfer and moves the order out of Pending in Admin →
+    // Orders. Nothing here marks the order as paid.
+    if (paymentMethod === "bank_transfer") {
+      return {
+        success: true as const,
+        method: "bank_transfer" as const,
+        orderId: order.id,
+        orderNumber: order.order_number,
+        reference,
+        total,
+        paymentAmount: paymentAmountMajor,
+        paymentCurrency,
+        displayCurrency: currency,
+      };
+    }
 
     // 5. Initialize Paystack transaction (server-side, secret never leaves the server)
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
@@ -439,10 +495,12 @@ export const sendDeliveryNotification = createServerFn({ method: "POST" })
 
     if (!order) throw new Error("Order not found");
 
+    // Never downgrade a payment the admin has already confirmed.
     await getSupabaseAdmin()
       .from("orders")
       .update({ payment_status: 'pending' })
-      .eq("id", order.id);
+      .eq("id", order.id)
+      .neq("payment_status", "paid");
 
     return { status: "no-change" };
   });

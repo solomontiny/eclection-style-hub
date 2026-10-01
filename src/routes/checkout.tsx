@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { useCart, cartItemKey } from "@/lib/cart";
 import { useStore } from "@/lib/store-context";
 import { formatNaira } from "@/lib/products";
@@ -11,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createOrderServerFn, getTaxSettings } from "@/lib/orders.functions";
+import { ACTIVE_PAYMENT_METHOD, BANK_TRANSFER_CURRENCY, isActivePaymentMethod } from "@/lib/payment-config";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -62,26 +64,55 @@ function CheckoutPage() {
   const isMultiCurrency = paymentCurrency !== currency;
   const displayTotal = isMultiCurrency ? convertAmountToPaymentCurrency(subtotal, paymentCurrency) : subtotal;
 
+  // Bank transfers are always settled in naira, so the payable amount is the
+  // naira total regardless of the currency the customer browses in.
+  const isBankTransfer = isActivePaymentMethod("bank_transfer");
+  const bankTransferTotal = subtotal;
+  const showsDisplayCurrency = isBankTransfer ? currency !== BANK_TRANSFER_CURRENCY : isMultiCurrency;
+
   const handleCheckout = async (data: CustomerForm) => {
     if (items.length === 0 || loading) return;
     setLoading(true);
     try {
+      // The order is linked to this account server-side, but only after the
+      // server verifies the token, so the order appears in "My orders".
+      const { data: sessionData } = await supabase.auth.getSession();
+
       const order = await createOrderServerFn({
         data: {
           items: items.map((i) => ({ id: i.id, size: i.size, color: i.color, qty: i.qty, isBulk: !!i.isBulk, bundleId: i.bundleId })),
           customer: data,
           callbackUrl: `${window.location.origin}/thank-you`,
           currency,
+          paymentMethod: ACTIVE_PAYMENT_METHOD,
+          authToken: sessionData?.session?.access_token,
         },
       });
 
-      if (!order.success || !("authorization_url" in order) || !order.authorization_url) {
+      if (!order.success) {
         toast.error(("message" in order && order.message) || "Could not start the payment.");
         setLoading(false);
         return;
       }
 
       clear();
+
+      // Manual bank transfer: send the customer to the payment instructions.
+      // The order stays pending until an admin confirms the transfer.
+      if ("method" in order && order.method === "bank_transfer") {
+        await navigate({
+          to: "/payment-instructions",
+          search: { orderId: order.orderId, reference: order.orderNumber },
+        });
+        return;
+      }
+
+      if (!("authorization_url" in order) || !order.authorization_url) {
+        toast.error("Could not start the payment.");
+        setLoading(false);
+        return;
+      }
+
       window.location.href = order.authorization_url;
     } catch (e: any) {
       console.error(e);
@@ -150,8 +181,14 @@ function CheckoutPage() {
             <Textarea {...form.register("deliveryInstructions")} placeholder="Gate code, floor, dispatch contact, etc." rows={2} />
           </div>
           <Button type="submit" disabled={loading || items.length === 0}>
-            {loading ? "Processing..." : "Pay with Paystack"}
+            {loading ? "Processing..." : isBankTransfer ? "Pay via Bank Transfer" : "Pay with Paystack"}
           </Button>
+          {isBankTransfer && (
+            <p className="text-xs text-muted-foreground">
+              You will get our bank account details and payment instructions on the next page, and
+              can send your payment receipt to us on WhatsApp.
+            </p>
+          )}
         </form>
         <div className="border rounded-lg p-4 sm:p-6 bg-card h-fit">
           <h2 className="text-lg sm:text-xl font-bold mb-4">Order Summary</h2>
@@ -177,23 +214,43 @@ function CheckoutPage() {
                 <span>Total</span>
                 <span>{isMultiCurrency ? formatCurrencyPrice(totalWithVat, currency) : formatNaira(totalWithVat)}</span>
             </div>
-            {isMultiCurrency && (
-              <div className="flex justify-between text-sm text-muted-foreground pt-2 border-t">
-                <span>Payment currency</span>
-                <span className="font-medium">{paymentCurrency}</span>
-              </div>
-            )}
-            {isMultiCurrency && (
-              <div className="flex justify-between text-sm pt-2 border-t text-primary">
-                <span>Amount to pay</span>
-                <span className="font-bold">{formatCurrencyPrice(displayTotal, paymentCurrency)}</span>
-              </div>
-            )}
-            {!isMultiCurrency && (
-              <div className="flex justify-between text-sm pt-2 border-t text-primary">
-                <span>Amount to pay</span>
-                <span className="font-bold">{formatNaira(totalWithVat)}</span>
-              </div>
+            {isBankTransfer ? (
+              <>
+                {showsDisplayCurrency && (
+                  <div className="flex justify-between text-sm text-muted-foreground pt-2 border-t">
+                    <span>Approx. in {currency}</span>
+                    <span className="font-medium">{formatCurrencyPrice(totalWithVat, currency)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm pt-2 border-t text-primary">
+                  <span>Amount to pay (bank transfer)</span>
+                  <span className="font-bold">{formatNaira(bankTransferTotal)}</span>
+                </div>
+                <p className="text-xs font-normal text-muted-foreground pt-1">
+                  Bank transfers are settled in {BANK_TRANSFER_CURRENCY} (Nigerian naira).
+                </p>
+              </>
+            ) : (
+              <>
+                {isMultiCurrency && (
+                  <div className="flex justify-between text-sm text-muted-foreground pt-2 border-t">
+                    <span>Payment currency</span>
+                    <span className="font-medium">{paymentCurrency}</span>
+                  </div>
+                )}
+                {isMultiCurrency && (
+                  <div className="flex justify-between text-sm pt-2 border-t text-primary">
+                    <span>Amount to pay</span>
+                    <span className="font-bold">{formatCurrencyPrice(displayTotal, paymentCurrency)}</span>
+                  </div>
+                )}
+                {!isMultiCurrency && (
+                  <div className="flex justify-between text-sm pt-2 border-t text-primary">
+                    <span>Amount to pay</span>
+                    <span className="font-bold">{formatNaira(totalWithVat)}</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
