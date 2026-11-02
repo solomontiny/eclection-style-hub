@@ -24,7 +24,7 @@ function autoReply(input: string): Msg {
   if (/(pay|payment|transfer|bank|card|promo|code|discount)/.test(q))
     return {
       from: "bot",
-      text: `💳 Add items to your cart, go to checkout and pay securely with your card, bank transfer or USSD via Paystack.\n\nUse code ${PROMO.code} at checkout for ${PROMO.percent}% off.\n\nYou'll receive an order number and confirmation receipt by email straight away.`,
+      text: `💳 Add items to your cart, go to checkout and pay via **Bank Transfer**.\n\n**Bank Details:**\nBank: Moniepoint\nAccount Name: Supplier Affordable Fashion\nAccount Number: 3003227813\n\nAfter payment, send your proof of payment via WhatsApp to: 09076786117\n\nYour order will remain pending until payment is verified.`,
       quickReplies: ["Delivery & shipping", "Email support"],
     };
   if (/(size|fit|measur)/.test(q))

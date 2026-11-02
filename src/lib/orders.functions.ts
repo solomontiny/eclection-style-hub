@@ -1,10 +1,21 @@
 import { createServerFn } from "@tanstack/react-start";
+import { sendLovableEmail } from "@lovable.dev/email-js";
+import { getRequestHeaders } from "@tanstack/react-start/server";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { z } from "zod";
 import { CONTACT } from "./contact";
-import { getSupabaseAdmin } from "./supabase-admin.server";
+import { getSupabaseAdmin, getEnvVar } from "./supabase-admin.server";
 import { newOrderNotification, sendCustomerOrderEmail } from "./notifications";
 import { reserveStock, restoreStock, getOrderStockReservations, emitStockAlerts } from "./stock";
-import { getPaymentCurrency, PAYSTACK_SUPPORTED_CURRENCIES, calculatePaystackAmount, getExpectedPaystackAmount, getOrderPaymentCurrency, convertToPaymentCurrency } from "./currency";
+import {
+  getPaymentCurrency,
+  PAYSTACK_SUPPORTED_CURRENCIES,
+  calculatePaystackAmount,
+  getExpectedPaystackAmount,
+  getOrderPaymentCurrency,
+  convertToPaymentCurrency,
+} from "./currency";
 
 /**
  * Reads the Paystack LIVE secret key from the server runtime.
@@ -59,7 +70,11 @@ const SnapshotSchema = z.object({
 
 const InputSchema = z.object({
   snapshot: SnapshotSchema,
-  paystackRef: z.string().min(3).max(80).regex(/^[A-Za-z0-9_-]+$/),
+  paystackRef: z
+    .string()
+    .min(3)
+    .max(80)
+    .regex(/^[A-Za-z0-9_-]+$/),
 });
 
 function naira(n: number) {
@@ -82,7 +97,7 @@ function buildEmailHtml(args: {
 }) {
   const { snapshot: s, paystackRef, audience } = args;
   const dateStr = new Date(s.createdAt).toLocaleString("en-NG");
-  const firstName = (s.customer.name.split(" ")[0] || "there");
+  const firstName = s.customer.name.split(" ")[0] || "there";
   const greeting =
     audience === "customer"
       ? `Hi ${esc(firstName)}, thank you for shopping with SupplierAffordable!`
@@ -137,9 +152,11 @@ function buildEmailHtml(args: {
       </p>
 
       <p style="margin:18px 0 0;font-size:12px;color:#888;">
-        ${audience === "customer"
-          ? `Questions? Reply to this email or write to ${esc(CONTACT.email)}.`
-          : `Reply to the customer at ${esc(s.customer.email)} or call ${esc(s.customer.phone || "—")}.`}
+        ${
+          audience === "customer"
+            ? `Questions? Reply to this email or write to ${esc(CONTACT.email)}.`
+            : `Reply to the customer at ${esc(s.customer.email)} or call ${esc(s.customer.phone || "—")}.`
+        }
       </p>
     </td></tr>
 
@@ -147,307 +164,666 @@ function buildEmailHtml(args: {
 </body></html>`;
 }
 
-export const getTaxSettings = createServerFn({ method: "GET" })
-  .handler(async () => {
-    console.log("Fetching tax settings...");
-    const { data: settings, error } = await getSupabaseAdmin()
+export const getTaxSettings = createServerFn({ method: "GET" }).handler(async () => {
+  console.log("Fetching tax settings...");
+  const { data: settings, error } = await getSupabaseAdmin()
+    .from("shop_settings")
+    .select("tax_percent")
+    .eq("id", "default")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error fetching tax settings:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    });
+    return { taxPercent: 0, vatEnabled: false };
+  }
+  console.log("Fetched tax settings:", settings);
+  const taxPercent = settings ? Number(settings.tax_percent) : 0;
+  return {
+    taxPercent,
+    vatEnabled: taxPercent > 0,
+  };
+});
+async function getAuthenticatedUserFromRequest() {
+  const headers = getRequestHeaders();
+  const authHeader = headers.get("authorization");
+  const cookieHeader = headers.get("cookie");
+  const authUrl = getEnvVar("SUPABASE_URL");
+  const authKey = getEnvVar("SUPABASE_ANON_KEY");
+
+  console.log("[getAuthenticatedUserFromRequest] Debug:", {
+    hasAuthHeader: !!authHeader,
+    hasCookie: !!cookieHeader,
+    hasAuthUrl: !!authUrl,
+    hasAuthKey: !!authKey,
+  });
+
+  if (!(authHeader || cookieHeader) || !authUrl || !authKey) {
+    console.warn("[getAuthenticatedUserFromRequest] Missing headers or env vars:", {
+      hasAuthHeader: !!authHeader,
+      hasCookie: !!cookieHeader,
+      hasAuthUrl: !!authUrl,
+      hasAuthKey: !!authKey,
+    });
+    return null;
+  }
+
+  const userClient = createClient<Database>(authUrl, authKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: {
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+      },
+    },
+  });
+
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const {
+    data: { user },
+    error,
+  } = token ? await userClient.auth.getUser(token) : await userClient.auth.getUser();
+
+  if (error) {
+    console.error("[getAuthenticatedUserFromRequest] auth.getUser error:", error.message);
+  }
+
+  console.log("[getAuthenticatedUserFromRequest] Resolved user:", user?.id ?? "null");
+  return user ?? null;
+}
+
+async function requireAdminUser() {
+  const user = await getAuthenticatedUserFromRequest();
+  if (!user) {
+    throw new Error("Unauthorized: Authentication required.");
+  }
+
+  const { data: roleData } = await getSupabaseAdmin()
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .maybeSingle();
+
+  if (!roleData) {
+    throw new Error("Unauthorized: Admin access required.");
+  }
+
+  return user;
+}
+
+export const createOrderServerFn = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      items: z.array(
+        z.object({
+          id: z.string(),
+          size: z.string(),
+          color: z.string().optional(),
+          qty: z.number().int().min(1),
+          isBulk: z.boolean().optional(),
+          bundleId: z.string().optional(),
+        }),
+      ),
+      customer: z.object({
+        name: z.string(),
+        email: z.string().email(),
+        phone: z.string().optional(),
+        address: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        country: z.string().optional(),
+        postalCode: z.string().optional(),
+        deliveryInstructions: z.string().optional(),
+      }),
+      callbackUrl: z.string().url().optional(),
+      currency: z.string().optional().default("NGN"),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { items, customer, callbackUrl, currency } = data;
+    let supabaseAdmin;
+    try {
+      supabaseAdmin = getSupabaseAdmin();
+    } catch (supabaseError) {
+      console.error("[createOrderServerFn] Supabase admin init failed:", supabaseError);
+      throw new Error("Server configuration error. Please try again later.");
+    }
+
+    const authenticatedUser = await getAuthenticatedUserFromRequest();
+    if (!authenticatedUser) {
+      throw new Error("You must be signed in to place an order.");
+    }
+
+    // Bank transfer checkout gate: only allow new orders when enabled in shop_settings
+    const { data: shopSettings, error: settingsError } = await getSupabaseAdmin()
       .from("shop_settings")
-      .select("tax_percent")
+      .select("bank_transfer_enabled")
       .eq("id", "default")
       .maybeSingle();
 
-    if (error) {
-      console.error("Error fetching tax settings:", {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      });
-      return { taxPercent: 0, vatEnabled: false };
-    }
-    console.log("Fetched tax settings:", settings);
-    const taxPercent = settings ? Number(settings.tax_percent) : 0;
-    return { 
-      taxPercent, 
-      vatEnabled: taxPercent > 0 
-    };
-  });
-export const createOrderServerFn = createServerFn({ method: "POST" })
-  .inputValidator(z.object({
-    items: z.array(z.object({
-      id: z.string(),
-      size: z.string(),
-      color: z.string().optional(),
-      qty: z.number().int().min(1),
-      isBulk: z.boolean().optional(),
-      bundleId: z.string().optional(),
-    })),
-    customer: z.object({
-      name: z.string(),
-      email: z.string().email(),
-      phone: z.string().optional(),
-      address: z.string().optional(),
-      city: z.string().optional(),
-      state: z.string().optional(),
-      country: z.string().optional(),
-      postalCode: z.string().optional(),
-      deliveryInstructions: z.string().optional(),
-    }),
-    callbackUrl: z.string().url().optional(),
-    currency: z.string().optional().default("NGN"),
-  }))
-  .handler(async ({ data }) => {
-    const { items, customer, callbackUrl, currency } = data;
-    const supabaseAdmin = getSupabaseAdmin();
-
-    // Determine payment currency: use display currency if supported, otherwise NGN
-    const paymentCurrency = PAYSTACK_SUPPORTED_CURRENCIES.includes(currency) ? currency : "NGN";
-
-    // 1. Fetch products
-    const { data: products, error: productError } = await getSupabaseAdmin()
-      .from("products")
-      .select("id, name, price, sale_price, discount_percent, stock")
-      .in("id", items.map(i => i.id));
-
-    if (productError || !products) {
-      console.error("Failed to fetch products:", productError?.code, productError?.message, productError?.details);
-      throw new Error("We could not load your items. Please refresh your cart and try again.");
-    }
-
-    // 1b. Reject out-of-stock items before creating the order.
-    for (const item of items) {
-      const product = products.find((p) => p.id === item.id);
-      if (!product) throw new Error("One of the items in your cart is no longer available.");
-      if (Math.max(0, Number(product.stock ?? 0)) < item.qty) {
-        throw new Error(`${product.name} does not have enough stock. Only ${product.stock} available.`);
-      }
-    }
-
-    // 2. Calculate totals (authoritative, server-side, no VAT)
-    let subtotal = 0;
-    const orderItems = items.map(item => {
-      const product = products.find((p) => p.id === item.id);
-      if (!product) throw new Error("One of the items in your cart is no longer available.");
-
-      // Bulk/wholesale pieces are a fixed ₦6,000 per piece.
-      const base = product.sale_price != null
-        ? Number(product.sale_price)
-        : Number(product.price) * (1 - Number(product.discount_percent ?? 0) / 100);
-      const price = item.isBulk ? BULK_UNIT_PRICE : base;
-      const itemSubtotal = price * item.qty;
-      subtotal += itemSubtotal;
-
-      return {
-        product_id: product.id,
-        product_name: product.name,
-        unit_price: price,
-        quantity: item.qty,
-        size: item.size || '',
-        color: item.color || '',
-        bundle_id: item.bundleId || null, // Persist bundleId
-        subtotal: itemSubtotal
-      };
+    const serverUrl = getEnvVar("SUPABASE_URL") || "";
+    console.log("[createOrderServerFn] shop_settings diagnostic:", {
+      hasError: !!settingsError,
+      errorCode: settingsError?.code ?? null,
+      errorMessage: settingsError?.message ?? null,
+      recordFound: !!shopSettings,
+      bankTransferEnabled: shopSettings?.bank_transfer_enabled ?? null,
+      isExpectedProject: serverUrl.includes("qwwpaxljefedekeysuye"),
     });
 
-    const total = subtotal;
-    const reference = `ESC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-
-    // 2b. Reserve stock atomically. A row-level UPDATE ... WHERE stock >= qty
-    // prevents concurrent checkouts from overselling.
-    const reservation = await reserveStock(supabaseAdmin, items.map(i => ({ productId: i.id, qty: i.qty })));
-    if (!reservation.ok) {
-      throw new Error("One or more items no longer have enough stock. Please refresh your cart and try again.");
+    if (settingsError || !shopSettings?.bank_transfer_enabled) {
+      throw new Error("Bank transfer payments are temporarily unavailable.");
     }
-
-    // 3. Insert order
-    const shippingAddress = (customer.address || customer.city || customer.state)
-      ? {
-          address: customer.address ?? null,
-          city: customer.city ?? null,
-          state: customer.state ?? null,
-          country: customer.country ?? null,
-          postal_code: customer.postalCode ?? null,
-          delivery_instructions: customer.deliveryInstructions ?? null,
-        }
-      : null;
-
-    // Calculate payment amount in payment currency major units
-    const paymentAmountMajor = convertToPaymentCurrency(total, paymentCurrency);
-
-    const orderData = {
-      customer_name: customer.name,
-      customer_email: customer.email,
-      customer_phone: customer.phone && customer.phone.trim() !== "" ? customer.phone : null,
-      shipping_address: shippingAddress,
-      subtotal: subtotal,
-      total,
-      payment_status: 'pending' as const,
-      paystack_reference: reference,
-      currency: currency.toUpperCase(), // display currency
-      payment_currency: paymentCurrency, // actual Paystack payment currency
-      payment_amount: paymentAmountMajor, // payment amount in major units
-      notes: items.map(i => {
-        const p = products.find((p) => p.id === i.id);
-        const parts = [p?.name];
-        if (i.isBulk) parts.push("(Bulk)");
-        else parts.push(`(Size ${i.size})`);
-        if (i.color) parts.push(`(Color ${i.color})`);
-        parts.push(`x ${i.qty}`);
-        return parts.join(" ");
-      }).join(", "),
-    };
-
-    const { data: order, error: orderError } = await getSupabaseAdmin()
-      .from("orders")
-      .insert(orderData)
-      .select("id")
-      .single();
-
-    if (orderError) {
-      console.error("Failed to create order in Supabase:", {
-        code: orderError.code,
-        message: orderError.message,
-        details: orderError.details,
-        hint: orderError.hint
-      });
-      // Roll back the stock reservation — the order was never saved.
-      void restoreStock(supabaseAdmin, items.map(i => ({ productId: i.id, qty: i.qty }))).catch((err: any) =>
-        console.error("Stock restore after order insert failed:", err?.message)
-      );
-      throw new Error(`We could not save your order (${orderError.code || "db_error"}). Please try again.`);
-    }
-    if (!order) {
-      // Roll back the stock reservation — the order was never saved.
-      void restoreStock(supabaseAdmin, items.map(i => ({ productId: i.id, qty: i.qty }))).catch((err: any) =>
-        console.error("Stock restore after order insert failed:", err?.message)
-      );
-      throw new Error("Failed to create order: No data returned");
-    }
-
-    // 4. Insert items
-    const { error: itemsError } = await getSupabaseAdmin()
-      .from("order_items")
-      .insert(orderItems.map(item => ({ ...item, order_id: order.id })));
-
-    if (itemsError) {
-      console.error("Failed to create order items:", {
-        message: itemsError.message,
-        details: itemsError.details,
-        hint: itemsError.hint,
-        code: itemsError.code
-      });
-      // Roll back the stock reservation — the order is incomplete.
-      void restoreStock(supabaseAdmin, items.map(i => ({ productId: i.id, qty: i.qty }))).catch((err: any) =>
-        console.error("Stock restore after order items failed:", err?.message)
-      );
-      throw new Error("Failed to create order items. Please contact support.");
-    }
-
-    void newOrderNotification({ data: { orderId: order.id } }).catch((err: any) =>
-      console.error("Admin notification failed:", err?.message)
-    );
-
-    // 4b. After the order is fully created, emit idempotent stock alerts for
-    // any product that just crossed the low/out threshold.
-    void emitStockAlerts(supabaseAdmin, items.map(i => i.id)).catch((err: any) =>
-      console.error("Stock alert emission failed:", err?.message)
-    );
-
-    // 5. Initialize Paystack transaction (server-side, secret never leaves the server)
-    const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
-    if (!paystackSecret) {
-      console.error("PAYSTACK_SECRET_KEY is not configured");
-      return {
-        success: false as const,
-        orderId: order.id,
-        reference,
-        total,
-        message: "Payment is not configured yet. Please contact support.",
-      };
-    }
-
-    // Calculate the exact Paystack subunit amount
-    const paystackAmount = calculatePaystackAmount(total, paymentCurrency);
 
     try {
-      const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${paystackSecret}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: customer.email,
-          amount: paystackAmount,
-          currency: paymentCurrency,
-          reference,
-          ...(callbackUrl ? { callback_url: callbackUrl } : {}),
-          metadata: { order_id: order.id, customer_name: customer.name, payment_currency: paymentCurrency, display_currency: currency },
-        }),
-      });
-      const initJson: any = await initRes.json().catch(() => ({}));
+      // Determine payment currency: use display currency if supported, otherwise NGN
+      const paymentCurrency = "NGN";
 
-      if (!initRes.ok || !initJson?.status || !initJson?.data?.authorization_url) {
-        console.error("Paystack initialize failed", initRes.status, initJson);
-        // The order and stock reservation already exist — release the
-        // reservation so a failed payment does not permanently consume stock.
-        void restoreStock(supabaseAdmin, items.map(i => ({ productId: i.id, qty: i.qty }))).catch((err: any) =>
-          console.error("Stock restore after Paystack init failed:", err?.message)
+      // 1. Fetch products
+      const { data: products, error: productError } = await getSupabaseAdmin()
+        .from("products")
+        .select("id, name, price, sale_price, discount_percent, stock")
+        .in(
+          "id",
+          items.map((i) => i.id),
         );
-        return {
-          success: false as const,
-          orderId: order.id,
-          reference,
-          total,
-          message: initJson?.message || "Could not start the payment. Please try again.",
-        };
+
+      if (productError || !products) {
+        console.error(
+          "Failed to fetch products:",
+          productError?.code,
+          productError?.message,
+          productError?.details,
+        );
+        throw new Error("We could not load your items. Please refresh your cart and try again.");
       }
 
+      // 1b. Reject out-of-stock items before creating the order.
+      for (const item of items) {
+        const product = products.find((p) => p.id === item.id);
+        if (!product) throw new Error("One of the items in your cart is no longer available.");
+        if (Math.max(0, Number(product.stock ?? 0)) < item.qty) {
+          throw new Error(
+            `${product.name} does not have enough stock. Only ${product.stock} available.`,
+          );
+        }
+      }
+
+      // 2. Calculate totals (authoritative, server-side, no VAT)
+      let subtotal = 0;
+      const orderItems = items.map((item) => {
+        const product = products.find((p) => p.id === item.id);
+        if (!product) throw new Error("One of the items in your cart is no longer available.");
+
+        // Bulk/wholesale pieces are a fixed ₦6,000 per piece.
+        const base =
+          product.sale_price != null
+            ? Number(product.sale_price)
+            : Number(product.price) * (1 - Number(product.discount_percent ?? 0) / 100);
+        const price = item.isBulk ? BULK_UNIT_PRICE : base;
+        const itemSubtotal = price * item.qty;
+        subtotal += itemSubtotal;
+
+        return {
+          product_id: product.id,
+          product_name: product.name,
+          unit_price: price,
+          quantity: item.qty,
+          size: item.size || "",
+          color: item.color || "",
+          bundle_id: item.bundleId || null, // Persist bundleId
+          subtotal: itemSubtotal,
+        };
+      });
+
+      const total = subtotal;
+      const reference = `ESC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
+      // 2b. Reserve stock atomically. A row-level UPDATE ... WHERE stock >= qty
+      // prevents concurrent checkouts from overselling.
+      const reservation = await reserveStock(
+        supabaseAdmin,
+        items.map((i) => ({ productId: i.id, qty: i.qty })),
+      );
+      if (!reservation.ok) {
+        throw new Error(
+          "One or more items no longer have enough stock. Please refresh your cart and try again.",
+        );
+      }
+
+      // 3. Insert order
+      const shippingAddress =
+        customer.address || customer.city || customer.state
+          ? {
+              address: customer.address ?? null,
+              city: customer.city ?? null,
+              state: customer.state ?? null,
+              country: customer.country ?? null,
+              postal_code: customer.postalCode ?? null,
+              delivery_instructions: customer.deliveryInstructions ?? null,
+            }
+          : null;
+
+      // Calculate payment amount in payment currency major units
+      const paymentAmountMajor = convertToPaymentCurrency(total, paymentCurrency);
+
+      const orderData = {
+        user_id: authenticatedUser.id,
+        customer_name: customer.name,
+        customer_email: customer.email,
+        customer_phone: customer.phone && customer.phone.trim() !== "" ? customer.phone : null,
+        shipping_address: shippingAddress,
+        subtotal: subtotal,
+        total,
+        payment_status: "pending" as const,
+        payment_method: "bank_transfer" as Database["public"]["Enums"]["payment_method"],
+        paystack_reference: reference,
+        currency: currency.toUpperCase(), // display currency
+        payment_currency: paymentCurrency, // actual Paystack payment currency
+        payment_amount: paymentAmountMajor, // payment amount in major units
+        notes: items
+          .map((i) => {
+            const p = products.find((p) => p.id === i.id);
+            const parts = [p?.name];
+            if (i.isBulk) parts.push("(Bulk)");
+            else parts.push(`(Size ${i.size})`);
+            if (i.color) parts.push(`(Color ${i.color})`);
+            parts.push(`x ${i.qty}`);
+            return parts.join(" ");
+          })
+          .join(", "),
+      };
+
+      const { data: order, error: orderError } = await getSupabaseAdmin()
+        .from("orders")
+        .insert(orderData)
+        .select("id, order_number, total, payment_status")
+        .single();
+
+      if (orderError) {
+        console.error("Failed to create order in Supabase:", {
+          code: orderError.code,
+          message: orderError.message,
+          details: orderError.details,
+          hint: orderError.hint,
+        });
+        // Roll back the stock reservation — the order was never saved.
+        void restoreStock(
+          supabaseAdmin,
+          items.map((i) => ({ productId: i.id, qty: i.qty })),
+        ).catch((err: unknown) =>
+          console.error("Stock restore after order insert failed:", (err as Error)?.message),
+        );
+        throw new Error(
+          `We could not save your order (${orderError.code || "db_error"}). Please try again.`,
+        );
+      }
+      if (!order) {
+        // Roll back the stock reservation — the order was never saved.
+        void restoreStock(
+          supabaseAdmin,
+          items.map((i) => ({ productId: i.id, qty: i.qty })),
+        ).catch((err: unknown) =>
+          console.error("Stock restore after order insert failed:", (err as Error)?.message),
+        );
+        throw new Error("Failed to create order: No data returned");
+      }
+
+      // 4. Insert items
+      const { error: itemsError } = await getSupabaseAdmin()
+        .from("order_items")
+        .insert(orderItems.map((item) => ({ ...item, order_id: order.id })));
+
+      if (itemsError) {
+        console.error("Failed to create order items:", {
+          message: itemsError.message,
+          details: itemsError.details,
+          hint: itemsError.hint,
+          code: itemsError.code,
+        });
+        // Roll back the stock reservation — the order is incomplete.
+        void restoreStock(
+          supabaseAdmin,
+          items.map((i) => ({ productId: i.id, qty: i.qty })),
+        ).catch((err: unknown) =>
+          console.error("Stock restore after order items failed:", (err as Error)?.message),
+        );
+        throw new Error("Failed to create order items. Please contact support.");
+      }
+
+      void newOrderNotification({ data: { orderId: order.id } }).catch((err: unknown) =>
+        console.error("Admin notification failed:", (err as Error)?.message),
+      );
+
+      // 4b. After the order is fully created, emit idempotent stock alerts for
+      // any product that just crossed the low/out threshold.
+      void emitStockAlerts(
+        supabaseAdmin,
+        items.map((i) => i.id),
+      ).catch((err: unknown) => console.error("Stock alert emission failed:", (err as Error)?.message));
+
+      // Bank transfer only: no payment provider. Return the created order
+      // immediately. Bank details are rendered by /payment-instructions.
       return {
         success: true as const,
         orderId: order.id,
-        reference,
-        total,
+        orderNumber: order.order_number,
+        total: Number(order.total),
         paymentCurrency,
-        displayCurrency: currency,
-        authorization_url: initJson.data.authorization_url as string,
-        access_code: initJson.data.access_code as string,
+        paymentMethod: "bank_transfer",
+        message: "Order created. Please complete payment via bank transfer.",
       };
-    } catch (err: any) {
-      console.error("Paystack initialize error:", err?.message);
-      void restoreStock(supabaseAdmin, items.map(i => ({ productId: i.id, qty: i.qty }))).catch((err2: any) =>
-        console.error("Stock restore after Paystack init error:", err2?.message)
-      );
-      return {
-        success: false as const,
-        orderId: order.id,
-        reference,
-        total,
-        message: "Could not reach the payment provider. Please try again.",
-      };
+    } catch (handlerError: unknown) {
+      console.error("[createOrderServerFn] Handler error:", handlerError);
+      throw new Error((handlerError as Error).message || "Checkout failed. Please try again.");
     }
   });
 
-export const sendDeliveryNotification = createServerFn({ method: "POST" })
+export const verifyBankTransferPayment = createServerFn({ method: "POST" })
   .inputValidator(z.object({ orderId: z.string() }))
   .handler(async ({ data }) => {
-    const { data: order } = await getSupabaseAdmin()
+    // Admin-only check
+    const headers = getRequestHeaders();
+    const authHeader = headers.get("authorization");
+    const cookieHeader = headers.get("cookie");
+    const authUrl = getEnvVar("SUPABASE_URL");
+    const authKey = getEnvVar("SUPABASE_ANON_KEY");
+
+    let isAdmin = false;
+    if ((authHeader || cookieHeader) && authUrl && authKey) {
+      const userClient = createClient<Database>(authUrl, authKey, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+        global: {
+          headers: {
+            ...(authHeader ? { Authorization: authHeader } : {}),
+            ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+          },
+        },
+      });
+      const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+      const {
+        data: { user },
+      } = token ? await userClient.auth.getUser(token) : await userClient.auth.getUser();
+      if (user) {
+        const { data: roleData } = await getSupabaseAdmin()
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("role", "admin")
+          .maybeSingle();
+        isAdmin = !!roleData;
+      }
+    }
+
+    if (!isAdmin) {
+      return { status: "error" as const, message: "Unauthorized: Admin access required." };
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+
+    const { data: order, error } = await getSupabaseAdmin()
       .from("orders")
-      .select("id, order_number, total, payment_status")
+      .select("id, order_number, total, payment_status, payment_method")
       .eq("id", data.orderId)
       .single();
 
-    if (!order) throw new Error("Order not found");
+    if (error || !order) {
+      return { status: "error" as const, message: "Order not found." };
+    }
 
-    await getSupabaseAdmin()
+    if (order.payment_method !== "bank_transfer") {
+      return { status: "error" as const, message: "This order is not a bank transfer order." };
+    }
+
+    if (order.payment_status === "paid") {
+      return {
+        status: "paid" as const,
+        orderNumber: order.order_number,
+        total: Number(order.total),
+        message: "Order is already marked as paid.",
+      };
+    }
+
+    const { data: updated, error: updateError } = await getSupabaseAdmin()
       .from("orders")
-      .update({ payment_status: 'pending' })
-      .eq("id", order.id);
+      .update({ payment_status: "paid" })
+      .eq("id", order.id)
+      .eq("payment_status", "pending")
+      .select("id")
+      .maybeSingle();
 
-    return { status: "no-change" };
+    if (updateError) {
+      return { status: "error" as const, message: "Failed to verify payment." };
+    }
+
+    if (!updated) {
+      return {
+        status: "paid" as const,
+        orderNumber: order.order_number,
+        total: Number(order.total),
+        message: "Order is already marked as paid.",
+      };
+    }
+
+    void deliverPaymentReceipt(order.id).catch((err: unknown) =>
+      console.error("Customer receipt email failed:", (err as Error)?.message),
+    );
+
+    return {
+      status: "paid" as const,
+      orderNumber: order.order_number,
+      total: Number(order.total),
+      message: "Payment verified successfully.",
+    };
   });
+
+/**
+ * Server function: Send a bank transfer payment receipt email to the customer.
+ * Only callable by admins after successful payment verification.
+ */
+async function deliverPaymentReceipt(
+  orderId: string,
+): Promise<{ sent: boolean; message?: string }> {
+  const supabaseAdmin = getSupabaseAdmin();
+
+  const { data: order, error: orderError } = await supabaseAdmin
+    .from("orders")
+    .select(
+      "id, order_number, total, customer_email, customer_name, payment_status, payment_method",
+    )
+    .eq("id", orderId)
+    .single();
+
+  if (orderError || !order) {
+    return { sent: false, message: "Order not found." };
+  }
+
+  if (order.payment_status !== "paid") {
+    return { sent: false, message: "Order is not paid." };
+  }
+  if (order.payment_method !== "bank_transfer") {
+    return { sent: false, message: "Order is not a bank transfer order." };
+  }
+
+  if (!order.customer_email) {
+    return { sent: false, message: "Order has no customer email." };
+  }
+
+  const confirmationDate = new Date().toLocaleDateString("en-NG");
+  const formattedAmount = Number(order.total).toLocaleString("en-NG");
+
+  const html = `<!doctype html>
+<html><body style="margin:0;padding:24px;background:#fafafa;font-family:Arial,Helvetica,sans-serif;color:#222;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #eee;">
+    <tr><td style="padding:24px 24px 8px;">
+      <p style="margin:0;font-size:11px;letter-spacing:2px;color:#8b5cf6;text-transform:uppercase;font-weight:700;">Payment Confirmation</p>
+      <h1 style="margin:6px 0 0;font-size:22px;color:#111;">Payment Confirmed</h1>
+      <p style="margin:6px 0 0;color:#666;font-size:13px;">Order #${esc(order.order_number)} · ${confirmationDate}</p>
+    </td></tr>
+    <tr><td style="padding:16px 24px 24px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+        <tr><td style="padding:6px 0;color:#666;">Order Number</td><td style="padding:6px 0;text-align:right;">${esc(order.order_number)}</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Amount Paid</td><td style="padding:6px 0;text-align:right;">₦${formattedAmount}</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Payment Method</td><td style="padding:6px 0;text-align:right;">Bank Transfer (Moniepoint)</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Payment Status</td><td style="padding:6px 0;text-align:right;"><b style="color:#10b981;">Paid</b></td></tr>
+        <tr><td style="padding:6px 0;color:#666;">Confirmation Date</td><td style="padding:6px 0;text-align:right;">${confirmationDate}</td></tr>
+      </table>
+      <p style="margin-top:24px;font-size:14px;color:#666;">
+        Thank you for shopping with Supplier Affordable. Your payment has been verified.
+        Keep this email as proof of payment.
+      </p>
+      <p style="margin-top:12px;font-size:14px;color:#666;">
+        Questions? Email ${esc(CONTACT.email)}.
+      </p>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  // Best-effort receipt tracking using payment_receipts.
+  let receiptRowId: string | null = null;
+  let trackingAvailable = true;
+  try {
+    const { data: inserted, error: insertError } = await supabaseAdmin
+      .from("payment_receipts")
+      .insert({ order_id: orderId, status: "pending" })
+      .select("id")
+      .maybeSingle();
+
+    if (insertError) {
+      if (insertError.code === "23505") {
+        const { data: existing } = await supabaseAdmin
+          .from("payment_receipts")
+          .select("id, status")
+          .eq("order_id", orderId)
+          .maybeSingle();
+        if (existing?.status === "sent") {
+          return { sent: true, message: "Receipt already sent." };
+        }
+        receiptRowId = existing?.id ?? null;
+      } else {
+        trackingAvailable = false;
+      }
+    } else {
+      receiptRowId = inserted?.id ?? null;
+    }
+
+    if (trackingAvailable && receiptRowId) {
+      await supabaseAdmin
+        .from("payment_receipts")
+        .update({ status: "sending", last_error: null, updated_at: new Date().toISOString() })
+        .eq("id", receiptRowId);
+    }
+  } catch {
+    trackingAvailable = false;
+  }
+
+  let emailSent = false;
+  let emailError: string | null = null;
+  try {
+    const apiKey = process.env.LOVABLE_EMAIL_API_KEY;
+    if (apiKey) {
+      await sendLovableEmail(
+        {
+          to: order.customer_email,
+          from: CONTACT.email,
+          subject: `Order #${order.order_number} — Payment Confirmed`,
+          html,
+          text: `Order #${order.order_number} — Payment confirmed. Amount: ₦${formattedAmount}. Method: Bank Transfer (Moniepoint). Status: Paid.`,
+        },
+        { apiKey },
+      );
+      emailSent = true;
+    } else {
+      emailError = "LOVABLE_EMAIL_API_KEY is not configured.";
+      console.log("[NOTIFICATION] Bank transfer receipt email (no API key):", {
+        to: order.customer_email,
+        subject: `Order #${order.order_number}`,
+        orderId: order.id,
+      });
+    }
+  } catch (err: unknown) {
+    emailError = (err as Error)?.message || "Email delivery failed.";
+    console.error("[NOTIFICATION] Bank transfer receipt email failed:", (err as Error)?.message);
+  }
+
+  if (trackingAvailable && receiptRowId) {
+    try {
+      await supabaseAdmin
+        .from("payment_receipts")
+        .update({
+          status: emailSent ? "sent" : "failed",
+          last_error: emailSent ? null : emailError,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", receiptRowId);
+    } catch {
+      // Tracking is best-effort; email result still stands.
+    }
+  }
+
+  return { sent: emailSent, message: emailError || undefined };
+}
+
+export const sendBankTransferReceipt = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ orderId: z.string() }))
+  .handler(async ({ data }) => {
+    try {
+      await requireAdminUser();
+    } catch (e: unknown) {
+      return { status: "error" as const, message: (e as Error)?.message || "Unauthorized." };
+    }
+
+    try {
+      const { data: existing } = await getSupabaseAdmin()
+        .from("payment_receipts")
+        .select("status")
+        .eq("order_id", data.orderId)
+        .maybeSingle();
+      if (existing?.status === "sent") {
+        return { status: "sent" as const, sent: true, message: "Receipt already sent." };
+      }
+    } catch {
+      // Tracking table may be unavailable; continue with best-effort delivery.
+    }
+
+    const result = await deliverPaymentReceipt(data.orderId);
+    if (!result.sent) {
+      return { status: "error" as const, message: result.message || "Receipt email was not sent." };
+    }
+    return { status: "sent" as const, sent: true, message: "Receipt sent." };
+  });
+
+export const retryPaymentReceipt = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ orderId: z.string() }))
+  .handler(async ({ data }) => {
+    try {
+      await requireAdminUser();
+    } catch (e: unknown) {
+      return { status: "error" as const, message: (e as Error)?.message || "Unauthorized." };
+    }
+
+    const result = await deliverPaymentReceipt(data.orderId);
+    if (!result.sent) {
+      return { status: "error" as const, message: result.message || "Receipt retry failed." };
+    }
+    return { status: "sent" as const, sent: true, message: "Receipt sent." };
+  });
+
 export const confirmPaystackPayment = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ reference: z.string().min(3).max(80).regex(/^[A-Za-z0-9_.-]+$/) }))
+  .inputValidator(
+    z.object({
+      reference: z
+        .string()
+        .min(3)
+        .max(80)
+        .regex(/^[A-Za-z0-9_.-]+$/),
+    }),
+  )
   .handler(async ({ data }) => {
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
     if (!paystackSecret) {
@@ -461,12 +837,14 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
         `https://api.paystack.co/transaction/verify/${encodeURIComponent(data.reference)}`,
         { headers: { Authorization: `Bearer ${paystackSecret}` } },
       );
-      const json: any = await res.json().catch(() => ({}));
-      const txn = json?.data;
+      const json: unknown = await res.json().catch(() => ({}));
+      const txn = (json as { data?: { status?: string; currency?: string; amount?: number } })?.data;
 
       const { data: order } = await getSupabaseAdmin()
         .from("orders")
-        .select("id, order_number, total, payment_status, currency, payment_currency, payment_amount")
+        .select(
+          "id, order_number, total, payment_status, currency, payment_currency, payment_amount",
+        )
         .eq("paystack_reference", data.reference)
         .maybeSingle();
 
@@ -474,7 +852,12 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
         return { status: "error" as const, message: "We could not find this order." };
       }
       if (order.payment_status === "paid") {
-        return { status: "paid" as const, orderNumber: order.order_number, total: Number(order.total), paymentCurrency: getOrderPaymentCurrency(order) };
+        return {
+          status: "paid" as const,
+          orderNumber: order.order_number,
+          total: Number(order.total),
+          paymentCurrency: getOrderPaymentCurrency(order),
+        };
       }
       if (!res.ok || txn?.status !== "success") {
         return { status: "pending" as const, message: "Payment not confirmed yet." };
@@ -482,7 +865,10 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
       // Verify the transaction currency matches the order's payment currency
       const orderPaymentCurrency = getOrderPaymentCurrency(order);
       if (txn.currency !== orderPaymentCurrency) {
-        return { status: "error" as const, message: `Payment currency mismatch. Expected ${orderPaymentCurrency}, got ${txn.currency}.` };
+        return {
+          status: "error" as const,
+          message: `Payment currency mismatch. Expected ${orderPaymentCurrency}, got ${txn.currency}.`,
+        };
       }
       // Verify the transaction amount matches the expected Paystack subunit amount
       const expectedPaystackAmount = getExpectedPaystackAmount(order);
@@ -491,14 +877,14 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
       }
 
       // Idempotent: only act when the order is not already paid.
-      if (order.payment_status !== "paid") {
+      if (order.payment_status !== ("paid" as unknown)) {
         await getSupabaseAdmin()
           .from("orders")
           .update({ payment_status: "paid" })
           .eq("id", order.id);
 
-        void sendCustomerOrderEmail(order.id).catch((err: any) =>
-          console.error("Customer receipt email failed:", err?.message)
+        void sendCustomerOrderEmail(order.id).catch((err: unknown) =>
+          console.error("Customer receipt email failed:", (err as Error)?.message),
         );
 
         // Re-evaluate stock alerts now that the order is paid and stock has
@@ -510,19 +896,21 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
 
         void emitStockAlerts(
           getSupabaseAdmin(),
-          (paidItems ?? []).map((i: any) => i.product_id).filter(Boolean),
-        ).catch((err: any) =>
-          console.error("Stock alert emission failed:", err?.message)
-        );
+            (paidItems ?? []).map((i: { product_id: string | null }) => i.product_id).filter((id): id is string => Boolean(id)),
+        ).catch((err: unknown) => console.error("Stock alert emission failed:", (err as Error)?.message));
       }
 
-      return { status: "paid" as const, orderNumber: order.order_number, total: Number(order.total), paymentCurrency: orderPaymentCurrency };
-    } catch (err: any) {
-      console.error("confirmPaystackPayment failed:", err?.message);
+      return {
+        status: "paid" as const,
+        orderNumber: order.order_number,
+        total: Number(order.total),
+        paymentCurrency: orderPaymentCurrency,
+      };
+    } catch (err: unknown) {
+      console.error("confirmPaystackPayment failed:", (err as Error)?.message);
       return { status: "error" as const, message: "Could not verify the payment right now." };
     }
   });
-
 
 export const sendOrderReceipt = createServerFn({ method: "POST" })
   .inputValidator((data) => InputSchema.parse(data))
@@ -543,8 +931,8 @@ export const sendOrderReceipt = createServerFn({ method: "POST" })
         `https://api.paystack.co/transaction/verify/${encodeURIComponent(paystackRef)}`,
         { headers: { Authorization: `Bearer ${paystackSecret}` } },
       );
-      const verifyJson: any = await verifyRes.json().catch(() => ({}));
-      const txn = verifyJson?.data;
+      const verifyJson: unknown = await verifyRes.json().catch(() => ({}));
+      const txn = (verifyJson as { data?: { status?: string; amount?: number } })?.data;
       if (!verifyRes.ok || txn?.status !== "success") {
         console.warn("Paystack verification failed", { paystackRef, status: txn?.status });
         return {
@@ -585,7 +973,7 @@ export const sendOrderReceipt = createServerFn({ method: "POST" })
         status: "sent" as const,
         message: "Order verified and processed successfully.",
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("sendOrderReceipt failed:", err);
       return {
         status: "error" as const,
@@ -601,12 +989,18 @@ export const sendOrderReceipt = createServerFn({ method: "POST" })
 export const getAdminCustomersServerFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({}))
   .handler(async () => {
+    try {
+      await requireAdminUser();
+    } catch (e: unknown) {
+      throw new Error((e as Error)?.message || "Unauthorized: Admin access required.");
+    }
+
     const supabaseAdmin = getSupabaseAdmin();
 
     // Fetch all profiles
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from("profiles")
-      .select("id, user_id, display_name, email, phone, avatar_url, created_at")
+      .select("id, user_id, display_name, phone, created_at")
       .order("created_at", { ascending: false });
 
     if (profilesError) {
@@ -626,16 +1020,25 @@ export const getAdminCustomersServerFn = createServerFn({ method: "POST" })
 
     // Map profiles by user_id
     const profileMap = new Map<string, any>();
-    (profiles ?? []).forEach((p) => {
+     (profiles ?? []).forEach((p: any) => {
       if (p.user_id) profileMap.set(p.user_id, p);
     });
 
     // Aggregate order stats by user_id and customer_email
-    const orderMap = new Map<string, { count: number; total: number; email: string; name: string; phone: string }>();
+    const orderMap = new Map<
+      string,
+      { count: number; total: number; email: string; name: string; phone: string }
+    >();
     (orders ?? []).forEach((o) => {
       const key = o.user_id ?? o.customer_email;
       if (!key) return;
-      const cur = orderMap.get(key) ?? { count: 0, total: 0, email: o.customer_email ?? "", name: o.customer_name ?? "", phone: o.customer_phone ?? "" };
+      const cur = orderMap.get(key) ?? {
+        count: 0,
+        total: 0,
+        email: o.customer_email ?? "",
+        name: o.customer_name ?? "",
+        phone: o.customer_phone ?? "",
+      };
       cur.count += 1;
       cur.total += Number(o.total || 0);
       if (!cur.email && o.customer_email) cur.email = o.customer_email;
@@ -646,15 +1049,21 @@ export const getAdminCustomersServerFn = createServerFn({ method: "POST" })
 
     const allProfiles = Array.from(profileMap.values());
     return allProfiles.map((p) => {
-      const stats = orderMap.get(p.user_id) ?? { count: 0, total: 0, email: "", name: "", phone: "" };
-      const email = p.email || stats.email || "";
+      const stats = orderMap.get(p.user_id) ?? {
+        count: 0,
+        total: 0,
+        email: "",
+        name: "",
+        phone: "",
+      };
+      const email = stats.email || "";
       return {
         id: p.id,
         user_id: p.user_id,
         display_name: p.display_name,
         email,
         phone: p.phone || stats.phone,
-        avatar_url: p.avatar_url,
+        avatar_url: null,
         created_at: p.created_at,
         stats: { count: stats.count, total: stats.total },
       };

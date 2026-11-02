@@ -1,21 +1,25 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useState, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { useCart, cartItemKey } from "@/lib/cart";
 import { useStore } from "@/lib/store-context";
 import { formatNaira } from "@/lib/products";
-import { formatCurrencyPrice, convertAmountToPaymentCurrency, PAYSTACK_SUPPORTED_CURRENCIES } from "@/lib/currency-browser";
+import { formatCurrencyPrice } from "@/lib/currency-browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createOrderServerFn, getTaxSettings } from "@/lib/orders.functions";
+import { createOrderServerFn } from "@/lib/orders.functions";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { DELIVERY_INFO } from "@/lib/contact";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { CreditCard, Building2 } from "lucide-react";
 
 const CustomerSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -27,6 +31,7 @@ const CustomerSchema = z.object({
   country: z.string().min(2, "Country is required"),
   postalCode: z.string().optional(),
   deliveryInstructions: z.string().optional(),
+  paymentMethod: z.enum(["bank_transfer"]),
 });
 
 type CustomerForm = z.infer<typeof CustomerSchema>;
@@ -36,15 +41,42 @@ export const Route = createFileRoute("/checkout")({
 });
 
 function CheckoutPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { currency } = useStore();
   const { items, subtotal, clear } = useCart();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
   const form = useForm<CustomerForm>({
     resolver: zodResolver(CustomerSchema),
-    defaultValues: { name: "", email: "", phone: "", address: "", city: "", state: "", country: "Nigeria", postalCode: "", deliveryInstructions: "" },
+    defaultValues: { name: "", email: "", phone: "", address: "", city: "", state: "", country: "Nigeria", postalCode: "", deliveryInstructions: "", paymentMethod: "bank_transfer" },
   });
+
+  const { data: settings, isLoading: settingsLoading } = useQuery({
+    queryKey: ["shop-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("shop_settings")
+        .select("bank_transfer_enabled")
+        .eq("id", "default")
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Auth is still resolving: render a lightweight placeholder instead of the
+  // "sign in" screen, so the checkout form appears as soon as the session is
+  // known. Protection is unchanged — an unauthenticated visitor still gets the
+  // sign-in screen once loading finishes.
+  if (authLoading) {
+    return (
+      <section className="container-x py-16 text-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent mx-auto" />
+        <p className="mt-4 text-muted-foreground">Loading checkout…</p>
+      </section>
+    );
+  }
 
   if (!user) {
     return (
@@ -58,13 +90,40 @@ function CheckoutPage() {
     );
   }
 
-  const paymentCurrency = PAYSTACK_SUPPORTED_CURRENCIES.includes(currency) ? currency : "NGN";
-  const isMultiCurrency = paymentCurrency !== currency;
-  const displayTotal = isMultiCurrency ? convertAmountToPaymentCurrency(subtotal, paymentCurrency) : subtotal;
+  if (settingsLoading) {
+    return (
+      <section className="container-x py-16 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto" />
+        <p className="mt-4 text-muted-foreground">Loading checkout settings…</p>
+      </section>
+    );
+  }
+
+  if (!settings?.bank_transfer_enabled) {
+    return (
+      <section className="container-x py-16 text-center">
+        <h1 className="text-3xl font-display">Payments Temporarily Unavailable</h1>
+        <p className="mt-4 text-muted-foreground">Bank transfer payments are currently disabled. Please contact support.</p>
+      </section>
+    );
+  }
 
   const handleCheckout = async (data: CustomerForm) => {
-    if (items.length === 0 || loading) return;
+    if (submittingRef.current) {
+      if (import.meta.env.DEV) console.warn("[checkout] duplicate submit ignored");
+      return;
+    }
+    if (items.length === 0) {
+      if (import.meta.env.DEV) console.warn("[checkout] submit blocked: cart is empty");
+      return;
+    }
+
+    submittingRef.current = true;
     setLoading(true);
+    if (import.meta.env.DEV) {
+      console.log("[checkout] submit start", { paymentMethod: data.paymentMethod, items: items.length });
+    }
+
     try {
       const order = await createOrderServerFn({
         data: {
@@ -75,17 +134,31 @@ function CheckoutPage() {
         },
       });
 
-      if (!order.success || !("authorization_url" in order) || !order.authorization_url) {
+      if (import.meta.env.DEV) {
+        console.log("[checkout] createOrderServerFn returned", {
+          success: order.success,
+          paymentMethod: "paymentMethod" in order ? order.paymentMethod : undefined,
+          orderId: "orderId" in order ? order.orderId : undefined,
+        });
+      }
+
+      if (!order.success) {
         toast.error(("message" in order && order.message) || "Could not start the payment.");
-        setLoading(false);
         return;
       }
 
       clear();
-      window.location.href = order.authorization_url;
+      if (import.meta.env.DEV) console.log("[checkout] navigating to /payment-instructions", order.orderId);
+      await navigate({
+        to: "/payment-instructions",
+        search: { orderId: order.orderId },
+      });
+      return;
     } catch (e: any) {
-      console.error(e);
+      if (import.meta.env.DEV) console.error("[checkout] failed", e);
       toast.error(e?.message || "Checkout failed. Please try again.");
+    } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
@@ -149,8 +222,14 @@ function CheckoutPage() {
             <Label>Delivery instructions (optional)</Label>
             <Textarea {...form.register("deliveryInstructions")} placeholder="Gate code, floor, dispatch contact, etc." rows={2} />
           </div>
+          <div className="pt-4 border-t border-border">
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+              <Building2 className="h-4 w-4" />
+              <span>Payment: Direct Bank Transfer (manual verification required)</span>
+            </div>
+          </div>
           <Button type="submit" disabled={loading || items.length === 0}>
-            {loading ? "Processing..." : "Pay with Paystack"}
+            {loading ? "Processing..." : "Continue to Payment"}
           </Button>
         </form>
         <div className="border rounded-lg p-4 sm:p-6 bg-card h-fit">
@@ -165,36 +244,22 @@ function CheckoutPage() {
                     : `Size ${item.size} · Qty ${item.qty} ${item.color ? `· ${item.color}` : ""}`}
                 </span>
               </span>
-              <span className="shrink-0 text-sm font-medium tabular-nums">{isMultiCurrency ? formatCurrencyPrice(item.price * item.qty, currency) : formatNaira(item.price * item.qty)}</span>
+              <span className="shrink-0 text-sm font-medium tabular-nums">{formatNaira(item.price * item.qty)}</span>
             </div>
           ))}
           <div className="border-t mt-4 pt-4 font-bold flex flex-col gap-2">
             <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>{isMultiCurrency ? formatCurrencyPrice(subtotal, currency) : formatNaira(subtotal)}</span>
+                <span>{formatNaira(subtotal)}</span>
             </div>
             <div className="flex justify-between text-lg pt-2 border-t">
                 <span>Total</span>
-                <span>{isMultiCurrency ? formatCurrencyPrice(totalWithVat, currency) : formatNaira(totalWithVat)}</span>
+                <span>{formatNaira(totalWithVat)}</span>
             </div>
-            {isMultiCurrency && (
-              <div className="flex justify-between text-sm text-muted-foreground pt-2 border-t">
-                <span>Payment currency</span>
-                <span className="font-medium">{paymentCurrency}</span>
-              </div>
-            )}
-            {isMultiCurrency && (
-              <div className="flex justify-between text-sm pt-2 border-t text-primary">
-                <span>Amount to pay</span>
-                <span className="font-bold">{formatCurrencyPrice(displayTotal, paymentCurrency)}</span>
-              </div>
-            )}
-            {!isMultiCurrency && (
-              <div className="flex justify-between text-sm pt-2 border-t text-primary">
-                <span>Amount to pay</span>
-                <span className="font-bold">{formatNaira(totalWithVat)}</span>
-              </div>
-            )}
+            <div className="flex justify-between text-sm pt-2 border-t text-primary">
+              <span>Amount to pay</span>
+              <span className="font-bold">{formatNaira(totalWithVat)}</span>
+            </div>
           </div>
 
           <div className="mt-4 p-3 bg-secondary/30 rounded text-sm text-muted-foreground space-y-2">

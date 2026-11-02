@@ -59,14 +59,9 @@ export function SiteHeader() {
             <Shield className="h-3.5 w-3.5" />
             <CreditCard className="h-3.5 w-3.5" />
             <span className="font-medium">
-              Prices shown in your selected currency for convenience. Payments processed securely via Paystack.
+              Prices shown in your selected currency for convenience. Payments via Bank Transfer (Moniepoint) - manual verification required.
             </span>
           </div>
-          {!isPaymentCurrencySupported && (
-            <span className="ml-3 px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-              Payment will be processed in NGN via Paystack
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-3">
