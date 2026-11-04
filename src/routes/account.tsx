@@ -61,7 +61,7 @@ function AccountPage() {
       const fileExt = file.name.split(".").pop() || "jpg";
       const filePath = `${user.id}/profile-${Date.now()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage.from("customer-profiles").upload(filePath, file, { upsert: true });
+      const { error: uploadError } = await supabase.storage.from("customer-profiles").upload(filePath, file, { upsert: true, cacheControl: "public, max-age=31536000, immutable" });
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from("customer-profiles").getPublicUrl(filePath);

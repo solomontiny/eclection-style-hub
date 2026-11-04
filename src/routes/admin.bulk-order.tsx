@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { fmtNGN, slugify } from "@/lib/admin-utils";
 import { colorsToString, parseColorsString, colorToCss } from "@/lib/colors";
+import { uploadMultipleProductImages, uploadProductImage } from "@/lib/image-upload";
 import type { Product } from "@/lib/products";
 
 export const Route = createFileRoute("/admin/bulk-order")({
@@ -34,7 +35,7 @@ function BulkOrderAdminPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("*")
+        .select("id, name, slug, description, category_id, price, discount_percent, stock, low_stock_threshold, images, status, featured, created_at, updated_at, sku, sale_price, product_type, promotion_status, colors, sizes, color_images")
         .eq("product_type", "bundle")
         .order("created_at", { ascending: false });
 
@@ -174,7 +175,7 @@ function BulkOrderAdminPage() {
                     <td className="p-3">
                       <div className="flex items-center gap-3">
                         {p.images?.[0] ? (
-                          <img src={p.images[0]} className="h-10 w-10 rounded object-cover" />
+                          <img loading="lazy" decoding="async" src={p.images[0]} className="h-10 w-10 rounded object-cover" />
                         ) : (
                           <div className="h-10 w-10 rounded bg-muted grid place-items-center text-muted-foreground"><Package size={16} /></div>
                         )}
@@ -305,19 +306,19 @@ function BulkItemDialog({
     const uploadedUrls: string[] = [];
 
     try {
-      for (const img of images) {
-        if (img.file) {
-          const fileName = `${Date.now()}-${crypto.randomUUID()}-${img.file.name.replace(/\s+/g, "-")}`;
-          const { data: uploadData, error } = await supabase.storage
-            .from("product-images")
-            .upload(fileName, img.file);
-          if (error) throw error;
-          const { data: publicData } = supabase.storage.from("product-images").getPublicUrl(uploadData.path);
-          uploadedUrls.push(publicData.publicUrl);
-        } else {
-          uploadedUrls.push(img.url);
-        }
+      // Optimize and upload new images
+      const filesToUpload = images.filter(img => img.file).map(img => img.file as File);
+      if (filesToUpload.length > 0) {
+        const results = await uploadMultipleProductImages(filesToUpload);
+        uploadedUrls.push(...results.map((r) => r.publicUrl));
       }
+
+      const productType = form.product_type === "standard" || form.product_type === "bundle" || form.product_type === "premium"
+        ? form.product_type
+        : "bundle";
+      const promotionStatus = form.promotion_status === "regular" || form.promotion_status === "sale" || form.promotion_status === "flash_sale"
+        ? form.promotion_status
+        : "regular";
 
       const payload = {
         name: form.name,
@@ -331,8 +332,8 @@ function BulkItemDialog({
         images: uploadedUrls,
         status: form.status ?? "active",
         featured: !!form.featured,
-        product_type: "bundle",
-        promotion_status: "regular",
+        product_type: productType,
+        promotion_status: promotionStatus,
         colors: parseColorsString(colorsText),
         sizes: parseColorsString(sizesText),
         color_images: Object.keys(colorImages).length > 0 ? colorImages : null
@@ -361,13 +362,8 @@ function BulkItemDialog({
   const handleColorImageUpload = async (colorName: string, file: File) => {
     setUploadingColor(colorName);
     try {
-      const fileName = `${Date.now()}-${crypto.randomUUID()}-${file.name.replace(/\s+/g, "-")}`;
-      const { data: uploadData, error } = await supabase.storage
-        .from("product-images")
-        .upload(fileName, file);
-      if (error) throw error;
-      const { data: publicData } = supabase.storage.from("product-images").getPublicUrl(uploadData.path);
-      setColorImages((prev) => ({ ...prev, [colorName]: publicData.publicUrl }));
+      const result = await uploadProductImage(file);
+      setColorImages((prev) => ({ ...prev, [colorName]: result.publicUrl }));
       toast.success(`Image uploaded for ${colorName}`);
     } catch (e) {
       toast.error((e as Error).message);
@@ -509,7 +505,7 @@ function BulkItemDialog({
                       </label>
                     </div>
                     {colorImages[col] && (
-                      <img src={colorImages[col]} alt={col} className="h-9 w-9 rounded object-cover border border-border" />
+                      <img loading="lazy" decoding="async" src={colorImages[col]} alt={col} className="h-9 w-9 rounded object-cover border border-border" />
                     )}
                   </div>
                 ))}
@@ -521,7 +517,7 @@ function BulkItemDialog({
             <Label className="mb-2 block">Item Images</Label>
             <ImageUploader
               images={images}
-              onChange={setImages}
+              setImages={setImages}
             />
           </div>
 

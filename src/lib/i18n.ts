@@ -26,7 +26,7 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     subtotal: "Subtotal",
     shipping: "Shipping",
     tax: "Tax",
-    currencyNotice: "Prices shown in your selected currency for convenience. Payments processed securely via Paystack.",
+    currencyNotice: "Prices are shown in your selected currency for convenience. Pay by bank transfer.",
   },
   fr: {
     home: "Accueil",
@@ -46,7 +46,7 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     subtotal: "Sous-total",
     shipping: "Livraison",
     tax: "Taxe",
-    currencyNotice: "Prix affichés dans votre devise sélectionnée par commodité. Paiements sécurisés via Paystack.",
+    currencyNotice: "Les prix sont affichés dans la devise sélectionnée. Le paiement s'effectue par virement bancaire.",
   },
   ar: {
     home: "الرئيسية",
@@ -66,7 +66,7 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     subtotal: "المجموع الفرعي",
     shipping: "الشحن",
     tax: "الضريبة",
-    currencyNotice: "الأسعار المعروضة بالعملة المحددة لراحتك. تتم معالجة المدفوعات بشكل آمن عبر Paystack.",
+    currencyNotice: "تُعرض الأسعار بعملتك المحددة للتسهيل. يتم الدفع عن طريق التحويل المصرفي.",
   },
   sw: {
     home: "Nyumbani",
@@ -86,7 +86,7 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     subtotal: "Jumla Ndogo",
     shipping: "Usafirishaji",
     tax: "Kodi",
-    currencyNotice: "Bei zimeonyeshwa kwa sarafu uliyochagua kwa urahisi. Malipo yanafanyika salama kupitia Paystack.",
+    currencyNotice: "Bei zinaonyeshwa kwa sarafu uliyochagua. Lipa kwa uhamisho wa benki.",
   },
 };
 

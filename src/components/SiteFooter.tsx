@@ -58,7 +58,7 @@ export function SiteFooter() {
           <p>© {new Date().getFullYear()} SupplierAffordable. All rights reserved.</p>
           <p className="text-center w-full md:w-auto mt-4 md:mt-0 opacity-70">Powered by Tiny-Tech</p>
           <div className="flex gap-6">
-            <Link to="/admin/login" className="hover:text-primary transition-colors">Admin Login</Link>
+            <Link to="/admin/login" search={{ redirect: undefined }} className="hover:text-primary transition-colors">Admin Login</Link>
             <span>Lagos, Nigeria</span>
           </div>
         </div>

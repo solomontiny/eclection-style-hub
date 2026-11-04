@@ -8,8 +8,40 @@ import { Link } from "@tanstack/react-router";
 import { useStore } from "@/lib/store-context";
 import { formatCurrencyPrice } from "@/lib/currency-browser";
 import { useFavorites } from "@/lib/favorites";
+import { fallbackToOriginalImage, getProductCardImageProps } from "@/lib/responsive-images";
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"] as const;
+
+function ResponsiveProductImage({ 
+  src, 
+  alt, 
+  className = "",
+}: { 
+  src: string | null | undefined; 
+  alt: string; 
+  className?: string;
+}) {
+  if (!src) {
+    return <div className={`absolute inset-0 grid place-items-center text-sm text-muted-foreground ${className}`}>No image</div>;
+  }
+
+  const imageProps = getProductCardImageProps(src);
+
+  return (
+    <img
+      src={imageProps.src}
+      srcSet={imageProps.srcSet}
+      sizes={imageProps.sizes}
+      alt={alt}
+      width={imageProps.width}
+      height={imageProps.height}
+      loading="lazy"
+      decoding="async"
+      className={`h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 ${className}`}
+      onError={fallbackToOriginalImage}
+    />
+  );
+}
 
 export function ProductCard({ product, onQuickPreview }: { product: Product; onQuickPreview?: (product: Product) => void }) {
   const { currency } = useStore();
@@ -53,23 +85,14 @@ export function ProductCard({ product, onQuickPreview }: { product: Product; onQ
     <div className="group transition-all duration-300 hover:-translate-y-1">
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted shadow-sm group-hover:shadow-xl transition-shadow duration-300">
         <Link to="/product/$slug" params={{ slug: product.slug }} aria-label={`View ${product.name}`}>
-          <img
-          src={selectedImage ?? undefined}
-          alt={product.name}
-          width={800}
-          height={1000}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-          onError={(event) => { event.currentTarget.style.display = "none"; }}
-          />
-          {(!selectedImage) && <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">No image</div>}
+          <ResponsiveProductImage src={selectedImage} alt={product.name} />
         </Link>
         <div className="absolute top-3 left-3 flex flex-col gap-2">
           {badges.slice(0, 2).map((b, i) => (
              <span key={i} className={`px-3 py-1 text-[10px] font-bold rounded-full text-white backdrop-blur ${b.className}`}>{b.label}</span>
           ))}
         </div>
-{onQuickPreview && (
+        {onQuickPreview && (
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onQuickPreview(product); }}
@@ -152,8 +175,8 @@ export function ProductCard({ product, onQuickPreview }: { product: Product; onQ
               className={`w-6 h-6 rounded-full border transition-all relative disabled:cursor-not-allowed disabled:opacity-50 ${
                   color === c ? "ring-1 ring-accent ring-offset-1" : "border-border"
                 }`}
-                style={{ backgroundColor: colorToCss(c) }}
-                aria-label={`Select colour ${c}`}
+              style={{ backgroundColor: colorToCss(c) }}
+              aria-label={`Select colour ${c}`}
               >
                 {color === c && <span className="absolute inset-0 rounded-full ring-1 ring-primary" />}
               </button>

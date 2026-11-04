@@ -9,8 +9,71 @@ import { SizeChartDialog } from "@/components/SizeChartDialog";
 import { useStore } from "@/lib/store-context";
 import { formatCurrencyPrice } from "@/lib/currency-browser";
 import { useFavorites } from "@/lib/favorites";
+import { fallbackToOriginalImage, getQuickViewImageProps } from "@/lib/responsive-images";
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"];
+
+function ResponsiveProductImage({ 
+  src, 
+  alt, 
+  className = "",
+}: { 
+  src: string | null | undefined; 
+  alt: string; 
+  className?: string;
+}) {
+  if (!src) {
+    return <div className={`h-full w-full grid place-items-center text-xs text-muted-foreground ${className}`}>No image</div>;
+  }
+
+  const imageProps = getQuickViewImageProps(src);
+
+  return (
+    <img
+      src={imageProps.src}
+      srcSet={imageProps.srcSet}
+      sizes={imageProps.sizes}
+      alt={alt}
+      width={imageProps.width}
+      height={imageProps.height}
+      loading="lazy"
+      decoding="async"
+      className={`h-full w-full object-cover ${className}`}
+      onError={fallbackToOriginalImage}
+    />
+  );
+}
+
+function ThumbnailImage({ 
+  src, 
+  alt, 
+  className = ""
+}: { 
+  src: string | null | undefined; 
+  alt: string; 
+  className?: string;
+}) {
+  if (!src) {
+    return <span className={`text-xs text-muted-foreground ${className}`}>No image</span>;
+  }
+
+  const imageProps = getQuickViewImageProps(src);
+
+  return (
+    <img
+      src={imageProps.src}
+      srcSet={imageProps.srcSet}
+      sizes={imageProps.sizes}
+      alt={alt}
+      width={imageProps.width}
+      height={imageProps.height}
+      loading="lazy"
+      decoding="async"
+      className={`h-full w-full object-cover ${className}`}
+      onError={fallbackToOriginalImage}
+    />
+  );
+}
 
 export function QuickViewModal({ product, isOpen, onClose }: { product: Product | null; isOpen: boolean; onClose: () => void }) {
   const { currency } = useStore();
@@ -71,17 +134,13 @@ export function QuickViewModal({ product, isOpen, onClose }: { product: Product 
         <div className="grid md:grid-cols-2 gap-6 mt-2">
           <div className="space-y-3">
             <div className="aspect-[4/5] rounded-2xl overflow-hidden bg-muted">
-              {primaryImage ? (
-                <img src={primaryImage} alt={product.name} className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-              ) : (
-                <div className="h-full w-full grid place-items-center text-xs text-muted-foreground">No image</div>
-              )}
+              <ResponsiveProductImage src={primaryImage} alt={product.name} />
             </div>
             {images.length > 1 && (
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {images.map((img, idx) => (
                   <button key={idx} type="button" onClick={() => setSelectedImage(idx)} className={`w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 ${selectedImage === idx ? "border-primary" : "border-border"}`}>
-                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    <ThumbnailImage src={img} alt="" />
                   </button>
                 ))}
               </div>

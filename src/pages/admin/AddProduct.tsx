@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { parseColorsString } from "@/lib/colors";
 import { generateUniqueSlug } from "@/lib/slug";
+import { uploadMultipleProductImages } from "@/lib/image-upload";
 
 export default function AddProduct() {
   const navigate = useNavigate();
@@ -13,19 +14,22 @@ export default function AddProduct() {
     setLoading(true);
 
     const uploadedUrls: string[] = [];
+    const filesToUpload = images.filter((img) => img.file).map((img) => img.file!);
+    
+    if (filesToUpload.length > 0) {
+      try {
+        const results = await uploadMultipleProductImages(filesToUpload);
+        uploadedUrls.push(...results.map((r) => r.publicUrl));
+      } catch (e) {
+        alert("Image upload failed: " + (e as Error).message);
+        setLoading(false);
+        return;
+      }
+    }
+    
+    // Keep existing URLs for images that weren't re-uploaded
     for (const img of images) {
-      if (img.file) {
-        const { data: uploadData, error } = await supabase.storage
-          .from("product-images")
-          .upload(`${crypto.randomUUID()}-${img.file.name}`, img.file);
-        
-        if (error) {
-          alert("Image upload failed");
-          setLoading(false);
-          return;
-        }
-        uploadedUrls.push(uploadData.path);
-      } else {
+      if (!img.file) {
         uploadedUrls.push(img.url);
       }
     }

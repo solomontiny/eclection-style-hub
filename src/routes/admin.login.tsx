@@ -6,13 +6,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/admin/login")({
-  beforeLoad: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+  }),
+  beforeLoad: async ({ search }) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (user) {
-        const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
-        if (isAdmin) {
-            throw redirect({ to: "/admin/dashboard" });
-        }
+      const { data: isAdmin } = await supabase.rpc("has_role", {
+        _user_id: user.id,
+        _role: "admin",
+      });
+      if (isAdmin) {
+        const target =
+          typeof search.redirect === "string" && search.redirect.startsWith("/admin/")
+            ? search.redirect
+            : "/admin/dashboard";
+        throw redirect({ to: target as string });
+      }
     }
   },
   component: AdminLoginPage,
@@ -20,6 +32,7 @@ export const Route = createFileRoute("/admin/login")({
 
 function AdminLoginPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,7 +67,12 @@ function AdminLoginPage() {
       return;
     }
 
-    navigate({ to: "/admin/dashboard" });
+    const target =
+      typeof search.redirect === "string" && search.redirect.startsWith("/admin/")
+        ? search.redirect
+        : "/admin/dashboard";
+
+    navigate({ to: target as string });
   }
 
   return (
@@ -64,12 +82,7 @@ function AdminLoginPage() {
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1">
             <Label>Email</Label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </label>
           <label className="flex flex-col gap-1">
             <Label>Password</Label>

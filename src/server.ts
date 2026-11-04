@@ -1,10 +1,13 @@
 import "./lib/error-capture";
+import "./lib/orders.functions";
+import "./lib/cancel-order.functions";
+import "./lib/notifications";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
 type ServerEntry = {
-  fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
+  fetch: (request: Request, requestOpts?: unknown) => Promise<Response> | Response;
 };
 
 type RuntimeBindings = Record<string, unknown>;
@@ -15,16 +18,29 @@ type RuntimeBindings = Record<string, unknown>;
 function bindServerEnvironment(env: unknown) {
   if (!env || typeof env !== "object") return;
 
-  const bindings = env as RuntimeBindings;
+  const bindings = { ...(env as RuntimeBindings) };
+  delete bindings.PAYSTACK_SECRET_KEY;
+  delete bindings.VITE_PAYSTACK_PUBLIC_KEY;
+  (globalThis as unknown as { __env__?: RuntimeBindings }).__env__ = bindings;
+
   for (const key of [
     "SUPABASE_URL",
+    "SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
-    "PAYSTACK_SECRET_KEY",
+    "VITE_SUPABASE_URL",
+    "VITE_SUPABASE_ANON_KEY",
   ]) {
     const value = bindings[key];
     if (typeof value === "string" && value) {
       process.env[key] = value;
     }
+  }
+
+  if (!process.env.SUPABASE_ANON_KEY && process.env.VITE_SUPABASE_ANON_KEY) {
+    process.env.SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+  }
+  if (!process.env.SUPABASE_URL && process.env.VITE_SUPABASE_URL) {
+    process.env.SUPABASE_URL = process.env.VITE_SUPABASE_URL;
   }
 }
 
@@ -33,7 +49,27 @@ let serverEntryPromise: Promise<ServerEntry> | undefined;
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
     serverEntryPromise = import("@tanstack/react-start/server-entry").then(
-      (m) => ((m as { default?: ServerEntry }).default ?? (m as unknown as ServerEntry)),
+      (m: any) => {
+        const rawHandler = (m.default ?? m) as ServerEntry;
+        const createEntry = m.createServerEntry as ((entry: { fetch: ServerEntry["fetch"] }) => ServerEntry) | undefined;
+        if (createEntry) {
+          return createEntry({
+            fetch(request, requestOpts) {
+              console.log("[createServerEntry.fetch]", {
+                method: request?.method,
+                url: request?.url,
+                requestOptsUndefined: requestOpts === undefined,
+                contextPresent: requestOpts != null && typeof requestOpts === "object" && "context" in requestOpts && (requestOpts as Record<string, unknown>).context != null,
+              });
+              if (!request || typeof request.method !== "string") {
+                console.warn("[createServerEntry.fetch] WARNING: Request or request.method is undefined or invalid!");
+              }
+              return rawHandler.fetch(request, requestOpts);
+            },
+          });
+        }
+        return rawHandler;
+      },
     );
   }
   return serverEntryPromise;
@@ -83,7 +119,9 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
     return response;
   }
 
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
+  const capturedError = consumeLastCapturedError();
+  const errToLog = capturedError ?? new Error(`h3 swallowed SSR error: ${body}`);
+  console.error(errToLog instanceof Error ? errToLog.stack : String(errToLog));
   return brandedErrorResponse();
 }
 
@@ -91,11 +129,15 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       bindServerEnvironment(env);
+      console.log("[Server fetch]", {
+        method: request?.method,
+        url: request?.url,
+      });
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
+      const response = await handler.fetch(request, { context: ctx });
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
-      console.error(error);
+      console.error(error instanceof Error ? error.stack : String(error));
       return brandedErrorResponse();
     }
   },

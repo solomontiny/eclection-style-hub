@@ -6,8 +6,9 @@ import type { Database } from "@/integrations/supabase/types";
 import { z } from "zod";
 import { CONTACT } from "./contact";
 import { getSupabaseAdmin, getEnvVar } from "./supabase-admin.server";
+import { getAuthenticatedUserFromRequest, requireAdminUser } from "./admin-auth.server";
 import { newOrderNotification, sendCustomerOrderEmail } from "./notifications";
-import { reserveStock, restoreStock, getOrderStockReservations, emitStockAlerts } from "./stock";
+import { getOrderStockReservations, emitStockAlerts } from "./stock";
 import {
   getPaymentCurrency,
   PAYSTACK_SUPPORTED_CURRENCIES,
@@ -16,24 +17,13 @@ import {
   getOrderPaymentCurrency,
   convertToPaymentCurrency,
 } from "./currency";
+import {
+  getWholesaleTier,
+  WHOLESALE_BUNDLE_SIZE,
+} from "./wholesale-pricing";
 
-/**
- * Reads the Paystack LIVE secret key from the server runtime.
- *
- * The Cloudflare Worker bindings are injected into `process.env` by the
- * custom `src/server.ts` worker entry (`bindServerEnvironment`) on every
- * request, so `process.env.PAYSTACK_SECRET_KEY` is the single supported
- * access path for this binding. Local dev falls back to the `.env` file
- * loaded by the same entry.
- */
-export function getPaystackSecret(): string | undefined {
-  const secret = process.env.PAYSTACK_SECRET_KEY;
-  console.log(`PAYSTACK_SECRET_KEY configured: ${secret ? "YES" : "NO"}`);
-  return secret;
-}
-
-/** Wholesale price per piece (1 bundle = 10 pieces = ₦60,000). */
-const BULK_UNIT_PRICE = 6000;
+// Legacy gateway handlers remain inert unless intentionally re-enabled.
+const PAYSTACK_ENABLED = false;
 
 const SnapshotSchema = z.object({
   orderRef: z.string().min(3).max(64),
@@ -188,74 +178,6 @@ export const getTaxSettings = createServerFn({ method: "GET" }).handler(async ()
     vatEnabled: taxPercent > 0,
   };
 });
-async function getAuthenticatedUserFromRequest() {
-  const headers = getRequestHeaders();
-  const authHeader = headers.get("authorization");
-  const cookieHeader = headers.get("cookie");
-  const authUrl = getEnvVar("SUPABASE_URL");
-  const authKey = getEnvVar("SUPABASE_ANON_KEY");
-
-  console.log("[getAuthenticatedUserFromRequest] Debug:", {
-    hasAuthHeader: !!authHeader,
-    hasCookie: !!cookieHeader,
-    hasAuthUrl: !!authUrl,
-    hasAuthKey: !!authKey,
-  });
-
-  if (!(authHeader || cookieHeader) || !authUrl || !authKey) {
-    console.warn("[getAuthenticatedUserFromRequest] Missing headers or env vars:", {
-      hasAuthHeader: !!authHeader,
-      hasCookie: !!cookieHeader,
-      hasAuthUrl: !!authUrl,
-      hasAuthKey: !!authKey,
-    });
-    return null;
-  }
-
-  const userClient = createClient<Database>(authUrl, authKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    global: {
-      headers: {
-        ...(authHeader ? { Authorization: authHeader } : {}),
-        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-      },
-    },
-  });
-
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  const {
-    data: { user },
-    error,
-  } = token ? await userClient.auth.getUser(token) : await userClient.auth.getUser();
-
-  if (error) {
-    console.error("[getAuthenticatedUserFromRequest] auth.getUser error:", error.message);
-  }
-
-  console.log("[getAuthenticatedUserFromRequest] Resolved user:", user?.id ?? "null");
-  return user ?? null;
-}
-
-async function requireAdminUser() {
-  const user = await getAuthenticatedUserFromRequest();
-  if (!user) {
-    throw new Error("Unauthorized: Authentication required.");
-  }
-
-  const { data: roleData } = await getSupabaseAdmin()
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .eq("role", "admin")
-    .maybeSingle();
-
-  if (!roleData) {
-    throw new Error("Unauthorized: Admin access required.");
-  }
-
-  return user;
-}
-
 export const createOrderServerFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
@@ -280,12 +202,11 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         postalCode: z.string().optional(),
         deliveryInstructions: z.string().optional(),
       }),
-      callbackUrl: z.string().url().optional(),
       currency: z.string().optional().default("NGN"),
     }),
   )
   .handler(async ({ data }) => {
-    const { items, customer, callbackUrl, currency } = data;
+    const { items, customer, currency } = data;
     let supabaseAdmin;
     try {
       supabaseAdmin = getSupabaseAdmin();
@@ -327,7 +248,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       // 1. Fetch products
       const { data: products, error: productError } = await getSupabaseAdmin()
         .from("products")
-        .select("id, name, price, sale_price, discount_percent, stock")
+        .select("id, name, price, sale_price, discount_percent, stock, product_type")
         .in(
           "id",
           items.map((i) => i.id),
@@ -343,9 +264,11 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         throw new Error("We could not load your items. Please refresh your cart and try again.");
       }
 
+      const productsById = new Map(products.map((product) => [product.id, product]));
+
       // 1b. Reject out-of-stock items before creating the order.
       for (const item of items) {
-        const product = products.find((p) => p.id === item.id);
+        const product = productsById.get(item.id);
         if (!product) throw new Error("One of the items in your cart is no longer available.");
         if (Math.max(0, Number(product.stock ?? 0)) < item.qty) {
           throw new Error(
@@ -354,18 +277,49 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         }
       }
 
+      const wholesaleQuantityByBundle = new Map<string, number>();
+      for (const item of items) {
+        if (!item.bundleId) continue;
+
+        const product = productsById.get(item.id);
+        if (product?.product_type !== "bundle") {
+          throw new Error("Wholesale pricing is only available for eligible bundle products.");
+        }
+
+        wholesaleQuantityByBundle.set(
+          item.bundleId,
+          (wholesaleQuantityByBundle.get(item.bundleId) ?? 0) + item.qty,
+        );
+      }
+
+      const wholesalePriceByBundle = new Map<string, number>();
+      for (const [bundleId, quantity] of wholesaleQuantityByBundle) {
+        if (quantity < WHOLESALE_BUNDLE_SIZE) {
+          continue;
+        }
+
+        const tier = getWholesaleTier(quantity);
+        if (!tier) {
+          throw new Error("Could not determine wholesale pricing for this quantity.");
+        }
+        wholesalePriceByBundle.set(bundleId, tier.pricePerPiece);
+      }
+
       // 2. Calculate totals (authoritative, server-side, no VAT)
       let subtotal = 0;
       const orderItems = items.map((item) => {
-        const product = products.find((p) => p.id === item.id);
+        const product = productsById.get(item.id);
         if (!product) throw new Error("One of the items in your cart is no longer available.");
 
-        // Bulk/wholesale pieces are a fixed ₦6,000 per piece.
+        // Wholesale unit pricing was derived from the validated bundle quantity above.
         const base =
           product.sale_price != null
             ? Number(product.sale_price)
             : Number(product.price) * (1 - Number(product.discount_percent ?? 0) / 100);
-        const price = item.isBulk ? BULK_UNIT_PRICE : base;
+        const wholesalePrice = item.bundleId
+          ? wholesalePriceByBundle.get(item.bundleId)
+          : undefined;
+        const price = wholesalePrice ?? base;
         const itemSubtotal = price * item.qty;
         subtotal += itemSubtotal;
 
@@ -382,21 +336,6 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       });
 
       const total = subtotal;
-      const reference = `ESC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-
-      // 2b. Reserve stock atomically. A row-level UPDATE ... WHERE stock >= qty
-      // prevents concurrent checkouts from overselling.
-      const reservation = await reserveStock(
-        supabaseAdmin,
-        items.map((i) => ({ productId: i.id, qty: i.qty })),
-      );
-      if (!reservation.ok) {
-        throw new Error(
-          "One or more items no longer have enough stock. Please refresh your cart and try again.",
-        );
-      }
-
-      // 3. Insert order
       const shippingAddress =
         customer.address || customer.city || customer.state
           ? {
@@ -412,6 +351,11 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       // Calculate payment amount in payment currency major units
       const paymentAmountMajor = convertToPaymentCurrency(total, paymentCurrency);
 
+      const discount = 0;
+      const shipping = 0;
+      const vatAmount = 0;
+      const vatRate = 0;
+      const taxableSubtotal = subtotal;
       const orderData = {
         user_id: authenticatedUser.id,
         customer_name: customer.name,
@@ -419,18 +363,23 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         customer_phone: customer.phone && customer.phone.trim() !== "" ? customer.phone : null,
         shipping_address: shippingAddress,
         subtotal: subtotal,
+        discount,
+        shipping,
+        vat_amount: vatAmount,
+        vat_rate: vatRate,
+        taxable_subtotal: taxableSubtotal,
         total,
         payment_status: "pending" as const,
         payment_method: "bank_transfer" as Database["public"]["Enums"]["payment_method"],
-        paystack_reference: reference,
+        paystack_reference: null,
         currency: currency.toUpperCase(), // display currency
-        payment_currency: paymentCurrency, // actual Paystack payment currency
+        payment_currency: paymentCurrency,
         payment_amount: paymentAmountMajor, // payment amount in major units
         notes: items
           .map((i) => {
-            const p = products.find((p) => p.id === i.id);
+            const p = productsById.get(i.id);
             const parts = [p?.name];
-            if (i.isBulk) parts.push("(Bulk)");
+            if (i.bundleId && wholesalePriceByBundle.has(i.bundleId)) parts.push("(Bulk)");
             else parts.push(`(Size ${i.size})`);
             if (i.color) parts.push(`(Color ${i.color})`);
             parts.push(`x ${i.qty}`);
@@ -439,61 +388,27 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
           .join(", "),
       };
 
-      const { data: order, error: orderError } = await getSupabaseAdmin()
-        .from("orders")
-        .insert(orderData)
-        .select("id, order_number, total, payment_status")
-        .single();
+      const { data: createdOrders, error: createOrderError } = await supabaseAdmin.rpc(
+        "create_order_with_stock_reservations",
+        { p_order: orderData, p_items: orderItems },
+      );
 
-      if (orderError) {
-        console.error("Failed to create order in Supabase:", {
-          code: orderError.code,
-          message: orderError.message,
-          details: orderError.details,
-          hint: orderError.hint,
+      if (createOrderError) {
+        console.error("Failed to create order with stock reservations:", {
+          code: createOrderError.code,
+          message: createOrderError.message,
+          details: createOrderError.details,
+          hint: createOrderError.hint,
         });
-        // Roll back the stock reservation — the order was never saved.
-        void restoreStock(
-          supabaseAdmin,
-          items.map((i) => ({ productId: i.id, qty: i.qty })),
-        ).catch((err: unknown) =>
-          console.error("Stock restore after order insert failed:", (err as Error)?.message),
-        );
         throw new Error(
-          `We could not save your order (${orderError.code || "db_error"}). Please try again.`,
+          createOrderError.message ||
+            `We could not save your order (${createOrderError.code || "db_error"}). Please try again.`,
         );
       }
+
+      const order = createdOrders?.[0];
       if (!order) {
-        // Roll back the stock reservation — the order was never saved.
-        void restoreStock(
-          supabaseAdmin,
-          items.map((i) => ({ productId: i.id, qty: i.qty })),
-        ).catch((err: unknown) =>
-          console.error("Stock restore after order insert failed:", (err as Error)?.message),
-        );
         throw new Error("Failed to create order: No data returned");
-      }
-
-      // 4. Insert items
-      const { error: itemsError } = await getSupabaseAdmin()
-        .from("order_items")
-        .insert(orderItems.map((item) => ({ ...item, order_id: order.id })));
-
-      if (itemsError) {
-        console.error("Failed to create order items:", {
-          message: itemsError.message,
-          details: itemsError.details,
-          hint: itemsError.hint,
-          code: itemsError.code,
-        });
-        // Roll back the stock reservation — the order is incomplete.
-        void restoreStock(
-          supabaseAdmin,
-          items.map((i) => ({ productId: i.id, qty: i.qty })),
-        ).catch((err: unknown) =>
-          console.error("Stock restore after order items failed:", (err as Error)?.message),
-        );
-        throw new Error("Failed to create order items. Please contact support.");
       }
 
       void newOrderNotification({ data: { orderId: order.id } }).catch((err: unknown) =>
@@ -594,6 +509,7 @@ export const verifyBankTransferPayment = createServerFn({ method: "POST" })
       .update({ payment_status: "paid" })
       .eq("id", order.id)
       .eq("payment_status", "pending")
+      .eq("status", "pending")
       .select("id")
       .maybeSingle();
 
@@ -603,10 +519,8 @@ export const verifyBankTransferPayment = createServerFn({ method: "POST" })
 
     if (!updated) {
       return {
-        status: "paid" as const,
-        orderNumber: order.order_number,
-        total: Number(order.total),
-        message: "Order is already marked as paid.",
+        status: "error" as const,
+        message: "Order is no longer pending and could not be marked as paid.",
       };
     }
 
@@ -825,6 +739,13 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
+    if (!PAYSTACK_ENABLED) {
+      return {
+        status: "error" as const,
+        message: "Online payment verification is disabled. Please use bank transfer.",
+      };
+    }
+
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
     if (!paystackSecret) {
       return { status: "error" as const, message: "Payment verification is not configured." };
@@ -878,10 +799,25 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
 
       // Idempotent: only act when the order is not already paid.
       if (order.payment_status !== ("paid" as unknown)) {
-        await getSupabaseAdmin()
+        const { data: updated, error: updateError } = await getSupabaseAdmin()
           .from("orders")
           .update({ payment_status: "paid" })
-          .eq("id", order.id);
+          .eq("id", order.id)
+          .eq("payment_status", "pending")
+          .eq("status", "pending")
+          .select("id")
+          .maybeSingle();
+
+        if (updateError) {
+          return { status: "error" as const, message: "Failed to verify the payment update." };
+        }
+
+        if (!updated) {
+          return {
+            status: "error" as const,
+            message: "Order is no longer pending and is not eligible for payment verification.",
+          };
+        }
 
         void sendCustomerOrderEmail(order.id).catch((err: unknown) =>
           console.error("Customer receipt email failed:", (err as Error)?.message),
@@ -915,6 +851,13 @@ export const confirmPaystackPayment = createServerFn({ method: "POST" })
 export const sendOrderReceipt = createServerFn({ method: "POST" })
   .inputValidator((data) => InputSchema.parse(data))
   .handler(async ({ data }) => {
+    if (!PAYSTACK_ENABLED) {
+      return {
+        status: "error" as const,
+        message: "Online payment receipts are disabled. Please use bank transfer.",
+      };
+    }
+
     const { snapshot, paystackRef } = data;
 
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY;

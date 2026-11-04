@@ -2,33 +2,53 @@ import { createFileRoute, redirect, Outlet, Link, useRouterState } from "@tansta
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Ticket, Boxes, Settings, LogOut, Store } from "lucide-react";
+import {
+  LayoutDashboard,
+  Package,
+  FolderTree,
+  ShoppingCart,
+  Users,
+  Ticket,
+  Boxes,
+  Settings,
+  LogOut,
+  Store,
+  CreditCard,
+} from "lucide-react";
 import { Toaster } from "sonner";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Admin — SupplierAffordable" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [{ title: "Admin — SupplierAffordable" }, { name: "robots", content: "noindex" }],
+  }),
   beforeLoad: async ({ location }) => {
     if (location.pathname === "/admin/login") {
       return;
     }
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
     if (userError || !user) {
-        console.error("[ADMIN DEBUG] Auth check failed:", userError);
-        throw redirect({ to: "/admin/login", search: { redirect: location.href } as never });
+      console.error("[ADMIN DEBUG] Auth check failed:", userError);
+      throw redirect({ to: "/admin/login", search: { redirect: location.href } as never });
     }
-    
-    const { data: isAdmin, error: rpcError } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
-    
+
+    const { data: isAdmin, error: rpcError } = await supabase.rpc("has_role", {
+      _user_id: user.id,
+      _role: "admin",
+    });
+
     if (rpcError) {
-        console.error("[ADMIN DEBUG] has_role RPC failed:", rpcError);
-        // If the role check fails, we must not assume admin.
-        throw redirect({ to: "/" });
+      console.error("[ADMIN DEBUG] has_role RPC failed:", rpcError);
+      // If the role check fails, we must not assume admin.
+      throw redirect({ to: "/" });
     }
-    
+
     if (!isAdmin) {
-        console.log("[ADMIN DEBUG] Authorization failed: Not an admin");
-        throw redirect({ to: "/" });
+      console.log("[ADMIN DEBUG] Authorization failed: Not an admin");
+      throw redirect({ to: "/" });
     }
     // Send /admin to /admin/dashboard
     if (location.pathname === "/admin" || location.pathname === "/admin/") {
@@ -43,6 +63,7 @@ const navItems = [
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/categories", label: "Categories", icon: FolderTree },
   { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
+  { to: "/admin/payment-settings", label: "Payment Settings", icon: CreditCard },
   { to: "/admin/customers", label: "Customers", icon: Users },
   { to: "/admin/inventory", label: "Inventory", icon: Boxes },
   { to: "/admin/coupons", label: "Coupons", icon: Ticket },
@@ -80,25 +101,33 @@ function AdminLayout() {
                 key={item.to}
                 to={item.to}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  active ? "bg-primary/10 text-primary font-medium" : "text-foreground/70 hover:bg-muted hover:text-foreground"
+                  active
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-foreground/70 hover:bg-muted hover:text-foreground"
                 }`}
               >
-                 <item.icon className="h-4 w-4" />
-                 {item.label}
+                <item.icon className="h-4 w-4" />
+                {item.label}
                 {item.to === "/admin/orders" && unreadCount > 0 && (
                   <span className="ml-auto bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 min-w-[20px] flex items-center justify-center px-1">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
-               </Link>
+              </Link>
             );
           })}
         </nav>
         <div className="p-3 border-t border-border space-y-1">
-          <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground/70 hover:bg-muted">
+          <Link
+            to="/"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground/70 hover:bg-muted"
+          >
             <Store className="h-4 w-4" /> View store
           </Link>
-          <button onClick={() => signOut()} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground/70 hover:bg-muted">
+          <button
+            onClick={() => signOut()}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground/70 hover:bg-muted"
+          >
             <LogOut className="h-4 w-4" /> Sign out
           </button>
           <p className="px-3 pt-2 text-[11px] text-muted-foreground truncate">{user?.email}</p>
@@ -108,13 +137,19 @@ function AdminLayout() {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="md:hidden bg-background border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-20">
           <span className="font-display text-lg">Admin</span>
-          <button onClick={() => signOut()} className="text-sm text-muted-foreground">Sign out</button>
+          <button onClick={() => signOut()} className="text-sm text-muted-foreground">
+            Sign out
+          </button>
         </header>
         <nav className="md:hidden flex overflow-x-auto gap-1 px-3 py-2 bg-background border-b border-border">
           {navItems.map((item) => {
             const active = pathname === item.to || pathname.startsWith(item.to + "/");
             return (
-              <Link key={item.to} to={item.to} className={`px-3 py-1.5 rounded-md text-xs whitespace-nowrap ${active ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/70"}`}>
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`px-3 py-1.5 rounded-md text-xs whitespace-nowrap ${active ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/70"}`}
+              >
                 {item.label}
               </Link>
             );

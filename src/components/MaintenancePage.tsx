@@ -6,7 +6,7 @@ export function MaintenancePage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
       <div className="max-w-md w-full text-center space-y-8">
         <div className="flex flex-col items-center space-y-2">
-          <img
+          <img loading="lazy" decoding="async"
             src={officialLogo}
             alt="SupplierAffordable"
             width={1024}
@@ -36,7 +36,7 @@ export function MaintenancePage() {
             COMING BACK SOON
           </p>
         </div>
-        <Link to="/admin/login" className="btn-outline text-sm mt-2">
+        <Link to="/admin/login" search={{ redirect: undefined }} className="btn-outline text-sm mt-2">
           Admin Access
         </Link>
       </div>

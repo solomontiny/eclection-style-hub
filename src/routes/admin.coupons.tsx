@@ -27,7 +27,7 @@ function CouponsPage() {
   const { data = [], isLoading } = useQuery({
     queryKey: ["admin-coupons"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("coupons").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("coupons")        .select("id, code, description, discount_type, discount_value, min_order_amount, usage_limit, used_count, active, expires_at, created_at, updated_at, starts_at, max_discount").order("created_at", { ascending: false });
       if (error) throw error;
       return data as Coupon[];
     },

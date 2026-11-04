@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { fmtNGN, fmtDate } from "@/lib/admin-utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getAdminCustomersServerFn } from "@/lib/orders.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/admin/customers")({ component: CustomersPage });
 

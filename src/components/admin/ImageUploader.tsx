@@ -6,9 +6,10 @@ interface ImageUploaderProps {
   images: { file: File | null; url: string; isPrimary: boolean }[];
   setImages: (images: { file: File | null; url: string; isPrimary: boolean }[]) => void;
   maxFiles?: number;
+  isUploading?: boolean;
 }
 
-export function ImageUploader({ images, setImages, maxFiles = 5 }: ImageUploaderProps) {
+export function ImageUploader({ images, setImages, maxFiles = 5, isUploading = false }: ImageUploaderProps) {
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -90,7 +91,7 @@ export function ImageUploader({ images, setImages, maxFiles = 5 }: ImageUploader
         <div className="grid grid-cols-3 gap-4">
           {images.map((img, index) => (
             <div key={index} className="relative group aspect-square">
-              <img src={img.url} className="w-full h-full object-cover rounded-md" />
+              <img loading="lazy" decoding="async" src={img.url} className="w-full h-full object-cover rounded-md" />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 rounded-md transition-opacity">
                 <Button size="sm" variant="destructive" onClick={() => removeImage(index)}><X size={16} /></Button>
                 <Button size="sm" onClick={() => setPrimary(index)} disabled={img.isPrimary}>Primary</Button>
@@ -111,6 +112,14 @@ export function ImageUploader({ images, setImages, maxFiles = 5 }: ImageUploader
       </div>
       <input ref={fileInputRef} type="file" multiple accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
       {error && <p className="text-red-500 text-sm">{error}</p>}
+      {isUploading && (
+        <div className="flex flex-col items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: "100%" }} />
+          </div>
+          <p className="text-xs text-blue-700 font-medium">Compressing and uploading images...</p>
+        </div>
+      )}
     </div>
   );
 }

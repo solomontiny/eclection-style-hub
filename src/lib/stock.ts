@@ -67,6 +67,7 @@ export async function restoreStock(
   supabase: SupabaseClient<Database>,
   reservations: { productId: string; qty: number }[],
 ): Promise<void> {
+  let failed = false;
   for (const { productId, qty } of reservations) {
     const { error } = await supabase.rpc("restore_stock", {
       p_product_id: productId,
@@ -75,7 +76,11 @@ export async function restoreStock(
 
     if (error) {
       console.error("restoreStock failed for product", productId, error.message);
+      failed = true;
     }
+  }
+  if (failed) {
+    throw new Error("Failed to restore stock for one or more products.");
   }
 }
 
@@ -93,11 +98,11 @@ export async function getOrderStockReservations(
 
   if (error) {
     console.error("getOrderStockReservations failed:", error.message);
-    return [];
+    throw new Error("Failed to load reserved order stock.");
   }
   return (data ?? [])
     .filter((r) => r.product_id)
-    .map((r) => ({ productId: r.product_id, qty: Number(r.quantity) }));
+    .map((r) => ({ productId: r.product_id as string, qty: Number(r.quantity) }));
 }
 
 /**

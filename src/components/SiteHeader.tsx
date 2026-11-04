@@ -45,11 +45,6 @@ export function SiteHeader() {
   const currentCountry = COUNTRIES.find((c) => c.code === currency) || COUNTRIES[0];
   const currentLang = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
 
-  // Paystack supported currencies (based on typical Paystack Nigeria integration)
-  const PAYSTACK_SUPPORTED_CURRENCIES = ["NGN", "GHS", "KES", "ZAR", "USD"];
-
-  const isPaymentCurrencySupported = PAYSTACK_SUPPORTED_CURRENCIES.includes(currency);
-
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-background/90 border-b border-border/50 shadow-sm">
       {/* Row 2: Info/Payment Row */}
@@ -66,58 +61,60 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-3">
           {/* Compact Currency Selector */}
-          <Select
-            value={currency}
-            onValueChange={setCurrency}
-            className="w-[140px]"
-          >
-            <SelectTrigger className="h-8 text-xs gap-1" aria-label="Select currency">
-              <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-              <SelectValue placeholder={currentCountry.flag} />
-            </SelectTrigger>
-            <SelectContent className="w-[260px] max-h-72" position="popper">
-              {COUNTRIES.map((c) => (
-                <SelectItem key={c.country} value={c.code} className="flex items-center gap-2 py-1.5 text-xs">
-                  <span className="text-sm">{c.flag}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate font-medium">{c.country}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{c.currencyName} ({c.code})</p>
-                  </div>
-                  {currency === c.code && <span className="text-primary text-xs">✓</span>}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-[140px]">
+            <Select
+              value={currency}
+              onValueChange={setCurrency}
+            >
+              <SelectTrigger className="h-8 text-xs gap-1" aria-label="Select currency">
+                <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue placeholder={currentCountry.flag} />
+              </SelectTrigger>
+              <SelectContent className="w-[260px] max-h-72" position="popper">
+                {COUNTRIES.map((c) => (
+                  <SelectItem key={c.country} value={c.code} className="flex items-center gap-2 py-1.5 text-xs">
+                    <span className="text-sm">{c.flag}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium">{c.country}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{c.currencyName} ({c.code})</p>
+                    </div>
+                    {currency === c.code && <span className="text-primary text-xs">✓</span>}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Compact Language Selector */}
-          <Select
-            value={language}
-            onValueChange={setLanguage}
-            className="w-[120px]"
-          >
-            <SelectTrigger className="h-8 text-xs gap-1" aria-label="Select language">
-              <Languages className="h-3.5 w-3.5 text-muted-foreground" />
-              <SelectValue placeholder={currentLang.flag} />
-            </SelectTrigger>
-            <SelectContent className="w-[180px]" position="popper">
-              {LANGUAGES.map((l) => (
-                <SelectItem key={l.code} value={l.code} className="flex items-center gap-2 py-1.5 text-xs">
-                  <span className="text-sm">{l.flag}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate font-medium">{l.label}</p>
-                  </div>
-                  {language === l.code && <span className="text-primary text-xs">✓</span>}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-[120px]">
+            <Select
+              value={language}
+              onValueChange={setLanguage}
+            >
+              <SelectTrigger className="h-8 text-xs gap-1" aria-label="Select language">
+                <Languages className="h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue placeholder={currentLang.flag} />
+              </SelectTrigger>
+              <SelectContent className="w-[180px]" position="popper">
+                {LANGUAGES.map((l) => (
+                  <SelectItem key={l.code} value={l.code} className="flex items-center gap-2 py-1.5 text-xs">
+                    <span className="text-sm">{l.flag}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium">{l.label}</p>
+                    </div>
+                    {language === l.code && <span className="text-primary text-xs">✓</span>}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
       {/* Row 3: Main Navigation Row */}
       <div className="container-x flex items-center justify-between h-20 px-4">
         <Link to="/" className="flex shrink-0 items-center gap-2 mr-8" aria-label="SupplierAffordable home">
-          <img
+          <img loading="lazy" decoding="async"
             src={officialLogo}
             alt="SupplierAffordable official logo"
             width={1024}
@@ -192,51 +189,53 @@ export function SiteHeader() {
             <NavLinks onClick={() => setOpen(false)} />
             <div className="pt-2 border-t border-border/60 flex flex-wrap items-center gap-2">
               {/* Mobile Currency Selector */}
-              <Select
-                value={currency}
-                onValueChange={setCurrency}
-                className="w-full sm:w-auto"
-              >
-                <SelectTrigger className="h-8 text-xs gap-1" aria-label="Select currency">
-                  <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                  <SelectValue placeholder={currentCountry.flag} />
-                </SelectTrigger>
-                <SelectContent className="w-[260px] max-h-72" position="popper">
-                  {COUNTRIES.map((c) => (
-                    <SelectItem key={c.country} value={c.code} className="flex items-center gap-2 py-1.5 text-xs">
-                      <span className="text-sm">{c.flag}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate font-medium">{c.country}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{c.currencyName} ({c.code})</p>
-                      </div>
-                      {currency === c.code && <span className="text-primary text-xs">✓</span>}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="w-full sm:w-auto">
+                <Select
+                  value={currency}
+                  onValueChange={setCurrency}
+                >
+                  <SelectTrigger className="h-8 text-xs gap-1" aria-label="Select currency">
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    <SelectValue placeholder={currentCountry.flag} />
+                  </SelectTrigger>
+                  <SelectContent className="w-[260px] max-h-72" position="popper">
+                    {COUNTRIES.map((c) => (
+                      <SelectItem key={c.country} value={c.code} className="flex items-center gap-2 py-1.5 text-xs">
+                        <span className="text-sm">{c.flag}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate font-medium">{c.country}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{c.currencyName} ({c.code})</p>
+                        </div>
+                        {currency === c.code && <span className="text-primary text-xs">✓</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {/* Mobile Language Selector */}
-              <Select
-                value={language}
-                onValueChange={setLanguage}
-                className="w-full sm:w-auto"
-              >
-                <SelectTrigger className="h-8 text-xs gap-1" aria-label="Select language">
-                  <Languages className="h-3.5 w-3.5 text-muted-foreground" />
-                  <SelectValue placeholder={currentLang.flag} />
-                </SelectTrigger>
-                <SelectContent className="w-[180px]" position="popper">
-                  {LANGUAGES.map((l) => (
-                    <SelectItem key={l.code} value={l.code} className="flex items-center gap-2 py-1.5 text-xs">
-                      <span className="text-sm">{l.flag}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate font-medium">{l.label}</p>
-                      </div>
-                      {language === l.code && <span className="text-primary text-xs">✓</span>}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="w-full sm:w-auto">
+                <Select
+                  value={language}
+                  onValueChange={setLanguage}
+                >
+                  <SelectTrigger className="h-8 text-xs gap-1" aria-label="Select language">
+                    <Languages className="h-3.5 w-3.5 text-muted-foreground" />
+                    <SelectValue placeholder={currentLang.flag} />
+                  </SelectTrigger>
+                  <SelectContent className="w-[180px]" position="popper">
+                    {LANGUAGES.map((l) => (
+                      <SelectItem key={l.code} value={l.code} className="flex items-center gap-2 py-1.5 text-xs">
+                        <span className="text-sm">{l.flag}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate font-medium">{l.label}</p>
+                        </div>
+                        {language === l.code && <span className="text-primary text-xs">✓</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {user && (

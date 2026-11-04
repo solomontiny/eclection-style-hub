@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,7 @@ import {
   sendBankTransferReceipt,
   retryPaymentReceipt,
 } from "@/lib/orders.functions";
+import { cancelOrder } from "@/lib/cancel-order.functions";
 
 export const Route = createFileRoute("/admin/orders")({
   component: OrdersPage,
@@ -39,6 +41,7 @@ type OrderRow = {
   customer_name: string;
   customer_email: string;
   total: number;
+  status: string;
   payment_method: string;
   payment_status: string;
   created_at: string;
@@ -51,6 +54,7 @@ export function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "paid">("all");
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["admin-orders", q, statusFilter],
@@ -58,7 +62,7 @@ export function OrdersPage() {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          "id, order_number, customer_name, customer_email, total, payment_method, payment_status, created_at",
+          "id, order_number, customer_name, customer_email, total, status, payment_method, payment_status, created_at",
         )
         .order("created_at", { ascending: false });
 
@@ -121,6 +125,20 @@ export function OrdersPage() {
     }
   };
 
+  const cancelPendingOrder = async (orderId: string) => {
+    if (cancellingId) return;
+    setCancellingId(orderId);
+    try {
+      await cancelOrder({ data: { orderId } });
+      toast.success("Order cancelled and reserved stock restored.");
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Order cancellation failed");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   const filtered = orders.filter((o) => {
     if (
       q &&
@@ -151,6 +169,10 @@ export function OrdersPage() {
           <RefreshCw className="h-4 w-4 mr-2" /> Refresh
         </Button>
       </div>
+
+      <p className="mx-6 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+        Orders with stock reservation history cannot be deleted. Cancel an eligible unpaid pending order to restore its stock; reservation history is retained.
+      </p>
 
       <div className="px-6 pb-6">
         <div className="flex flex-wrap gap-3">
@@ -243,14 +265,33 @@ export function OrdersPage() {
                       {new Date(o.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      {o.payment_method === "bank_transfer" && o.payment_status === "pending" ? (
-                        <Button
-                          size="sm"
-                          onClick={() => verifyPayment(o.id)}
-                          disabled={verifyingId === o.id}
-                        >
-                          {verifyingId === o.id ? "Verifying..." : "Verify Payment"}
-                        </Button>
+                      {o.status === "pending" && o.payment_status === "pending" ? (
+                        <div className="flex flex-wrap gap-2">
+                          {o.payment_method === "bank_transfer" && (
+                            <Button
+                              size="sm"
+                              onClick={() => verifyPayment(o.id)}
+                              disabled={verifyingId === o.id}
+                            >
+                              {verifyingId === o.id ? "Verifying..." : "Verify Payment"}
+                            </Button>
+                          )}
+                          <ConfirmDialog
+                            trigger={
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                disabled={cancellingId === o.id}
+                              >
+                                {cancellingId === o.id ? "Cancelling..." : "Cancel Order"}
+                              </Button>
+                            }
+                            title={`Cancel order ${o.order_number}?`}
+                            description="This will cancel the unpaid order and restore its reserved product stock."
+                            confirmLabel="Cancel Order"
+                            onConfirm={() => cancelPendingOrder(o.id)}
+                          />
+                        </div>
                       ) : o.payment_method === "bank_transfer" && o.payment_status === "paid" ? (
                         <Button
                           size="sm"
@@ -262,7 +303,7 @@ export function OrdersPage() {
                         </Button>
                       ) : (
                         <Badge variant="secondary" className="text-xs">
-                          {o.payment_status}
+                          {o.status === "cancelled" ? "cancelled" : o.payment_status}
                         </Badge>
                       )}
                     </TableCell>

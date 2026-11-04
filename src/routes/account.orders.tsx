@@ -21,7 +21,7 @@ function OrdersPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, order_number, total, status, payment_status, created_at")
+        .select("id, order_number, total, status, payment_status, payment_method, created_at")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -48,6 +48,10 @@ function OrdersPage() {
                 <p className="text-xs text-muted-foreground">
                   {fmtDate(order.created_at)} ·{" "}
                   <span className="capitalize">{order.payment_status}</span>
+                  {" "}·{" "}
+                  <span className="capitalize">
+                    {order.payment_method === "bank_transfer" ? "Bank Transfer" : "Unavailable"}
+                  </span>
                 </p>
               </div>
               <div className="text-right">

@@ -11,11 +11,11 @@ export function LanguageSelector() {
   const currentLang = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
 
   return (
-    <Select
-      value={language}
-      onValueChange={setLanguage}
-      className="w-[140px] sm:w-[160px]"
-    >
+    <div className="w-[140px] sm:w-[160px]">
+      <Select
+        value={language}
+        onValueChange={setLanguage}
+      >
       <SelectTrigger className="h-9 text-sm gap-2">
         <Languages className="h-4 w-4 text-muted-foreground" />
         <SelectValue placeholder={t("language") ?? "Language"} />
@@ -33,5 +33,6 @@ export function LanguageSelector() {
         ))}
       </SelectContent>
     </Select>
+    </div>
   );
 }

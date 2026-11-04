@@ -6,11 +6,19 @@ compatibility_flags = ["nodejs_compat"]
 # VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_PAYSTACK_PUBLIC_KEY
 keep_vars = true
 
+routes = [
+  { pattern = "www.supplieraffordable.com", zone_name = "supplieraffordable.com", custom_domain = true }
+]
+
 main = "./.output/server/index.mjs"
 
 [vars]
-SUPABASE_URL = "https://clvxfobvtqwdmuzqbehk.supabase.co"
+SUPABASE_URL = "https://qwwpaxljefedekeysuye.supabase.co"
 
 [assets]
 directory = "./.output/public"
 binding = "ASSETS"
+
+[observability]
+enabled = true
+head_sampling_rate = 1

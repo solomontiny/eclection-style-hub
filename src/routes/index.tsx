@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, ShieldCheck, Truck, Sparkles, CreditCard, ShoppingBag, Package, Lock, HeadphonesIcon, Award } from "lucide-react";
+import { ArrowRight, ShieldCheck, Truck, Sparkles, Building2, ShoppingBag, Package, Lock, HeadphonesIcon, Award } from "lucide-react";
 import heroImg from "@/assets/supplier-affordable-hero.png";
-import { Product, getProducts, getCategories } from "@/lib/products";
+import { Product, getFeaturedProducts, getNewArrivals, getBundleProducts, getOnSaleProducts, getCategories } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
 import { VideoAdvert } from "@/components/VideoAdvert";
 import { LocationSection } from "@/components/LocationSection";
@@ -12,16 +12,35 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "SupplierAffordable — Affordable Fashion for Women" },
-      { name: "description", content: "Stylish, quality and affordable clothing for women. Shop online and pay securely with card or bank transfer." },
+      { name: "description", content: "Stylish, quality and affordable clothing for women. Shop online and pay by bank transfer." },
     ],
   }),
   component: Home,
 });
 
 function Home() {
-  const { data: products = [] } = useQuery<Product[]>({
-    queryKey: ["products"],
-    queryFn: getProducts,
+  const { data: featured = [] } = useQuery<Product[]>({
+    queryKey: ["home-featured"],
+    queryFn: () => getFeaturedProducts(4),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: newArrivals = [] } = useQuery<Product[]>({
+    queryKey: ["home-new-arrivals"],
+    queryFn: () => getNewArrivals(4),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: bundles = [] } = useQuery<Product[]>({
+    queryKey: ["home-bundles"],
+    queryFn: () => getBundleProducts(4),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: onSale = [] } = useQuery<Product[]>({
+    queryKey: ["home-on-sale"],
+    queryFn: () => getOnSaleProducts(4),
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: categories = [] } = useQuery<any[]>({
@@ -33,18 +52,14 @@ function Home() {
         return [];
       }
     },
+    staleTime: 10 * 60 * 1000,
   });
-
-  const featured = products.filter(p => p.featured).slice(0, 4);
-  const newArrivals = products.slice(0, 4);
-  const bundles = products.filter(p => p.product_type === 'bundle').slice(0, 4);
-  const onSale = products.filter(p => p.sale_price && p.sale_price < p.price).slice(0, 4);
 
   // Map each category id to a representative product image (used as a polished
   // fallback when a category has no image of its own).
   const categoryProductImage = (() => {
     const map = new Map<string, string>();
-    products.forEach((p) => {
+    [...featured, ...newArrivals, ...bundles, ...onSale].forEach((p) => {
       if (p.category_id && !map.has(p.category_id) && p.images?.[0]) {
         map.set(p.category_id, p.images[0]);
       }
@@ -55,7 +70,7 @@ function Home() {
   return (
     <>
       <section className="relative h-[60vh] min-h-[400px] sm:h-[75vh] sm:min-h-[550px] w-full overflow-hidden">
-        <img
+        <img loading="lazy" decoding="async"
           src={heroImg}
           alt="SupplierAffordable fashion collection"
           width={1920}
@@ -99,6 +114,7 @@ function Home() {
                         alt={c.name}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         loading="lazy"
+                        decoding="async"
                         onError={(e) => {
                           const t = e.currentTarget as HTMLImageElement;
                           if (t.src !== heroImg) t.src = heroImg;
@@ -151,7 +167,7 @@ function Home() {
             {[
                 { icon: Sparkles, title: "Browse", text: "Explore our latest collections" },
                 { icon: ShoppingBag, title: "Select", text: "Pick your favorite pieces" },
-                { icon: CreditCard, title: "Pay", text: "Secure checkout via Paystack" },
+                { icon: Building2, title: "Pay", text: "Transfer to our Moniepoint account" },
                 { icon: Package, title: "Receive", text: "Get your order delivered" },
             ].map((i, idx) => (
                 <div key={idx} className="text-center relative">
@@ -171,7 +187,7 @@ function Home() {
         <div className="rounded-3xl p-10 md:p-16 text-center" style={{ background: "var(--gradient-soft)" }}>
           <h2 className="font-display text-3xl md:text-5xl max-w-2xl mx-auto">Found a piece you love?</h2>
           <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
-            Pick your size, add it to your cart and pay securely online with your card or bank transfer via Paystack — no messaging needed.
+            Pick your size, add it to your cart and pay by bank transfer. Our team will verify your transfer manually.
           </p>
           <p className="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">{LAGOS_DELIVERY_NOTE}</p>
           <div className="mt-7 flex flex-wrap gap-3 justify-center">

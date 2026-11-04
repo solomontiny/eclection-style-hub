@@ -19,9 +19,13 @@ export const Route = createFileRoute("/favorites")({
 
 function FavoritesPage() {
   const { favorites, toggleFavorite } = useFavorites();
-  const { data: allProducts = [] } = useQuery({ queryKey: ["products"], queryFn: getProducts });
+  const { data: productsResult, isLoading, isError, refetch } = useQuery({
+    queryKey: ["products"],
+    queryFn: getProducts,
+  });
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
 
+  const allProducts = productsResult?.products ?? [];
   const favoriteProducts = allProducts.filter((p) => favorites.includes(p.id));
 
   return (
@@ -36,7 +40,19 @@ function FavoritesPage() {
         </p>
       </div>
 
-      {favoriteProducts.length === 0 ? (
+      {isLoading ? (
+        <div className="py-20 text-center text-muted-foreground" aria-live="polite">
+          Loading your favorites…
+        </div>
+      ) : isError ? (
+        <div className="py-20 text-center space-y-4" role="alert">
+          <h2 className="font-display text-2xl">Unable to load favorites</h2>
+          <p className="text-sm text-muted-foreground">Please try again.</p>
+          <button type="button" className="btn-outline" onClick={() => void refetch()}>
+            Try again
+          </button>
+        </div>
+      ) : favoriteProducts.length === 0 ? (
         <div className="py-20 text-center space-y-4 rounded-3xl border border-dashed border-border bg-card/50">
           <Heart size={48} className="mx-auto text-muted-foreground/40" />
           <h2 className="font-display text-2xl">No favorites yet</h2>

@@ -7,9 +7,6 @@ import type { Database } from "./types";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim();
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
-console.log("[DEBUG] VITE_ environment variables:", Object.keys(import.meta.env).filter(key => key.startsWith('VITE_')));
-console.log("[DEBUG] VITE_SUPABASE_URL:", SUPABASE_URL);
-
 /**
  * Validate environment
  */
@@ -27,7 +24,7 @@ function validateEnv() {
   try {
     new URL(SUPABASE_URL);
   } catch {
-    console.error("❌ Invalid Supabase URL:", SUPABASE_URL);
+    console.error("❌ Invalid VITE_SUPABASE_URL");
     return false;
   }
 

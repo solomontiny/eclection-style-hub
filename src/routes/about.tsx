@@ -34,7 +34,7 @@ function About() {
         </div>
       </div>
       <div className="aspect-[4/5] rounded-3xl overflow-hidden shadow-[var(--shadow-card)]">
-        <img src={hero} alt="SupplierAffordable" className="h-full w-full object-cover" />
+        <img loading="lazy" decoding="async" src={hero} alt="SupplierAffordable" className="h-full w-full object-cover" />
       </div>
     </section>
   );

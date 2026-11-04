@@ -69,8 +69,10 @@ export const COUNTRIES: CountryCurrency[] = [
 // Only these currencies can be used for actual Paystack payment processing
 export const PAYSTACK_SUPPORTED_CURRENCIES = ["NGN", "GHS", "KES", "ZAR", "USD"] as const;
 
-export function isPaystackSupportedCurrency(currency: string): boolean {
-  return PAYSTACK_SUPPORTED_CURRENCIES.includes(currency as any);
+export type PaystackCurrency = (typeof PAYSTACK_SUPPORTED_CURRENCIES)[number];
+
+export function isPaystackSupportedCurrency(currency: string | null | undefined): currency is PaystackCurrency {
+  return typeof currency === "string" && (PAYSTACK_SUPPORTED_CURRENCIES as readonly string[]).includes(currency);
 }
 
 export function getPaymentCurrency(displayCurrency: string): string {
@@ -126,7 +128,7 @@ export function calculatePaystackAmount(baseNgnAmount: number, paymentCurrency: 
  */
 export function getExpectedPaystackAmount(order: { total: number; payment_currency?: string | null; currency?: string | null }): number {
   const paymentCurrency = order.payment_currency || 
-    (order.currency && PAYSTACK_SUPPORTED_CURRENCIES.includes(order.currency) ? order.currency : "NGN");
+    (isPaystackSupportedCurrency(order.currency) ? order.currency : "NGN");
   return calculatePaystackAmount(Number(order.total), paymentCurrency);
 }
 
@@ -135,5 +137,5 @@ export function getExpectedPaystackAmount(order: { total: number; payment_curren
  */
 export function getOrderPaymentCurrency(order: { payment_currency?: string | null; currency?: string | null }): string {
   return order.payment_currency || 
-    (order.currency && PAYSTACK_SUPPORTED_CURRENCIES.includes(order.currency) ? order.currency : "NGN");
+    (isPaystackSupportedCurrency(order.currency) ? order.currency : "NGN");
 }

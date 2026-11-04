@@ -56,7 +56,7 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
         </DialogHeader>
         <div className="flex gap-4">
           {displayImage ? (
-            <img src={displayImage} alt={product.name} className="h-28 w-24 rounded-xl object-cover" />
+            <img loading="lazy" decoding="async" src={displayImage} alt={product.name} className="h-28 w-24 rounded-xl object-cover" />
           ) : (
             <div className="h-28 w-24 rounded-xl bg-muted grid place-items-center text-xs text-muted-foreground">No image</div>
           )}

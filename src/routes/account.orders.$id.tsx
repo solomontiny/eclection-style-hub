@@ -1,9 +1,11 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fmtDate, fmtNGN } from "@/lib/admin-utils";
-import { Package, Truck, CheckCircle2, Clock } from "lucide-react";
+import { Package, Truck, CheckCircle2, Clock, Building2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/account/orders/$id")({
   beforeLoad: async () => {
@@ -36,11 +38,52 @@ function OrderDetailsPage() {
 
   const statuses = ["pending", "processing", "shipped", "out_for_delivery", "delivered"];
   const currentStatusIndex = statuses.indexOf(order.status);
+  const isBankTransfer = order.payment_method === "bank_transfer";
+  const isPaid = order.payment_status === "paid";
+  const isPendingPayment = order.payment_status === "pending" && !isPaid;
 
   return (
     <section className="container-x py-12 max-w-3xl">
       <h1 className="font-display text-3xl">Order #{order.order_number}</h1>
       <p className="text-muted-foreground mt-1">Placed on {fmtDate(order.created_at)}</p>
+
+      {/* Payment Status Banner */}
+      <div className="mt-6 p-4 rounded-xl border border-border flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {isPaid ? (
+            <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+          ) : (
+            <Clock className="h-6 w-6 text-amber-500" />
+          )}
+          <div>
+            {isPaid ? (
+              <div>
+                <p className="font-bold text-emerald-700 dark:text-emerald-300">Order Successful!</p>
+                <p className="text-sm text-muted-foreground">Thank you for patronizing Supplier Affordable.</p>
+              </div>
+            ) : isPendingPayment && isBankTransfer ? (
+              <div>
+                <p className="font-bold">Payment pending verification</p>
+                <p className="text-sm text-muted-foreground">
+                  Your bank transfer is being reviewed. Check back soon.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p className="font-bold capitalize">Payment: {order.payment_status}</p>
+                <p className="text-sm text-muted-foreground capitalize">Status: {order.status.replace("_", " ")}</p>
+              </div>
+            )}
+          </div>
+        </div>
+        <Badge className={isBankTransfer ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200" : "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200"}>
+          {isBankTransfer ? (
+            <><Building2 className="h-3 w-3 mr-1" /> Bank Transfer</>
+          ) : (
+            <>Unavailable</>
+          )}
+        </Badge>
+      </div>
 
       {/* Timeline */}
       <div className="mt-8 border rounded-2xl p-6">
@@ -90,6 +133,25 @@ function OrderDetailsPage() {
         </div>
       </div>
 
+      {/* Bank Transfer Instructions */}
+      {isBankTransfer && isPendingPayment && (
+        <div className="mt-8 p-6 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+          <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-3">Bank Transfer Instructions</h3>
+          <p className="text-sm text-blue-800 dark:text-blue-300 mb-4">
+            Please transfer the exact amount to one of our bank accounts and send proof of payment via WhatsApp.
+          </p>
+          <div className="flex justify-end">
+            <Link to="/payment-instructions" search={{ orderId: order.id }} className="text-sm text-blue-700 dark:text-blue-300 underline">
+              View Full Payment Instructions →
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Back to Orders */}
+      <Link to="/account/orders" className="mt-6 inline-flex items-center gap-2 text-sm text-primary underline">
+        ← Back to My Orders
+      </Link>
     </section>
   );
 }

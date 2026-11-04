@@ -29,7 +29,7 @@ function CategoriesPage() {
   const { data = [], isLoading } = useQuery({
     queryKey: ["admin-categories-full"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("categories").select("*, products(count)").order("name");
+      const { data, error } = await supabase.from("categories").select("id, name, slug, description, image_url, created_at, updated_at, active, products(count)").order("name");
       if (error) throw error;
       return (data ?? []).map((category) => ({ ...category, product_count: (category.products as { count: number }[] | undefined)?.[0]?.count ?? 0 })) as Category[];
     },
@@ -72,7 +72,7 @@ function CategoriesPage() {
     try {
       const fileName = `${Date.now()}-${crypto.randomUUID()}-${file.name.replace(/\s+/g, "-")}`;
       const { data: uploadData, error: uploadError } = await supabase.storage.from("site-media").upload(fileName, file, {
-        cacheControl: "3600",
+        cacheControl: "public, max-age=31536000, immutable",
         upsert: false,
         contentType: file.type,
       });
@@ -133,7 +133,7 @@ function CategoriesPage() {
               <Label>Category Image</Label>
               <div className="flex items-center gap-3 mt-1">
                 {editing?.image_url ? (
-                  <img src={editing.image_url} alt="Category preview" className="h-16 w-16 object-cover rounded border" onError={(e) => { (e.currentTarget as HTMLImageElement).src = ""; }} />
+                  <img loading="lazy" decoding="async" src={editing.image_url} alt="Category preview" className="h-16 w-16 object-cover rounded border" onError={(e) => { (e.currentTarget as HTMLImageElement).src = ""; }} />
                 ) : (
                   <div className="h-16 w-16 rounded border border-dashed border-border bg-muted flex items-center justify-center"><ImageIcon size={20} className="text-muted-foreground" /></div>
                 )}

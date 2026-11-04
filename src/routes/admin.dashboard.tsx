@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Package, ShoppingCart, Users, DollarSign, AlertTriangle, Clock3, CheckCircle2, Truck } from "lucide-react";
+import { Package, ShoppingCart, Users, DollarSign, AlertTriangle, Clock3, CheckCircle2, Truck, Activity, TrendingUp, Repeat } from "lucide-react";
+import { loadPerfReport, resetPerfReport, type PerfReport, getBandwidthSummary } from "@/lib/perf-monitor";
 
 export const Route = createFileRoute("/admin/dashboard")({
   component: DashboardPage,
@@ -12,6 +14,8 @@ function fmtNGN(n: number) {
 }
 
 function DashboardPage() {
+  const [perf, setPerf] = useState<PerfReport>(loadPerfReport());
+  useEffect(() => { setPerf(loadPerfReport()); }, []);
   const { data, isLoading } = useQuery({
     queryKey: ["admin-dashboard"],
     queryFn: async () => {
@@ -127,6 +131,42 @@ function DashboardPage() {
             {!isLoading && (data?.recentProducts ?? []).length === 0 && <p className="text-sm text-muted-foreground">No products yet</p>}
           </div>
         </div>
+      </div>
+
+      <div className="bg-background rounded-2xl border border-border p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-lg flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> Performance & bandwidth</h2>
+          <button className="btn-ghost text-xs" onClick={() => { resetPerfReport(); setPerf(loadPerfReport()); }}>Reset</button>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
+          <div><p className="text-xs text-muted-foreground">API requests</p><p className="font-display text-xl">{perf.apiRequests}</p></div>
+          <div><p className="text-xs text-muted-foreground">Unique endpoints</p><p className="font-display text-xl">{perf.uniqueApiEndpoints}</p></div>
+          <div><p className="text-xs text-muted-foreground">Image loads</p><p className="font-display text-xl">{perf.imageLoads}</p></div>
+          <div><p className="text-xs text-muted-foreground">Image errors</p><p className="font-display text-xl">{perf.imageErrors}</p></div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4 p-4 bg-muted/50 rounded-xl">
+          <div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /><p className="text-xs text-muted-foreground">Duplicate rate</p><p className="font-display text-xl font-bold text-primary">{getBandwidthSummary().duplicateRate}%</p></div>
+          <div className="flex items-center gap-2"><Repeat className="h-4 w-4 text-amber-500" /><p className="text-xs text-muted-foreground">Repeated requests</p><p className="font-display text-xl font-bold text-amber-500">{perf.duplicateRequests}</p></div>
+          <div className="flex items-center gap-2"><p className="text-xs text-muted-foreground">Session started</p><p className="font-display text-xl font-mono text-xs">{new Date(perf.sessionStart).toLocaleTimeString()}</p></div>
+          <div className="flex items-center gap-2"><p className="text-xs text-muted-foreground">Total requests</p><p className="font-display text-xl">{getBandwidthSummary().totalRequests}</p></div>
+        </div>
+        {getBandwidthSummary().topDuplicates.length > 0 && (
+          <div className="mt-4 space-y-1 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs font-semibold text-amber-700 flex items-center gap-1"><Repeat className="h-3 w-3" /> Top repeated endpoints</p>
+            {getBandwidthSummary().topDuplicates.map((d: { endpoint: string; count: number }, i: number) => (
+              <p key={i} className="text-xs text-amber-800 truncate font-mono">{d.endpoint} ×{d.count}</p>
+            ))}
+          </div>
+        )}
+        {perf.recentImageErrors.length > 0 && (
+          <div className="mt-4 space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground">Recent image errors</p>
+            {perf.recentImageErrors.slice(0, 5).map((e: { url: string; at: string }, i: number) => (
+              <p key={i} className="text-xs text-destructive truncate">{e.url}</p>
+            ))}
+          </div>
+        )}
+        <p className="mt-4 text-xs text-muted-foreground">Counts are stored locally in this browser. Reset after investigating.</p>
       </div>
     </div>
   );

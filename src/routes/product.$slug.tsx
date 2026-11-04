@@ -10,8 +10,73 @@ import { BuyNowDialog } from "@/components/BuyNowDialog";
 import { SizeChartDialog } from "@/components/SizeChartDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useFavorites } from "@/lib/favorites";
+import { fallbackToOriginalImage, getProductDetailImageProps, getQuickViewImageProps } from "@/lib/responsive-images";
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"];
+
+function ResponsiveProductImage({ 
+  src, 
+  alt, 
+  className = "",
+  sizes = "(max-width: 640px) 400px, (max-width: 1024px) 800px, 1200px"
+}: { 
+  src: string | null | undefined; 
+  alt: string; 
+  className?: string;
+  sizes?: string;
+}) {
+  if (!src) {
+    return <span className={`text-sm text-muted-foreground ${className}`}>No image available</span>;
+  }
+
+  const imageProps = getProductDetailImageProps(src);
+
+  return (
+      <img
+        src={imageProps.src}
+        srcSet={imageProps.srcSet}
+        sizes={sizes}
+        alt={alt}
+        width={imageProps.width}
+        height={imageProps.height}
+        loading="lazy"
+        decoding="async"
+        className={`h-full w-full object-cover ${className}`}
+        onError={fallbackToOriginalImage}
+      />
+  );
+}
+
+function ThumbnailImage({ 
+  src, 
+  alt, 
+  className = ""
+}: { 
+  src: string | null | undefined; 
+  alt: string; 
+  className?: string;
+}) {
+  if (!src) {
+    return <span className={`text-xs text-muted-foreground ${className}`}>No image</span>;
+  }
+
+  const imageProps = getQuickViewImageProps(src);
+
+  return (
+      <img
+        src={imageProps.src}
+        srcSet={imageProps.srcSet}
+        sizes={imageProps.sizes}
+        alt={alt}
+        width={imageProps.width}
+        height={imageProps.height}
+        loading="lazy"
+        decoding="async"
+        className={`h-full w-full object-cover ${className}`}
+        onError={fallbackToOriginalImage}
+      />
+  );
+}
 
 export const Route = createFileRoute("/product/$slug")({
   head: ({ params }) => ({ meta: [{ title: `${params.slug} — SupplierAffordable` }] }),
@@ -30,6 +95,7 @@ function ProductDetails() {
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ["product", slug],
     queryFn: () => getProductBySlug(slug),
+    staleTime: 5 * 60 * 1000,
   });
 
   useEffect(() => {
@@ -49,8 +115,9 @@ function ProductDetails() {
   const { data: related = [] } = useQuery({
     queryKey: ["related-products", product?.category_id, product?.id],
     enabled: !!product,
+    staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const query = supabase.from("products").select("*, category:categories(name, active)").eq("status", "active").neq("id", product!.id).limit(4);
+      const query = supabase.from("products").select("id, name, slug, description, category_id, price, discount_percent, stock, low_stock_threshold, images, status, featured, created_at, updated_at, sku, sale_price, product_type, promotion_status, colors, sizes, color_images, category:categories(name, active)").eq("status", "active").neq("id", product!.id).limit(4);
       const { data, error } = product?.category_id ? await query.eq("category_id", product.category_id) : await query;
       if (error) throw error;
       return (data ?? []).map(normalizeProduct);
@@ -72,14 +139,32 @@ function ProductDetails() {
 
   const isFavorite = product ? isFavorited(product.id) : false;
 
-  return <section className="container-x py-16 md:py-24">
+  const primaryImageProps = primaryImage ? getProductDetailImageProps(primaryImage) : null;
+  const thumbnailProps = images.map((img, idx) => ({ img, props: getQuickViewImageProps(img) }));
+
+return <section className="container-x py-16 md:py-24">
     <Link to="/shop" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"><ArrowLeft size={16} /> Back to shop</Link>
     <div className="mt-10 grid lg:grid-cols-2 gap-12 lg:gap-20">
       <div className="space-y-4">
         <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-muted shadow-sm">
-          {primaryImage ? <img src={primaryImage} alt={product.name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <span className="text-sm text-muted-foreground">No image available</span>}
+          {primaryImage ? (
+            <img
+              loading="lazy"
+              decoding="async"
+              src={primaryImageProps!.src}
+              srcSet={primaryImageProps!.srcSet}
+              sizes={primaryImageProps!.sizes}
+              alt={product.name}
+              width={primaryImageProps!.width}
+              height={primaryImageProps!.height}
+              className="h-full w-full object-cover"
+              onError={(event) => { event.currentTarget.style.display = "none"; }}
+            />
+          ) : (
+            <span className="text-sm text-muted-foreground">No image available</span>
+          )}
         </div>
-        {product.images && product.images.length > 1 && <div className="grid grid-cols-5 gap-3">{product.images.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setSelectedImage(index)} className={`aspect-square overflow-hidden rounded-xl border-2 transition-all ${selectedImage === index ? "border-primary shadow-sm" : "border-border hover:border-border/80"}`}>{image ? <img src={image} alt={`${product.name} ${index + 1}`} className="h-full w-full object-cover" /> : <span className="text-xs text-muted-foreground">No image</span>}</button>)}</div>}
+        {product.images && product.images.length > 1 && <div className="grid grid-cols-5 gap-3">{product.images.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setSelectedImage(index)} className={`aspect-square overflow-hidden rounded-xl border-2 transition-all ${selectedImage === index ? "border-primary shadow-sm" : "border-border hover:border-border/80"}`}><ThumbnailImage src={image} alt={`${product.name} ${index + 1}`} /></button>)}</div>}
       </div>
       <div className="flex flex-col">
         <p className="text-xs uppercase tracking-[0.2em] text-primary font-bold">{product.category ?? "Collection"}</p>

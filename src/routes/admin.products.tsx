@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useEffect, type ChangeEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Search, Pencil, Trash2, X, Upload, ArrowUp, ArrowDown, Star, Copy } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Upload, ArrowUp, ArrowDown, Star, Copy, ChevronLeft, ChevronRight } from "lucide-react";
 import { generateUniqueSlug, generateUniqueSku } from "@/lib/slug";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,9 @@ import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fmtNGN, slugify } from "@/lib/admin-utils";
 import { colorsToString, parseColorsString, colorToCss } from "@/lib/colors";
 import type { Product } from "@/lib/products";
+import { ImageUploader } from "@/components/admin/ImageUploader";
+import { uploadMultipleProductImages, deleteProductImages, uploadProductImage } from "@/lib/image-upload";
+import { getAdminProducts } from "@/lib/products";
 
 export const Route = createFileRoute("/admin/products")({
   component: ProductsPage,
@@ -24,6 +27,7 @@ export const Route = createFileRoute("/admin/products")({
 function ProductsPage() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sort, setSort] = useState("newest");
@@ -31,21 +35,17 @@ function ProductsPage() {
   const [editing, setEditing] = useState<Partial<Product> | null>(null);
   const [open, setOpen] = useState(false);
 
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ["admin-products"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return data as Product[];
-    },
-  });
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQ(q);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [q]);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["admin-categories"],
+    staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data } = await supabase
         .from("categories")
@@ -56,24 +56,19 @@ function ProductsPage() {
     },
   });
 
-  const filtered = useMemo(() => {
-    return products.filter((p) => {
-      if (statusFilter !== "all" && p.status !== statusFilter) return false;
-      if (categoryFilter !== "all" && p.category_id !== categoryFilter) return false;
-      if (q && !p.name.toLowerCase().includes(q.toLowerCase())) return false;
-      return true;
-    });
-  }, [products, q, statusFilter, categoryFilter]);
+  const categoryId = categoryFilter === "all" ? undefined : categoryFilter;
 
-  const sorted = useMemo(() => [...filtered].sort((a, b) => {
-    if (sort === "name") return a.name.localeCompare(b.name);
-    if (sort === "price-low") return Number(a.price) - Number(b.price);
-    if (sort === "price-high") return Number(b.price) - Number(a.price);
-    return 0;
-  }), [filtered, sort]);
-  const pageSize = 10;
-  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
-  const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
+  const { data: result, isLoading } = useQuery({
+    queryKey: ["admin-products", { page, statusFilter, categoryId, search: debouncedQ, sort }],
+    staleTime: 60 * 1000,
+    queryFn: () => getAdminProducts({ page, pageSize: 10, categoryId, search: debouncedQ, sort, status: statusFilter }),
+    placeholderData: (previous) => previous,
+  });
+
+  const products = result?.products ?? [];
+  const total = result?.total ?? 0;
+  const pageSize = result?.pageSize ?? 10;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   const del = useMutation({
     mutationFn: async (id: string) => {
@@ -216,7 +211,7 @@ function ProductsPage() {
                     <td className="p-3">
                       <div className="flex items-center gap-3">
                         {p.images[0] ? (
-                          <img src={p.images[0]} className="h-10 w-10 rounded object-cover" />
+                          <img loading="lazy" decoding="async" src={p.images[0]} className="h-10 w-10 rounded object-cover" />
                         ) : (
                           <div className="h-10 w-10 rounded bg-muted" />
                         )}
@@ -298,10 +293,6 @@ function ProductsPage() {
     </div>
   );
 }
-
-import { ImageUploader } from "@/components/admin/ImageUploader";
-// ... existing imports ...
-// ... existing types ...
 
 function ProductDialog({
   open,
@@ -395,19 +386,11 @@ function ProductDialog({
     const uploadedUrls: string[] = [];
     
     try {
-        // Upload new images
-        for (const img of images) {
-            if (img.file) {
-                const fileName = `${Date.now()}-${crypto.randomUUID()}-${img.file.name.replace(/\s+/g, "-")}`;
-                const { data: uploadData, error } = await supabase.storage
-                  .from("product-images")
-                  .upload(fileName, img.file);
-                if (error) throw error;
-                const { data: publicData } = supabase.storage.from("product-images").getPublicUrl(uploadData.path);
-                uploadedUrls.push(publicData.publicUrl);
-            } else {
-                uploadedUrls.push(img.url);
-            }
+        // Optimize and upload new images
+        const filesToUpload = images.filter(img => img.file).map(img => img.file as File);
+        if (filesToUpload.length > 0) {
+            const results = await uploadMultipleProductImages(filesToUpload);
+            uploadedUrls.push(...results.map((r) => r.publicUrl));
         }
 
         const productSlug = form.id
@@ -481,13 +464,8 @@ function ProductDialog({
   const handleColorImageUpload = async (colorName: string, file: File) => {
     setUploadingColor(colorName);
     try {
-      const fileName = `${Date.now()}-${crypto.randomUUID()}-${file.name.replace(/\s+/g, "-")}`;
-      const { data: uploadData, error } = await supabase.storage
-        .from("product-images")
-        .upload(fileName, file);
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(uploadData.path);
-      setColorImages((prev) => ({ ...prev, [colorName]: publicUrl }));
+      const result = await uploadProductImage(file);
+      setColorImages((prev) => ({ ...prev, [colorName]: result.publicUrl }));
     } catch (e) {
       toast.error("Image upload failed");
     } finally {
@@ -558,7 +536,7 @@ function ProductDialog({
           <div className="grid sm:grid-cols-3 gap-4">
             <div>
               <Label>Price (₦)</Label>
-              <Input type="number" value={form.price ?? ""} onChange={(e) => set("price", Number(e.target.value) as any)} />
+              <Input type="number" value={form.price ?? ""} onChange={(e) => set("price", Number(e.target.value))} />
             </div>
             <div>
               <Label>Sale price (₦)</Label>
@@ -566,7 +544,7 @@ function ProductDialog({
             </div>
             <div>
               <Label>Stock</Label>
-              <Input type="number" value={form.stock ?? ""} onChange={(e) => set("stock", Number(e.target.value) as any)} />
+              <Input type="number" value={form.stock ?? ""} onChange={(e) => set("stock", Number(e.target.value))} />
             </div>
           </div>
 
@@ -644,7 +622,7 @@ function ProductDialog({
                    <span className="w-24 text-sm font-medium">{colorName}</span>
                    {colorImages[colorName] ? (
                      <div className="flex items-center gap-2">
-                       <img src={colorImages[colorName]} alt={colorName} className="w-16 h-16 object-cover rounded border" />
+                       <img loading="lazy" decoding="async" src={colorImages[colorName]} alt={colorName} className="w-16 h-16 object-cover rounded border" />
                        <button
                          type="button"
                          onClick={() => removeColorImage(colorName)}

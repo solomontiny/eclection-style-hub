@@ -20,13 +20,14 @@ export function VideoAdvert() {
     queryKey: ["shop_settings_video"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("shop_settings")
+        .from("public_shop_settings")
         .select("video_url, video_title, video_description, poster_image_url, is_video_advert_enabled")
         .eq("id", "default")
         .single();
       if (error) throw error;
       return data as VideoSettings;
     },
+    staleTime: 10 * 60 * 1000,
   });
 
   if (!settings || !settings.is_video_advert_enabled) return null;
@@ -54,6 +55,7 @@ export function VideoAdvert() {
                 controls
                 playsInline
                 muted
+                preload="none"
                 poster={poster}
                 onError={() => setMediaError(true)}
               />

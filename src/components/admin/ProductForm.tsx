@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Upload, X } from "lucide-react";
 import { colorsToString, parseColorsString, colorToCss } from "@/lib/colors";
+import { uploadProductImage } from "@/lib/image-upload";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -75,21 +76,8 @@ export function ProductForm({ initialData, onSubmit, loading }: ProductFormProps
   const handleColorImageUpload = async (colorName: string, file: File) => {
     setUploadingColor(colorName);
     try {
-      const fileName = `${Date.now()}-${crypto.randomUUID()}-${file.name.replace(/\s+/g, "-")}`;
-      const { data: uploadData, error } = await supabase.storage
-        .from("product-images")
-        .upload(fileName, file);
-
-      if (error) {
-        alert("Image upload failed: " + error.message);
-        return;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("product-images")
-        .getPublicUrl(uploadData.path);
-
-      setColorImages((prev) => ({ ...prev, [colorName]: publicUrl }));
+      const result = await uploadProductImage(file);
+      setColorImages((prev) => ({ ...prev, [colorName]: result.publicUrl }));
     } finally {
       setUploadingColor(null);
     }
@@ -164,7 +152,7 @@ export function ProductForm({ initialData, onSubmit, loading }: ProductFormProps
               <span className="w-24 text-sm font-medium">{colorName}</span>
               {colorImages[colorName] ? (
                 <div className="flex items-center gap-2">
-                  <img src={colorImages[colorName]} alt={colorName} className="w-16 h-16 object-cover rounded border" />
+                  <img loading="lazy" decoding="async" src={colorImages[colorName]} alt={colorName} className="w-16 h-16 object-cover rounded border" />
                   <button
                     type="button"
                     onClick={() => removeColorImage(colorName)}
@@ -195,7 +183,7 @@ export function ProductForm({ initialData, onSubmit, loading }: ProductFormProps
         </div>
       )}
 
-      <ImageUploader images={images} setImages={setImages} />
+      <ImageUploader images={images} setImages={setImages} isUploading={loading} />
 
       <Button type="submit" disabled={loading}>{loading ? "Saving..." : "Save Product"}</Button>
     </form>

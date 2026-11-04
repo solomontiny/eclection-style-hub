@@ -79,7 +79,7 @@ export function CartDrawer() {
               {groupedItems.others.map((item) => (
                 <div key={cartItemKey(item.id, item.size, item.color, item.bundleId)} className="flex gap-3 border-b pb-3">
                   <div className="h-16 w-14 rounded-lg bg-muted overflow-hidden">
-                    {item.image && <img src={item.image} alt="" className="h-full w-full object-cover" />}
+                    {item.image && <img loading="lazy" decoding="async" src={item.image} alt="" className="h-full w-full object-cover" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{item.name}</p>

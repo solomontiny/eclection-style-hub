@@ -13,6 +13,12 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrencyPrice, COUNTRIES } from "@/lib/currency-browser";
 import { useStore } from "@/lib/store-context";
+import {
+  getNextWholesaleTier,
+  getWholesaleTier,
+  WHOLESALE_BUNDLE_SIZE,
+  WHOLESALE_TIERS,
+} from "@/lib/wholesale-pricing";
 
 export const Route = createFileRoute("/bulk-order")({
   head: () => ({
@@ -90,7 +96,7 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
         <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted sm:h-24 sm:w-24">
           <Package className="absolute inset-0 m-auto h-7 w-7 text-muted-foreground" />
           {product.images?.[0] && (
-            <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+            <img loading="lazy" decoding="async" src={product.images[0]} alt={product.name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />
           )}
         </div>
         <div className="min-w-0 flex-1">
@@ -131,7 +137,7 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
                     >
                       <Package className="absolute inset-0 m-auto h-5 w-5 text-muted-foreground/50" />
                       {colourImage ? (
-                        <img
+                        <img loading="lazy" decoding="async"
                           src={colourImage}
                           alt={color}
                           className="h-full w-full object-cover"
@@ -218,31 +224,24 @@ function BulkOrderPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("*")
+        .select("id, name, slug, description, category_id, price, discount_percent, stock, low_stock_threshold, images, status, featured, created_at, updated_at, sku, sale_price, product_type, promotion_status, colors, sizes, color_images")
         .eq("product_type", "bundle")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Product[];
     },
   });
-  const { data: settings } = useQuery({
-    queryKey: ["shop_settings_bulk"],
-    queryFn: async () => {
-      const { data } = await supabase.from("shop_settings").select("bulk_unit_price, bulk_min_qty").eq("id", "default").maybeSingle();
-      return data;
-    },
-  });
-  const bulkUnitPrice = Number(settings?.bulk_unit_price ?? 6000);
-
   const { addItem } = useCart();
   const [bundleItems, setBundleItems] = useState<BundleItem[]>([]);
   const currentBundleTotal = bundleItems.reduce((sum, item) => sum + item.qty, 0);
 
-  // Bundle calculation: FIXED at 10 pieces = 1 bundle
-  const BUNDLE_SIZE = 10;
-  const bundleCount = currentBundleTotal / BUNDLE_SIZE;
-  const isCompleteBundle = currentBundleTotal > 0 && currentBundleTotal % BUNDLE_SIZE === 0;
-  const totalPrice = currentBundleTotal * bulkUnitPrice;
+  const bundleCount = Number((currentBundleTotal / WHOLESALE_BUNDLE_SIZE).toFixed(1));
+  const wholesaleTier = getWholesaleTier(currentBundleTotal);
+  const nextWholesaleTier = getNextWholesaleTier(currentBundleTotal);
+  const wholesaleUnitPrice =
+    wholesaleTier?.pricePerPiece ?? WHOLESALE_TIERS[0].pricePerPiece;
+  const totalPrice = currentBundleTotal * wholesaleUnitPrice;
+  const meetsWholesaleMinimum = currentBundleTotal >= WHOLESALE_BUNDLE_SIZE;
 
   const addToBundle = (product: Product, lines: ColourLine[]) => {
     setBundleItems((current) => {
@@ -262,17 +261,13 @@ function BulkOrderPage() {
   };
 
   const finalizeBundle = () => {
-    if (currentBundleTotal === 0) {
-      toast.error("Select at least one item.");
-      return;
-    }
-    if (!isCompleteBundle) {
-      toast.error(`Total pieces must be a multiple of ${BUNDLE_SIZE} (10 pieces = 1 bundle).`);
+    if (!meetsWholesaleMinimum) {
+      toast.error(`Select at least ${WHOLESALE_BUNDLE_SIZE} pieces for wholesale pricing.`);
       return;
     }
     const bundleId = `bundle_${Date.now()}`;
     bundleItems.forEach((item) => {
-      addItem(item.product, item.size, item.color, item.qty, true, bundleId, bulkUnitPrice);
+      addItem(item.product, item.size, item.color, item.qty, true, bundleId, wholesaleUnitPrice);
     });
     setBundleItems([]);
     toast.success("Bulk order added to cart!");
@@ -283,13 +278,24 @@ function BulkOrderPage() {
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-display text-primary">Build Your Custom Bulk Order</h1>
         <p className="text-lg">
-          {BUNDLE_SIZE} pieces = 1 bundle &nbsp;|&nbsp; {formatCurrencyPrice(bulkUnitPrice, currency)} per piece
+          {WHOLESALE_BUNDLE_SIZE} pieces = 1 bundle &nbsp;|&nbsp; wholesale pricing starts at {formatCurrencyPrice(WHOLESALE_TIERS[0].pricePerPiece, currency)} per piece
         </p>
-        <div className={`mx-auto flex max-w-md items-center justify-center gap-2 p-4 rounded-xl font-bold ${isCompleteBundle ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" : "bg-primary/10 text-primary"}`}>
-          {isCompleteBundle ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-          {currentBundleTotal} Pieces Selected {isCompleteBundle ? `(Ready: ${bundleCount} Bundle${bundleCount > 1 ? "s" : ""})` : `(Must be multiple of ${BUNDLE_SIZE})`}
+        <div className={`mx-auto flex max-w-md items-center justify-center gap-2 p-4 rounded-xl font-bold ${meetsWholesaleMinimum ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" : "bg-primary/10 text-primary"}`}>
+          {meetsWholesaleMinimum ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+          {currentBundleTotal} Pieces Selected ({bundleCount} bundle{bundleCount === 1 ? "" : "s"})
         </div>
-        {isCompleteBundle && (
+        {nextWholesaleTier ? (
+          <p className="text-sm text-muted-foreground">
+            {currentBundleTotal < WHOLESALE_BUNDLE_SIZE
+              ? `Add ${nextWholesaleTier.minimumQuantity - currentBundleTotal} more piece${nextWholesaleTier.minimumQuantity - currentBundleTotal === 1 ? "" : "s"} to reach the wholesale minimum of ${nextWholesaleTier.minimumQuantity}.`
+              : `Add ${nextWholesaleTier.minimumQuantity - currentBundleTotal} piece${nextWholesaleTier.minimumQuantity - currentBundleTotal === 1 ? "" : "s"} to reach ${nextWholesaleTier.minimumQuantity} pieces at ${formatCurrencyPrice(nextWholesaleTier.pricePerPiece, currency)} per piece.`}
+            {(nextWholesaleTier.minimumQuantity - currentBundleTotal) % WHOLESALE_BUNDLE_SIZE === 0 &&
+              ` (${(nextWholesaleTier.minimumQuantity - currentBundleTotal) / WHOLESALE_BUNDLE_SIZE} bundle${(nextWholesaleTier.minimumQuantity - currentBundleTotal) / WHOLESALE_BUNDLE_SIZE === 1 ? "" : "s"})`}
+          </p>
+        ) : currentBundleTotal >= 1000 ? (
+          <p className="text-sm text-muted-foreground">You have reached the highest wholesale quantity tier.</p>
+        ) : null}
+        {meetsWholesaleMinimum && (
           <Button onClick={finalizeBundle} className="btn-accent">
             Add Bulk Order to Cart ({formatCurrencyPrice(totalPrice, currency)})
           </Button>
@@ -322,7 +328,7 @@ function BulkOrderPage() {
                     <div key={`${item.product.id}-${item.color}-${item.size}-${index}`} className="flex items-start gap-3 rounded-xl border border-border/60 bg-background p-3">
                       <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
                         <Package className="absolute inset-0 m-auto h-5 w-5 text-muted-foreground" />
-                        {image && <img src={image} alt={`${item.product.name} ${item.color}`} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
+                        {image && <img loading="lazy" decoding="async" src={image} alt={`${item.product.name} ${item.color}`} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{item.product.name}</p>
@@ -352,12 +358,17 @@ function BulkOrderPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Price Per Piece</span>
-                    <span className="font-semibold">{formatCurrencyPrice(bulkUnitPrice, currency)}</span>
+                    <span className="font-semibold">{formatCurrencyPrice(wholesaleUnitPrice, currency)}</span>
                   </div>
                   <div className="flex justify-between border-t border-border pt-3 font-display text-lg">
                     <span>Grand Total</span>
                     <span className="text-primary">{formatCurrencyPrice(totalPrice, currency)}</span>
                   </div>
+                  {!meetsWholesaleMinimum && (
+                    <p className="text-xs text-muted-foreground">
+                      Estimated at the starting tier. Select at least {WHOLESALE_BUNDLE_SIZE} pieces to qualify.
+                    </p>
+                  )}
                 </div>
               </div>
             </>

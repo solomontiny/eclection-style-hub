@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getSupabaseAdmin } from "./supabase-admin.server";
 import { CONTACT } from "./contact";
 import { sendLovableEmail } from "@lovable.dev/email-js";
-import { PAYSTACK_SUPPORTED_CURRENCIES } from "./currency";
+import { PAYSTACK_SUPPORTED_CURRENCIES, isPaystackSupportedCurrency } from "./currency";
 
 function naira(n: number) {
   return "₦" + n.toLocaleString("en-NG");
@@ -89,7 +89,7 @@ export const newOrderNotification = createServerFn({ method: "POST" })
       .eq("order_id", order.id);
 
     const orderCurrency = order.currency || "NGN";
-    const isMultiCurrency = PAYSTACK_SUPPORTED_CURRENCIES.includes(orderCurrency) && orderCurrency !== "NGN";
+    const isMultiCurrency = isPaystackSupportedCurrency(orderCurrency) && orderCurrency !== "NGN";
 
     // Build detailed item rows with size, color, unit price, subtotal
     const itemRows = (items || [])
@@ -125,7 +125,7 @@ export const newOrderNotification = createServerFn({ method: "POST" })
       : locationLine;
 
     const displayCurrency = isMultiCurrency ? orderCurrency : "NGN";
-    const paymentCurrency = PAYSTACK_SUPPORTED_CURRENCIES.includes(orderCurrency) ? orderCurrency : "NGN";
+    const paymentCurrency = isPaystackSupportedCurrency(orderCurrency) ? orderCurrency : "NGN";
     const isFallback = isMultiCurrency && paymentCurrency === "NGN";
 
     // Format order status labels
@@ -163,7 +163,7 @@ export const newOrderNotification = createServerFn({ method: "POST" })
           shippingAddr.state,
           shippingAddr.postal_code,
           shippingAddr.country
-        ].filter(Boolean)
+        ].filter((p): p is string => typeof p === "string" && p.trim().length > 0)
       : [];
 
     const adminHtml = `<!doctype html>
@@ -294,7 +294,7 @@ export async function sendCustomerOrderEmail(orderId: string) {
     .eq("order_id", orderId);
 
   const orderCurrency = order.currency || "NGN";
-  const isMultiCurrency = PAYSTACK_SUPPORTED_CURRENCIES.includes(orderCurrency) && orderCurrency !== "NGN";
+  const isMultiCurrency = isPaystackSupportedCurrency(orderCurrency) && orderCurrency !== "NGN";
 
   const itemRows = (items || [])
     .map((it: any) => `

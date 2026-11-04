@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { parseColorsString } from "@/lib/colors";
+import { uploadMultipleProductImages, deleteProductImages } from "@/lib/image-upload";
 
 export default function EditProduct() {
   const navigate = useNavigate();
@@ -11,31 +12,28 @@ export default function EditProduct() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabase.from("products").select("*").eq("id", id).single().then(({ data }) => setProduct(data));
+    supabase.from("products").select("id, name, slug, description, category_id, price, discount_percent, stock, low_stock_threshold, images, status, featured, created_at, updated_at, sku, sale_price, product_type, promotion_status, colors, sizes, color_images").eq("id", id).single().then(({ data }) => setProduct(data));
   }, [id]);
 
   const handleSubmit = async (data: any, images: { file: File | null; url: string; isPrimary: boolean }[]) => {
     setLoading(true);
 
     const uploadedUrls: string[] = [];
-    const removedImages = product.images.filter((oldUrl: string) => !images.find(img => img.url === oldUrl));
-
-    for (const img of images) {
-      if (img.file) {
-        const { data: uploadData, error } = await supabase.storage
-          .from("product-images")
-          .upload(`${crypto.randomUUID()}-${img.file.name}`, img.file);
-        
-        if (error) {
-          alert("Image upload failed");
-          setLoading(false);
-          return;
-        }
-        uploadedUrls.push(uploadData.path);
-      } else {
-        uploadedUrls.push(img.url);
+    const filesToUpload = images.filter((img) => img.file).map((img) => img.file!);
+    const keptUrls = images.filter((img) => !img.file).map((img) => img.url);
+    
+    if (filesToUpload.length > 0) {
+      try {
+        const results = await uploadMultipleProductImages(filesToUpload);
+        uploadedUrls.push(...results.map((r) => r.publicUrl));
+      } catch (e) {
+        alert("Image upload failed: " + (e as Error).message);
+        setLoading(false);
+        return;
       }
     }
+    
+    uploadedUrls.push(...keptUrls);
 
     const colorsArr = parseColorsString(data.colors);
     const sizesArr = parseColorsString(data.sizes);
@@ -56,8 +54,9 @@ export default function EditProduct() {
     }
 
     // Cleanup removed images from storage
+    const removedImages = product.images.filter((oldUrl: string) => !uploadedUrls.includes(oldUrl));
     if (removedImages.length > 0) {
-      await supabase.storage.from("product-images").remove(removedImages);
+      await deleteProductImages(removedImages);
     }
 
     setLoading(false);

@@ -18,8 +18,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { DELIVERY_INFO } from "@/lib/contact";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CreditCard, Building2 } from "lucide-react";
+import { Building2 } from "lucide-react";
 
 const CustomerSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -56,7 +55,7 @@ function CheckoutPage() {
     queryKey: ["shop-settings"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("shop_settings")
+        .from("public_shop_settings")
         .select("bank_transfer_enabled")
         .eq("id", "default")
         .maybeSingle();
@@ -125,13 +124,27 @@ function CheckoutPage() {
     }
 
     try {
+      const { data: authData, error: authError } = await supabase.auth.getSession();
+      const currentSession = authData.session;
+      if (authError || !currentSession?.access_token || currentSession.user.id !== user.id) {
+        if (import.meta.env.DEV) {
+          console.warn("[checkout] session unavailable or changed", {
+            hasSession: !!currentSession,
+            matchesCheckoutUser: currentSession?.user.id === user.id,
+          });
+        }
+        toast.error("Your sign-in session has expired. Please sign in again.");
+        await navigate({ to: "/login", search: { redirect: "/checkout" } });
+        return;
+      }
+
       const order = await createOrderServerFn({
         data: {
           items: items.map((i) => ({ id: i.id, size: i.size, color: i.color, qty: i.qty, isBulk: !!i.isBulk, bundleId: i.bundleId })),
           customer: data,
-          callbackUrl: `${window.location.origin}/thank-you`,
           currency,
         },
+        headers: { Authorization: `Bearer ${currentSession.access_token}` },
       });
 
       if (import.meta.env.DEV) {

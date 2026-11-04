@@ -29,17 +29,26 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const mapAuthError = (message: string) => {
-  if (message === "Error sending confirmation email") {
-    return "Account created, but we couldn't send the confirmation email. Please contact support.";
+  if (message.includes("Invalid login credentials")) {
+    return "Invalid email or password.";
+  }
+  if (message.includes("Email not confirmed")) {
+    return "Please verify your email address before signing in. Check your inbox for the confirmation link.";
   }
   if (message.includes("User already registered")) {
-    return "This email is already registered.";
+    return "An account with this email already exists. Please sign in instead.";
   }
   if (message.includes("Password should be at least")) {
-    return "Password is too weak.";
+    return "Password must be at least 6 characters long.";
   }
   if (message.includes("Invalid email")) {
-    return "Invalid email address.";
+    return "Please enter a valid email address.";
+  }
+  if (message.includes("rate limit") || message.includes("Too many requests")) {
+    return "Too many attempts. Please try again later.";
+  }
+  if (message === "Error sending confirmation email") {
+    return "Account created, but we couldn't send the confirmation email. Please contact support.";
   }
   return message;
 };
@@ -59,13 +68,22 @@ export function AuthProvider({
 
     const initialize = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
+        const raceResult = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Session timeout")), 8000)
+          ),
+        ]);
+        const { data, error } = raceResult as {
+          data: { session: Session | null };
+          error: { message: string } | null;
+        };
+
+        if (!mounted) return;
 
         if (error) {
           console.error("[GET SESSION]", error.message);
         }
-
-        if (!mounted) return;
 
         setSession(data.session);
         setUser(data.session?.user ?? null);
@@ -110,7 +128,7 @@ export function AuthProvider({
           if (error) {
             console.error("[SIGNIN ERROR]", error);
             return {
-              error: error.message,
+              error: mapAuthError(error.message),
             };
           }
 

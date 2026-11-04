@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { trackApiRequest } from "@/lib/perf-monitor";
 
 type ProductRow = Database["public"]["Tables"]["products"]["Row"];
 export type Product = ProductRow & {
@@ -32,13 +33,16 @@ export const normalizeProduct = (product: ProductRowWithCategory): Product => ({
   color_images: (product as any).color_images ?? null,
 });
 
+const PRODUCT_SELECT_COLUMNS = "id, name, slug, description, category_id, price, discount_percent, stock, low_stock_threshold, images, status, featured, created_at, updated_at, sku, sale_price, product_type, promotion_status, colors, sizes, color_images, category:categories(name, active)";
+
 /**
  * Fetch all categories
  */
 export async function getCategories() {
+  trackApiRequest("getCategories");
   const { data, error } = await supabase
     .from("categories")
-    .select("*")
+    .select("id, name, slug, description, image_url, active")
     .eq("active", true);
 
   if (error) {
@@ -49,18 +53,335 @@ export async function getCategories() {
   return data;
 }
 
+export interface GetProductsOptions {
+  page?: number;
+  pageSize?: number;
+  categoryId?: string;
+  search?: string;
+  sort?: "newest" | "name" | "price-low" | "price-high";
+  saleOnly?: boolean;
+  featured?: boolean;
+  productType?: "standard" | "bundle" | "premium";
+  status?: "active" | "draft" | "archived" | "all";
+}
+
+export interface GetProductsResult {
+  products: Product[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ProductFilterOptions {
+  page?: number;
+  pageSize?: number;
+  category?: string;
+  search?: string;
+  sort?: "newest" | "name" | "price-low" | "price-high";
+  saleOnly?: boolean;
+  featured?: boolean;
+}
+
+export interface PaginatedProductsResult {
+  products: Product[];
+  totalCount: number;
+  pageCount: number;
+  currentPage: number;
+}
+
 /**
- * Fetch all products (READ)
+ * Fetch products with server-side pagination, filtering, and sorting (PUBLIC - active only)
  */
-export async function getProducts(): Promise<Product[]> {
-  const { data, error } = await supabase
+export async function getProductsPaginated(options: ProductFilterOptions = {}): Promise<PaginatedProductsResult> {
+  const {
+    page = 1,
+    pageSize = 12,
+    category,
+    search,
+    sort = "newest",
+    saleOnly = false,
+    featured = false,
+  } = options;
+
+  trackApiRequest("getProductsPaginated");
+
+  let query = supabase
     .from("products")
-    .select("*, category:categories(name, active)")
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
+    .select(
+      PRODUCT_SELECT_COLUMNS,
+      { count: "exact" }
+    )
+    .eq("status", "active");
+
+  if (category && category !== "all") {
+    query = query.eq("category_id", category);
+  }
+
+  if (search && search.trim()) {
+    const searchTerm = search.trim();
+    query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,sku.ilike.%${searchTerm}%`);
+  }
+
+  if (saleOnly) {
+    query = query.not("sale_price", "is", null);
+  }
+
+  if (featured) {
+    query = query.eq("featured", true);
+  }
+
+  const sortColumn = sort === "name" ? "name" : sort === "price-low" ? "price" : sort === "price-high" ? "price" : "created_at";
+  const ascending = sort === "name" || sort === "price-low";
+
+  query = query.order(sortColumn, { ascending });
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  query = query.range(from, to);
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    console.error("getProductsPaginated error:", error.message);
+    throw new Error(error.message);
+  }
+
+  const totalCount = count ?? 0;
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  return {
+    products: (data || []).map(normalizeProduct),
+    totalCount,
+    pageCount,
+    currentPage: page,
+  };
+}
+
+/**
+ * Fetch products with pagination, filtering, and sorting (READ)
+ * Used for admin and general queries with flexible status
+ */
+export async function getProducts(options: GetProductsOptions = {}): Promise<GetProductsResult> {
+  trackApiRequest("getProducts");
+  const {
+    page = 1,
+    pageSize = 20,
+    categoryId,
+    search,
+    sort = "newest",
+    saleOnly = false,
+    featured,
+    productType,
+    status = "active",
+  } = options;
+
+  let query = supabase
+    .from("products")
+    .select(PRODUCT_SELECT_COLUMNS, { count: "exact" });
+
+  if (status !== "all") {
+    query = query.eq("status", status);
+  }
+
+  if (categoryId) {
+    query = query.eq("category_id", categoryId);
+  }
+
+  if (search) {
+    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%,sku.ilike.%${search}%`);
+  }
+
+  if (saleOnly) {
+    query = query.not("sale_price", "is", null).filter("sale_price", "lt", "price");
+  }
+
+  if (featured !== undefined) {
+    query = query.eq("featured", featured);
+  }
+
+  if (productType) {
+    query = query.eq("product_type", productType);
+  }
+
+  // Apply sorting
+  switch (sort) {
+    case "name":
+      query = query.order("name", { ascending: true });
+      break;
+    case "price-low":
+      query = query.order("price", { ascending: true });
+      break;
+    case "price-high":
+      query = query.order("price", { ascending: false });
+      break;
+    case "newest":
+    default:
+      query = query.order("created_at", { ascending: false });
+  }
+
+  // Apply pagination
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  query = query.range(from, to);
+
+  const { data, error, count } = await query;
 
   if (error) {
     console.error("getProducts error:", error.message);
+    throw new Error(error.message);
+  }
+
+  return {
+    products: (data || []).map(normalizeProduct),
+    total: count || 0,
+    page,
+    pageSize,
+  };
+}
+
+/**
+ * Fetch products for admin (includes all statuses) with pagination
+ */
+export async function getAdminProducts(options: GetProductsOptions = {}): Promise<GetProductsResult> {
+  trackApiRequest("getAdminProducts");
+  const {
+    page = 1,
+    pageSize = 10,
+    categoryId,
+    search,
+    sort = "newest",
+    status = "all",
+  } = options;
+
+  let query = supabase
+    .from("products")
+    .select(PRODUCT_SELECT_COLUMNS, { count: "exact" });
+
+  if (status !== "all") {
+    query = query.eq("status", status);
+  }
+
+  if (categoryId) {
+    query = query.eq("category_id", categoryId);
+  }
+
+  if (search) {
+    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%,sku.ilike.%${search}%`);
+  }
+
+  // Apply sorting
+  switch (sort) {
+    case "name":
+      query = query.order("name", { ascending: true });
+      break;
+    case "price-low":
+      query = query.order("price", { ascending: true });
+      break;
+    case "price-high":
+      query = query.order("price", { ascending: false });
+      break;
+    case "newest":
+    default:
+      query = query.order("created_at", { ascending: false });
+  }
+
+  // Apply pagination
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  query = query.range(from, to);
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    console.error("getAdminProducts error:", error.message);
+    throw new Error(error.message);
+  }
+
+  return {
+    products: (data || []).map(normalizeProduct),
+    total: count || 0,
+    page,
+    pageSize,
+  };
+}
+
+/**
+ * Fetch featured products (limit 4)
+ */
+export async function getFeaturedProducts(limit = 4): Promise<Product[]> {
+  trackApiRequest("getFeaturedProducts");
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT_COLUMNS)
+    .eq("status", "active")
+    .eq("featured", true)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("getFeaturedProducts error:", error.message);
+    throw new Error(error.message);
+  }
+
+  return (data || []).map(normalizeProduct);
+}
+
+/**
+ * Fetch new arrivals (limit 4)
+ */
+export async function getNewArrivals(limit = 4): Promise<Product[]> {
+  trackApiRequest("getNewArrivals");
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT_COLUMNS)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("getNewArrivals error:", error.message);
+    throw new Error(error.message);
+  }
+
+  return (data || []).map(normalizeProduct);
+}
+
+/**
+ * Fetch bundle products (limit 4)
+ */
+export async function getBundleProducts(limit = 4): Promise<Product[]> {
+  trackApiRequest("getBundleProducts");
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT_COLUMNS)
+    .eq("status", "active")
+    .eq("product_type", "bundle")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("getBundleProducts error:", error.message);
+    throw new Error(error.message);
+  }
+
+  return (data || []).map(normalizeProduct);
+}
+
+/**
+ * Fetch on-sale products (limit 4)
+ */
+export async function getOnSaleProducts(limit = 4): Promise<Product[]> {
+  trackApiRequest("getOnSaleProducts");
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT_COLUMNS)
+    .eq("status", "active")
+    .not("sale_price", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("getOnSaleProducts error:", error.message);
     throw new Error(error.message);
   }
 
@@ -71,9 +392,10 @@ export async function getProducts(): Promise<Product[]> {
  * Fetch single product by ID (READ ONE)
  */
 export async function getProductById(id: string): Promise<Product | null> {
+  trackApiRequest("getProductById");
   const { data, error } = await supabase
     .from("products")
-    .select("*, category:categories(name, active)")
+    .select(PRODUCT_SELECT_COLUMNS)
     .eq("id", id)
     .single();
 
@@ -86,9 +408,10 @@ export async function getProductById(id: string): Promise<Product | null> {
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
+  trackApiRequest("getProductBySlug");
   const { data, error } = await supabase
     .from("products")
-    .select("*, category:categories(name, active)")
+    .select(PRODUCT_SELECT_COLUMNS)
     .eq("slug", slug)
     .eq("status", "active")
     .maybeSingle();

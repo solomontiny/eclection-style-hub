@@ -11,11 +11,11 @@ export function CurrencySelector() {
   const currentCountry = COUNTRIES.find((c) => c.code === currency) || COUNTRIES[0];
 
   return (
-    <Select
-      value={currency}
-      onValueChange={setCurrency}
-      className="w-[160px] sm:w-[180px]"
-    >
+    <div className="w-[160px] sm:w-[180px]">
+      <Select
+        value={currency}
+        onValueChange={setCurrency}
+      >
       <SelectTrigger className="h-9 text-sm gap-2">
         <Globe className="h-4 w-4 text-muted-foreground" />
         <SelectValue placeholder={t("currency") ?? "Currency"} />
@@ -36,5 +36,6 @@ export function CurrencySelector() {
         ))}
       </SelectContent>
     </Select>
+    </div>
   );
 }

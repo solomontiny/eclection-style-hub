@@ -28,7 +28,7 @@ export default function Products() {
     setLoading(true);
     const { data, error } = await supabase
       .from("products")
-      .select("*")
+      .select("id, name, slug, description, category_id, price, discount_percent, stock, low_stock_threshold, images, status, featured, created_at, updated_at, sku, sale_price, product_type, promotion_status, colors, sizes, color_images")
       .order(sortBy, { ascending: false });
 
     if (error) console.error(error.message);
@@ -94,7 +94,7 @@ export default function Products() {
           <tbody>
             {filteredProducts.map((p) => (
               <tr key={p.id}>
-                <td><img src={p.images?.[0] ?? ""} width={50} height={50} style={{ objectFit: "cover" }} /></td>
+                <td><img loading="lazy" decoding="async" src={p.images?.[0] ?? ""} width={50} height={50} style={{ objectFit: "cover" }} /></td>
                 <td>{p.name}</td>
                 <td>₦{p.price} {p.sale_price && <span className="text-red-500">₦{p.sale_price}</span>}</td>
                 <td>{p.stock}</td>

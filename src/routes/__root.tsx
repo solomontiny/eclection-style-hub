@@ -3,6 +3,7 @@ import {
   Outlet,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
   Link,
@@ -12,11 +13,13 @@ import appCss from "../styles.css?url";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { CustomerCareWidget } from "@/components/CustomerCareWidget";
+import { Toaster } from "sonner";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { CartProvider } from "@/lib/cart";
 import { AuthProvider } from "@/lib/auth";
-import { MaintenancePage } from "@/components/MaintenancePage";
 import { StoreProvider } from "@/lib/store-context";
+import { useEffect } from "react";
+import { trackImageError } from "@/lib/perf-monitor";
 import { FavoritesProvider } from "@/lib/favorites";
 
 function NotFoundComponent() {
@@ -76,6 +79,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
+  // The admin layout already mounts its own Toaster; mount one for the
+  // storefront so checkout / payment-instructions errors are visible to
+  // customers instead of failing silently.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isAdminRoute = pathname.startsWith("/admin");
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -88,6 +97,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        {!isAdminRoute && <Toaster richColors position="top-right" />}
         <Scripts />
       </body>
     </html>
@@ -97,22 +107,18 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
-  // Maintenance mode: only show on public Supplier Affordable domains
-  // Worker URL (supplieraffordable.scotttinys.workers.dev) and localhost remain fully accessible
-  const isPublicDomain = typeof window !== "undefined" && (
-    window.location.hostname === "www.supplieraffordable.com" ||
-    window.location.hostname === "supplieraffordable.com"
-  );
+  useEffect(() => {
+    const onError = (e: Event) => {
+      const target = e.target as HTMLImageElement | null;
+      if (target && target.tagName === "IMG" && target.src) {
+        trackImageError(target.src);
+      }
+    };
+    window.addEventListener("error", onError, true);
+    return () => window.removeEventListener("error", onError, true);
+  }, []);
 
-  if (isPublicDomain) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <StoreProvider>
-          <MaintenancePage />
-        </StoreProvider>
-      </QueryClientProvider>
-    );
-  }
+  // Maintenance mode disabled — public website restored.
 
   return (
     <QueryClientProvider client={queryClient}>
