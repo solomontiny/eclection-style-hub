@@ -83,7 +83,8 @@ function AdminLayout() {
         .eq("is_read", false);
       return count ?? 0;
     },
-    refetchInterval: 30000,
+    staleTime: 30 * 1000,
+    refetchInterval: 60000,
   });
 
   return (

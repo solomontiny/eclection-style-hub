@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useEffect, type ChangeEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Search, Pencil, Trash2, X, Upload, ArrowUp, ArrowDown, Star, Copy, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Upload, ArrowUp, ArrowDown, Star, Copy, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { generateUniqueSlug, generateUniqueSku } from "@/lib/slug";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import type { Product } from "@/lib/products";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { uploadMultipleProductImages, deleteProductImages, uploadProductImage } from "@/lib/image-upload";
 import { getAdminProducts } from "@/lib/products";
+import { arrayToCsv, downloadCsv } from "@/lib/csv-export";
 
 export const Route = createFileRoute("/admin/products")({
   component: ProductsPage,
@@ -61,7 +62,7 @@ function ProductsPage() {
   const { data: result, isLoading } = useQuery({
     queryKey: ["admin-products", { page, statusFilter, categoryId, search: debouncedQ, sort }],
     staleTime: 60 * 1000,
-    queryFn: () => getAdminProducts({ page, pageSize: 10, categoryId, search: debouncedQ, sort, status: statusFilter }),
+    queryFn: () => getAdminProducts({ page, pageSize: 10, categoryId, search: debouncedQ, sort: sort as "name" | "newest" | "price-low" | "price-high", status: statusFilter as "all" | "active" | "draft" | "archived" }),
     placeholderData: (previous) => previous,
   });
 
@@ -128,13 +129,33 @@ function ProductsPage() {
         <div>
           <h1 className="font-display text-3xl">Products</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {filtered.length} of {products.length}
+            {products.length} of {total}
           </p>
         </div>
 
-        <button onClick={openNew} className="btn-primary flex items-center gap-2">
-          <Plus className="h-4 w-4" /> New product
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              try {
+                const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+                if (error) throw error;
+                const headers = ["id", "name", "slug", "sku", "price", "sale_price", "stock", "status", "category_id", "created_at"];
+                const rows = (data || []).map((p: any) => [p.id, p.name, p.slug, p.sku, p.price, p.sale_price, p.stock, p.status, p.category_id, p.created_at]);
+                const csv = arrayToCsv(headers, rows);
+                downloadCsv(`supplieraffordable-products-${new Date().toISOString().split('T')[0]}.csv`, csv);
+                toast.success("Products exported");
+              } catch (e: any) {
+                toast.error(e.message || "Export failed");
+              }
+            }}
+            className="btn-outline flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" /> Export CSV
+          </button>
+          <button onClick={openNew} className="btn-primary flex items-center gap-2">
+            <Plus className="h-4 w-4" /> New product
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -158,7 +179,7 @@ function ProductsPage() {
 
         <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPage(1); }}>
           <SelectTrigger className="w-40">
-            <SelectValue />
+            <SelectValue placeholder="All status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All status</SelectItem>
@@ -168,7 +189,7 @@ function ProductsPage() {
           </SelectContent>
         </Select>
 
-        <Select value={sort} onValueChange={setSort}>
+        <Select value={sort} onValueChange={(value) => setSort(value as "newest" | "name" | "price-low" | "price-high")}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="newest">Newest</SelectItem>
@@ -199,14 +220,14 @@ function ProductsPage() {
                     Loading…
                   </td>
                 </tr>
-              ) : filtered.length === 0 ? (
+              ) : products.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="p-6 text-center text-muted-foreground">
                     No products.
                   </td>
                 </tr>
               ) : (
-                paged.map((p) => (
+                products.map((p) => (
                   <tr key={p.id} className="border-t border-border">
                     <td className="p-3">
                       <div className="flex items-center gap-3">

@@ -2,12 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Search, Eye, User } from "lucide-react";
+import { Search, Eye, User, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fmtNGN, fmtDate } from "@/lib/admin-utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getAdminCustomersServerFn } from "@/lib/orders.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { arrayToCsv, downloadCsv } from "@/lib/csv-export";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/customers")({ component: CustomersPage });
 
@@ -29,9 +31,27 @@ function CustomersPage() {
     <div className="space-y-6">
       <div><h1 className="font-display text-3xl">Customers</h1><p className="text-sm text-muted-foreground mt-1">{filtered.length} of {data.length} registered customers</p></div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Search customers by name, email, phone…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="flex items-center justify-between">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Search customers by name, email, phone…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <button
+          onClick={() => {
+            try {
+              const headers = ["display_name", "email", "phone", "user_id", "created_at", "orders_count", "total_spent"];
+              const rows = data.map((c: any) => [c.display_name, c.email, c.phone, c.user_id, c.created_at, c.stats?.count, c.stats?.total]);
+              const csv = arrayToCsv(headers, rows);
+              downloadCsv(`supplieraffordable-customers-${new Date().toISOString().split('T')[0]}.csv`, csv);
+              toast.success("Customers exported");
+            } catch (e: any) {
+              toast.error(e.message || "Export failed");
+            }
+          }}
+          className="btn-outline flex items-center gap-2"
+        >
+          <Download className="h-4 w-4" /> Export CSV
+        </button>
       </div>
 
       <div className="bg-background rounded-2xl border border-border overflow-hidden">

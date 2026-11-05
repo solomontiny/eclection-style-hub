@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { getProducts } from "@/lib/products";
+import { getProductsByIds } from "@/lib/products";
 import { useFavorites } from "@/lib/favorites";
 import { ProductCard } from "@/components/ProductCard";
 import { Heart, ShoppingBag, ArrowRight, Trash2 } from "lucide-react";
@@ -18,15 +18,14 @@ export const Route = createFileRoute("/favorites")({
 });
 
 function FavoritesPage() {
-  const { favorites, toggleFavorite } = useFavorites();
-  const { data: productsResult, isLoading, isError, refetch } = useQuery({
-    queryKey: ["products"],
-    queryFn: getProducts,
+  const { favorites, toggleFavorite, isLoaded } = useFavorites();
+  const { data: favoriteProducts = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ["favorites", favorites],
+    queryFn: () => getProductsByIds(favorites),
+    enabled: isLoaded,
+    staleTime: 5 * 60 * 1000,
   });
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
-
-  const allProducts = productsResult?.products ?? [];
-  const favoriteProducts = allProducts.filter((p) => favorites.includes(p.id));
 
   return (
     <div className="container-x py-12 space-y-8">
@@ -40,7 +39,11 @@ function FavoritesPage() {
         </p>
       </div>
 
-      {isLoading ? (
+      {!isLoaded ? (
+        <div className="py-20 text-center text-muted-foreground" aria-live="polite">
+          Loading your favorites…
+        </div>
+      ) : isLoading ? (
         <div className="py-20 text-center text-muted-foreground" aria-live="polite">
           Loading your favorites…
         </div>

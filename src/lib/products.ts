@@ -165,7 +165,7 @@ export async function getProducts(options: GetProductsOptions = {}): Promise<Get
   trackApiRequest("getProducts");
   const {
     page = 1,
-    pageSize = 20,
+    pageSize = 12,
     categoryId,
     search,
     sort = "newest",
@@ -442,6 +442,35 @@ export async function createProduct(product: Database["public"]["Tables"]["produ
   }
 
   return normalizeProduct(data);
+}
+
+/**
+ * Fetch products by IDs (for favourites, etc.)
+ * Only returns active products. Preserves order of IDs if possible.
+ */
+export async function getProductsByIds(ids: string[]): Promise<Product[]> {
+  trackApiRequest("getProductsByIds");
+  if (!ids || ids.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT_COLUMNS)
+    .in("id", ids)
+    .eq("status", "active");
+
+  if (error) {
+    console.error("getProductsByIds error:", error.message);
+    throw new Error(error.message);
+  }
+
+  const products = (data || []).map(normalizeProduct);
+  const productMap = new Map(products.map((p) => [p.id, p]));
+  // Preserve order of IDs as they were saved
+  return ids
+    .map((id) => productMap.get(id))
+    .filter((p): p is Product => Boolean(p));
 }
 
 /**

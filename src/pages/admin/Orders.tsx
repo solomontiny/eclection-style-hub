@@ -23,13 +23,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import {
   verifyBankTransferPayment,
   sendBankTransferReceipt,
   retryPaymentReceipt,
 } from "@/lib/orders.functions";
 import { cancelOrder } from "@/lib/cancel-order.functions";
+import { arrayToCsv, downloadCsv } from "@/lib/csv-export";
 
 export const Route = createFileRoute("/admin/orders")({
   component: OrdersPage,
@@ -161,13 +162,36 @@ export function OrdersPage() {
           <h1 className="text-2xl font-display">Orders</h1>
           <p className="text-sm text-muted-foreground">{orders.length} orders</p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => qc.invalidateQueries({ queryKey: ["admin-orders"] })}
-        >
-          <RefreshCw className="h-4 w-4 mr-2" /> Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+                if (error) throw error;
+                const headers = ["order_number", "customer_name", "customer_email", "customer_phone", "total", "status", "payment_status", "payment_method", "currency", "created_at"];
+                const rows = (data || []).map((o: any) => [
+                  o.order_number, o.customer_name, o.customer_email, o.customer_phone, o.total, o.status, o.payment_status, o.payment_method, o.currency, o.created_at
+                ]);
+                const csv = arrayToCsv(headers, rows);
+                downloadCsv(`supplieraffordable-orders-${new Date().toISOString().split('T')[0]}.csv`, csv);
+                toast.success("Orders exported");
+              } catch (e: any) {
+                toast.error(e.message || "Export failed");
+              }
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" /> Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => qc.invalidateQueries({ queryKey: ["admin-orders"] })}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+          </Button>
+        </div>
       </div>
 
       <p className="mx-6 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">

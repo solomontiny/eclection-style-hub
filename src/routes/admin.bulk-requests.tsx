@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, Phone, Mail, Package, MessageSquare, UserRound, Trash2 } from "lucide-react";
+import { MapPin, Phone, Mail, Package, MessageSquare, UserRound, Trash2, Download } from "lucide-react";
+import { arrayToCsv, downloadCsv } from "@/lib/csv-export";
 
 export const Route = createFileRoute("/admin/bulk-requests")({ component: BulkRequestsPage });
 
@@ -174,9 +175,29 @@ function BulkRequestsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-3xl">Bulk/Wholesale Requests</h1>
-        <p className="text-sm text-muted-foreground mt-1">Review customer requirements and move each request through the existing workflow.</p>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl">Bulk/Wholesale Requests</h1>
+          <p className="text-sm text-muted-foreground mt-1">Review customer requirements and move each request through the existing workflow.</p>
+        </div>
+        <button
+          onClick={async () => {
+            try {
+              const { data, error } = await (supabase.from as unknown as (table: string) => any)("bulk_requests").select("*").order("created_at", { ascending: false });
+              if (error) throw error;
+              const headers = ["id", "customer_name", "whatsapp_number", "country", "delivery_country", "delivery_city", "quantity", "status", "created_at"];
+              const rows = (data || []).map((r: any) => [r.id, r.customer_name, r.whatsapp_number, r.country, r.delivery_country, r.delivery_city, r.quantity, r.status, r.created_at]);
+              const csv = arrayToCsv(headers, rows);
+              downloadCsv(`supplieraffordable-bulk-requests-${new Date().toISOString().split('T')[0]}.csv`, csv);
+              toast.success("Bulk requests exported");
+            } catch (e: any) {
+              toast.error(e.message || "Export failed");
+            }
+          }}
+          className="btn-outline flex items-center gap-2"
+        >
+          <Download className="h-4 w-4" /> Export CSV
+        </button>
       </div>
 
       {isError && <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center text-sm text-destructive">Could not load bulk requests. Please refresh and try again.</div>}

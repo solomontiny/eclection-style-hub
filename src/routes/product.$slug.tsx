@@ -95,7 +95,8 @@ function ProductDetails() {
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ["product", slug],
     queryFn: () => getProductBySlug(slug),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
   });
 
   useEffect(() => {
@@ -115,7 +116,8 @@ function ProductDetails() {
   const { data: related = [] } = useQuery({
     queryKey: ["related-products", product?.category_id, product?.id],
     enabled: !!product,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
     queryFn: async () => {
       const query = supabase.from("products").select("id, name, slug, description, category_id, price, discount_percent, stock, low_stock_threshold, images, status, featured, created_at, updated_at, sku, sale_price, product_type, promotion_status, colors, sizes, color_images, category:categories(name, active)").eq("status", "active").neq("id", product!.id).limit(4);
       const { data, error } = product?.category_id ? await query.eq("category_id", product.category_id) : await query;
@@ -151,6 +153,7 @@ return <section className="container-x py-16 md:py-24">
             <img
               loading="lazy"
               decoding="async"
+              fetchPriority="low"
               src={primaryImageProps!.src}
               srcSet={primaryImageProps!.srcSet}
               sizes={primaryImageProps!.sizes}

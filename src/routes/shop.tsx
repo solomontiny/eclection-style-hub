@@ -54,6 +54,7 @@ function Shop() {
     queryKey: ["products", options],
     queryFn: () => getProducts(options),
     staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
     placeholderData: (previous) => previous,
   });
 

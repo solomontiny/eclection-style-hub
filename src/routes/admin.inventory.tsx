@@ -4,7 +4,8 @@ import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, Minus, Plus, Search } from "lucide-react";
+import { AlertTriangle, Minus, Plus, Search, Download } from "lucide-react";
+import { arrayToCsv, downloadCsv } from "@/lib/csv-export";
 
 export const Route = createFileRoute("/admin/inventory")({
   component: InventoryPage,
@@ -124,6 +125,25 @@ function InventoryPage() {
           <p className="text-sm text-muted-foreground mt-1">
             Manage stock levels and thresholds
           </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              try {
+                const headers = ["id", "name", "sku", "stock", "low_stock_threshold", "status"];
+                const rows = data.map((p: Row) => [p.id, p.name, p.sku, p.stock, p.low_stock_threshold, p.status]);
+                const csv = arrayToCsv(headers, rows);
+                downloadCsv(`supplieraffordable-inventory-${new Date().toISOString().split('T')[0]}.csv`, csv);
+                toast.success("Inventory exported");
+              } catch (e: unknown) {
+                toast.error((e as Error).message || "Export failed");
+              }
+            }}
+            className="btn-outline flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" /> Export CSV
+          </button>
         </div>
 
         {lowCount + outCount > 0 && (

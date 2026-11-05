@@ -37,6 +37,7 @@ function ResponsiveProductImage({
       height={imageProps.height}
       loading="lazy"
       decoding="async"
+      fetchPriority="low"
       className={`h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 ${className}`}
       onError={fallbackToOriginalImage}
     />

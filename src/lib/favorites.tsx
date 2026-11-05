@@ -5,6 +5,7 @@ type FavoritesContextType = {
   toggleFavorite: (productId: string) => void;
   isFavorited: (productId: string) => boolean;
   clearFavorites: () => void;
+  isLoaded?: boolean;
 };
 
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
@@ -50,7 +51,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const clearFavorites = () => setFavorites([]);
 
   return (
-    <FavoritesContext.Provider value={{ favorites: favorites ?? [], toggleFavorite, isFavorited, clearFavorites }}>
+    <FavoritesContext.Provider value={{ favorites: favorites ?? [], toggleFavorite, isFavorited, clearFavorites, isLoaded }}>
       {children}
     </FavoritesContext.Provider>
   );
@@ -64,5 +65,6 @@ export function useFavorites() {
   return {
     ...context,
     favorites: context.favorites ?? [],
+    isLoaded: context.isLoaded ?? false,
   };
 }
