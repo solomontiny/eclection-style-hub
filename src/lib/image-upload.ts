@@ -22,11 +22,28 @@ export interface CompressionOptions {
 const DEFAULT_OPTIONS: Required<CompressionOptions> = {
   maxWidth: 1600,
   maxHeight: 1600,
-  quality: 0.82,
-  maxSizeKB: 300,
+  quality: 0.85,
+  maxSizeKB: 300, // recommendation only, not enforced if it hurts quality
   generateThumbnails: true,
   thumbnailSizes: [200, 400, 800],
 };
+
+const RECOMMENDED_PRODUCT_SIZE = 1200;
+
+export interface OptimisedImageResult {
+  blob: Blob;
+  file: File;
+  width: number;
+  height: number;
+  format: "webp" | "jpeg" | "png";
+  originalSize: number;
+  optimisedSize: number;
+  originalWidth: number;
+  originalHeight: number;
+  wasOptimised: boolean;
+  usedOriginal: boolean;
+  previewUrl: string;
+}
 
 function fileToDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -100,6 +117,27 @@ function compressToPNG(
   });
 }
 
+function compressToJPEG(
+  img: HTMLImageElement,
+  width: number,
+  height: number,
+  quality: number
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return reject(new Error("Canvas context unavailable"));
+    ctx.drawImage(img, 0, 0, width, height);
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("JPEG encoding failed"))),
+      "image/jpeg",
+      quality
+    );
+  });
+}
+
 async function imageHasTransparency(img: HTMLImageElement): Promise<boolean> {
   const canvas = document.createElement("canvas");
   canvas.width = Math.min(img.width, 200);
@@ -115,54 +153,40 @@ async function imageHasTransparency(img: HTMLImageElement): Promise<boolean> {
   return false;
 }
 
-async function ensureUnderSizeLimit(
-  img: HTMLImageElement,
-  width: number,
-  height: number,
-  quality: number,
-  maxSizeKB: number
-): Promise<{ blob: Blob; finalQuality: number; finalWidth: number; finalHeight: number }> {
-  let currentQuality = quality;
-  let currentWidth = width;
-  let currentHeight = height;
-  let blob = await compressToWebP(img, currentWidth, currentHeight, currentQuality);
-
-  const maxBytes = maxSizeKB * 1024;
-
-  while (blob.size > maxBytes && (currentQuality > 0.4 || currentWidth > 400)) {
-    if (currentQuality > 0.4) {
-      currentQuality = Math.max(0.4, currentQuality - 0.08);
-    } else {
-      const scale = Math.sqrt(maxBytes / blob.size);
-      currentWidth = Math.max(400, Math.round(currentWidth * scale));
-      currentHeight = Math.max(400, Math.round(currentHeight * scale));
-    }
-    blob = await compressToWebP(img, currentWidth, currentHeight, currentQuality);
+function blobToFile(blob: Blob, originalName: string, extension: string): File {
+  const nameWithoutExt = originalName.replace(/\.[^/.]+$/, "");
+  const fileName = `${nameWithoutExt}.${extension}`;
+  try {
+    return new File([blob], fileName, { type: blob.type });
+  } catch {
+    // Fallback for environments where File constructor may be limited
+    const file = new Blob([blob], { type: blob.type }) as any;
+    file.name = fileName;
+    file.lastModified = Date.now();
+    return file as File;
   }
-
-  return { blob, finalQuality: currentQuality, finalWidth: currentWidth, finalHeight: currentHeight };
 }
 
-async function ensureUnderSizeLimitPNG(
-  img: HTMLImageElement,
-  width: number,
-  height: number,
-  maxSizeKB: number
-): Promise<{ blob: Blob; finalWidth: number; finalHeight: number }> {
-  let currentWidth = width;
-  let currentHeight = height;
-  let blob = await compressToPNG(img, currentWidth, currentHeight);
+// Mark to detect already-optimised files produced by our optimiser
+const OPTIMISED_MARKER = "x-eclection-optimised";
 
-  const maxBytes = maxSizeKB * 1024;
-
-  while (blob.size > maxBytes && currentWidth > 400) {
-    const scale = Math.sqrt(maxBytes / blob.size);
-    currentWidth = Math.max(400, Math.round(currentWidth * scale));
-    currentHeight = Math.max(400, Math.round(currentHeight * scale));
-    blob = await compressToPNG(img, currentWidth, currentHeight);
+function isAlreadyOptimised(file: File): boolean {
+  try {
+    if ((file as any)[OPTIMISED_MARKER]) return true;
+    // Also check name pattern if needed (not required)
+  } catch {
+    // ignore
   }
+  return false;
+}
 
-  return { blob, finalWidth: currentWidth, finalHeight: currentHeight };
+function markOptimised(file: File): File {
+  try {
+    (file as any)[OPTIMISED_MARKER] = true;
+  } catch {
+    // ignore
+  }
+  return file;
 }
 
 async function generateThumbnail(
@@ -193,49 +217,222 @@ async function generateThumbnail(
   });
 }
 
+export async function optimiseImageForUpload(
+  file: File,
+  options: CompressionOptions = {}
+): Promise<OptimisedImageResult> {
+  const opts = { ...DEFAULT_OPTIONS, ...options };
+  const originalSize = file.size;
+
+  try {
+    // If already optimised by our system, avoid reprocessing where possible
+    if (isAlreadyOptimised(file)) {
+      const dataUrl = await fileToDataURL(file);
+      const img = await loadImage(dataUrl);
+      const blob = file.slice(0, file.size, file.type) as Blob;
+      const previewUrl = URL.createObjectURL(blob);
+      const format = (file.type.split("/")[1] as "webp" | "jpeg" | "png") || "webp";
+      return {
+        blob,
+        file,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        format: (format as string) === "jpg" ? "jpeg" : (format as "jpeg" | "png" | "webp"),
+        originalSize,
+        optimisedSize: file.size,
+        originalWidth: img.naturalWidth,
+        originalHeight: img.naturalHeight,
+        wasOptimised: true,
+        usedOriginal: true,
+        previewUrl,
+      };
+    }
+
+    const dataUrl = await fileToDataURL(file);
+    const img = await loadImage(dataUrl);
+    const originalWidth = img.naturalWidth;
+    const originalHeight = img.naturalHeight;
+
+    const hasAlpha = await imageHasTransparency(img);
+    const isPng = file.type === "image/png";
+
+    // Determine if we should resize
+    let targetMaxW = opts.maxWidth;
+    let targetMaxH = opts.maxHeight;
+    // Don't resize unnecessarily if already within recommended and small? But still ensure max 1600
+    const { width: resizedW, height: resizedH } = getCanvasDimensions(img, targetMaxW, targetMaxH);
+
+    if (isPng && hasAlpha) {
+      // Preserve transparency, prefer PNG; only downscale if over max or very large
+      let currentWidth = resizedW;
+      let currentHeight = resizedH;
+      let blob = await compressToPNG(img, currentWidth, currentHeight);
+      // Quality-first: only scale down if still too large AND scaling helps meaningfully
+      // Avoid aggressive compression; try to keep quality
+      let attempts = 0;
+      const maxBytes = opts.maxSizeKB * 1024;
+      while (blob.size > maxBytes * 1.5 && currentWidth > 800 && attempts < 3) {
+        const scale = Math.sqrt((maxBytes * 1.2) / blob.size);
+        currentWidth = Math.max(800, Math.round(currentWidth * scale));
+        currentHeight = Math.max(800, Math.round(currentHeight * scale));
+        blob = await compressToPNG(img, currentWidth, currentHeight);
+        attempts++;
+      }
+      // If still larger than original and worse quality not needed, prefer original if original is reasonable
+      if (blob.size >= originalSize && originalSize <= 5 * 1024 * 1024) {
+        // Use original to preserve quality
+        const originalBlob = file.slice(0, file.size, file.type);
+        const originalFile = markOptimised(file);
+        const previewUrl = URL.createObjectURL(originalBlob);
+        return {
+          blob: originalBlob,
+          file: originalFile,
+          width: originalWidth,
+          height: originalHeight,
+          format: "png",
+          originalSize,
+          optimisedSize: originalSize,
+          originalWidth,
+          originalHeight,
+          wasOptimised: false,
+          usedOriginal: true,
+          previewUrl,
+        };
+      }
+      const outFile = markOptimised(blobToFile(blob, file.name, "png"));
+      const previewUrl = URL.createObjectURL(blob);
+      return {
+        blob,
+        file: outFile,
+        width: currentWidth,
+        height: currentHeight,
+        format: "png",
+        originalSize,
+        optimisedSize: blob.size,
+        originalWidth,
+        originalHeight,
+        wasOptimised: true,
+        usedOriginal: false,
+        previewUrl,
+      };
+    } else {
+      // Suitable for WebP (photographic) - start at ~85% quality
+      const quality = opts.quality >= 0.8 && opts.quality <= 0.9 ? opts.quality : 0.85;
+      let currentWidth = resizedW;
+      let currentHeight = resizedH;
+      let blob = await compressToWebP(img, currentWidth, currentHeight, quality);
+      // Quality-first: do NOT aggressively force to 300KB if it hurts quality.
+      // Only reduce if significantly over and quality still acceptable; prefer higher quality.
+      const maxBytes = opts.maxSizeKB * 1024;
+      let attempts = 0;
+      // Try to reduce size gently if way over, but stop early to preserve quality
+      while (blob.size > maxBytes * 1.8 && quality > 0.75 && attempts < 2) {
+        // Reduce quality slightly
+        const q2 = Math.max(0.75, quality - 0.05 * (attempts + 1));
+        blob = await compressToWebP(img, currentWidth, currentHeight, q2);
+        attempts++;
+        if (blob.size < originalSize) break;
+      }
+      // If compressed is larger than original, use original
+      if (blob.size >= originalSize && originalSize > 0) {
+        const originalBlob = file.slice(0, file.size, file.type);
+        const originalFile = markOptimised(file);
+        const previewUrl = URL.createObjectURL(originalBlob);
+        const origFmtRaw = file.type.split("/")[1] || "jpeg";
+      let origFmt: "jpeg" | "png" | "webp" = "jpeg";
+      if (origFmtRaw === "png") origFmt = "png";
+      else if (origFmtRaw === "webp") origFmt = "webp";
+      else origFmt = "jpeg";
+        return {
+          blob: originalBlob,
+          file: originalFile,
+          width: originalWidth,
+          height: originalHeight,
+          format: (origFmt as string) === "jpg" ? "jpeg" : origFmt,
+          originalSize,
+          optimisedSize: originalSize,
+          originalWidth,
+          originalHeight,
+          wasOptimised: false,
+          usedOriginal: true,
+          previewUrl,
+        };
+      }
+      // If still very large but quality-first - don't force down below reasonable quality; accept larger if needed
+      const outFile = markOptimised(blobToFile(blob, file.name, "webp"));
+      const previewUrl = URL.createObjectURL(blob);
+      return {
+        blob,
+        file: outFile,
+        width: currentWidth,
+        height: currentHeight,
+        format: "webp",
+        originalSize,
+        optimisedSize: blob.size,
+        originalWidth,
+        originalHeight,
+        wasOptimised: true,
+        usedOriginal: false,
+        previewUrl,
+      };
+    }
+  } catch (e) {
+    // If optimisation fails, safely retain original
+    const originalBlob = file.slice(0, file.size, file.type);
+    const originalFile = markOptimised(file);
+    const previewUrl = URL.createObjectURL(originalBlob);
+    const origFmtRaw2 = file.type.split("/")[1] || "jpeg";
+    let origFmt: "jpeg" | "png" | "webp" = "jpeg";
+    if (origFmtRaw2 === "png") origFmt = "png";
+    else if (origFmtRaw2 === "webp") origFmt = "webp";
+    else origFmt = "jpeg";
+    try {
+      const img = await loadImage(await fileToDataURL(file));
+      return {
+        blob: originalBlob,
+        file: originalFile,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        format: origFmt,
+        originalSize,
+        optimisedSize: originalSize,
+        originalWidth: img.naturalWidth,
+        originalHeight: img.naturalHeight,
+        wasOptimised: false,
+        usedOriginal: true,
+        previewUrl,
+      };
+    } catch {
+      return {
+        blob: originalBlob,
+        file: originalFile,
+        width: 0,
+        height: 0,
+        format: origFmt,
+        originalSize,
+        optimisedSize: originalSize,
+        originalWidth: 0,
+        originalHeight: 0,
+        wasOptimised: false,
+        usedOriginal: true,
+        previewUrl,
+      };
+    }
+  }
+}
+
 export async function compressAndConvertImage(
   file: File,
   options: CompressionOptions = {}
 ): Promise<{ blob: Blob; width: number; height: number; format: "webp" | "png" }> {
-  const opts = { ...DEFAULT_OPTIONS, ...options };
-  const dataUrl = await fileToDataURL(file);
-  const img = await loadImage(dataUrl);
-  const { width, height } = getCanvasDimensions(img, opts.maxWidth, opts.maxHeight);
-
-  const hasAlpha = await imageHasTransparency(img);
-  const usePng = file.type === "image/png" && hasAlpha;
-
-  let blob: Blob;
-  let format: "webp" | "png";
-  let finalWidth = width;
-  let finalHeight = height;
-
-  if (usePng) {
-    const result = await ensureUnderSizeLimitPNG(
-      img,
-      width,
-      height,
-      opts.maxSizeKB
-    );
-    blob = result.blob;
-    format = "png";
-    finalWidth = result.finalWidth;
-    finalHeight = result.finalHeight;
-  } else {
-    const result = await ensureUnderSizeLimit(
-      img,
-      width,
-      height,
-      opts.quality,
-      opts.maxSizeKB
-    );
-    blob = result.blob;
-    format = "webp";
-    finalWidth = result.finalWidth;
-    finalHeight = result.finalHeight;
-  }
-
-  return { blob, width: finalWidth, height: finalHeight, format };
+  // Use shared optimiser for consistency
+  const result = await optimiseImageForUpload(file, options);
+  return {
+    blob: result.blob,
+    width: result.width,
+    height: result.height,
+    format: result.format === "jpeg" ? "webp" : (result.format as "webp" | "png"),
+  };
 }
 
 function generateStoragePath(extension: string = "webp"): string {
@@ -255,7 +452,12 @@ export async function uploadProductImage(
   options: CompressionOptions = {}
 ): Promise<UploadedImage> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
-  const { blob, width, height, format } = await compressAndConvertImage(file, options);
+  // Optimise (shared) - will skip if already optimised
+  const optimised = await optimiseImageForUpload(file, options);
+  const blob = optimised.blob;
+  const width = optimised.width;
+  const height = optimised.height;
+  const format = optimised.format === "jpeg" ? "webp" : optimised.format;
   const storagePath = generateStoragePath(format);
 
   const { data, error } = await supabase.storage
@@ -282,37 +484,41 @@ export async function uploadProductImage(
   };
 
   if (opts.generateThumbnails) {
-    const dataUrl = await fileToDataURL(file);
-    const img = await loadImage(dataUrl);
-    const thumbnails: Record<string, { url: string; width: number; height: number; size: number }> = {};
+    try {
+      const dataUrl = await fileToDataURL(optimised.usedOriginal ? file : optimised.file);
+      const img = await loadImage(dataUrl);
+      const thumbnails: Record<string, { url: string; width: number; height: number; size: number }> = {};
 
-    for (const thumbSize of opts.thumbnailSizes) {
-      const thumbBlob = await generateThumbnail(img, thumbSize, opts.quality, format);
-      const thumbPath = `${storagePath.replace(/\.[^.]+$/, "")}_${thumbSize}w.${format}`;
+      for (const thumbSize of opts.thumbnailSizes) {
+        const thumbBlob = await generateThumbnail(img, thumbSize, opts.quality, format === "png" ? "png" : "webp");
+        const thumbPath = `${storagePath.replace(/\.[^.]+$/, "")}_${thumbSize}w.${format === "png" ? "png" : "webp"}`;
 
-      const { data: thumbData, error: thumbError } = await supabase.storage
-        .from("product-images")
-        .upload(thumbPath, thumbBlob, {
-          contentType: `image/${format}`,
-          cacheControl: "public, max-age=31536000, immutable",
-          upsert: false,
-        });
-
-      if (!thumbError && thumbData) {
-        const { data: thumbUrlData } = supabase.storage
+        const { data: thumbData, error: thumbError } = await supabase.storage
           .from("product-images")
-          .getPublicUrl(thumbData.path);
-        thumbnails[`${thumbSize}w`] = {
-          url: thumbUrlData.publicUrl,
-          width: thumbSize,
-          height: thumbSize,
-          size: thumbBlob.size,
-        };
-      }
-    }
+          .upload(thumbPath, thumbBlob, {
+            contentType: `image/${format === "png" ? "png" : "webp"}`,
+            cacheControl: "public, max-age=31536000, immutable",
+            upsert: false,
+          });
 
-    if (Object.keys(thumbnails).length > 0) {
-      uploadedImage.thumbnails = thumbnails;
+        if (!thumbError && thumbData) {
+          const { data: thumbUrlData } = supabase.storage
+            .from("product-images")
+            .getPublicUrl(thumbData.path);
+          thumbnails[`${thumbSize}w`] = {
+            url: thumbUrlData.publicUrl,
+            width: thumbSize,
+            height: thumbSize,
+            size: thumbBlob.size,
+          };
+        }
+      }
+
+      if (Object.keys(thumbnails).length > 0) {
+        uploadedImage.thumbnails = thumbnails;
+      }
+    } catch (e) {
+      // ignore thumbnail errors
     }
   }
 
