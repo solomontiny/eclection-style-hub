@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "postbuild": "node fix-manifest.mjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "deploy": "vite build && nitro deploy --prebuilt",
