@@ -276,23 +276,24 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
           throw new Error("Wholesale pricing is only available for eligible bundle products.");
         }
 
+        const groupingKey = `${item.bundleId}::${item.id}`;
         wholesaleQuantityByBundle.set(
-          item.bundleId,
-          (wholesaleQuantityByBundle.get(item.bundleId) ?? 0) + item.qty,
+          groupingKey,
+          (wholesaleQuantityByBundle.get(groupingKey) ?? 0) + item.qty,
         );
       }
 
       const wholesalePriceByBundle = new Map<string, number>();
-      for (const [bundleId, quantity] of wholesaleQuantityByBundle) {
-        if (quantity < WHOLESALE_BUNDLE_SIZE) {
-          continue;
+      for (const [groupingKey, quantity] of wholesaleQuantityByBundle) {
+        if (quantity < WHOLESALE_BUNDLE_SIZE || quantity % WHOLESALE_BUNDLE_SIZE !== 0) {
+          throw new Error("Wholesale quantities must be in multiples of 10 pieces, with a minimum of 10.");
         }
 
         const tier = getWholesaleTier(quantity);
         if (!tier) {
           throw new Error("Could not determine wholesale pricing for this quantity.");
         }
-        wholesalePriceByBundle.set(bundleId, tier.pricePerPiece);
+        wholesalePriceByBundle.set(groupingKey, tier.pricePerPiece);
       }
 
       // 2. Calculate totals (authoritative, server-side, no VAT)
@@ -307,7 +308,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
             ? Number(product.sale_price)
             : Number(product.price) * (1 - Number(product.discount_percent ?? 0) / 100);
         const wholesalePrice = item.bundleId
-          ? wholesalePriceByBundle.get(item.bundleId)
+          ? wholesalePriceByBundle.get(`${item.bundleId}::${item.id}`)
           : undefined;
         const price = wholesalePrice ?? base;
         const itemSubtotal = price * item.qty;
@@ -369,7 +370,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
           .map((i) => {
             const p = productsById.get(i.id);
             const parts = [p?.name];
-            if (i.bundleId && wholesalePriceByBundle.has(i.bundleId)) parts.push("(Bulk)");
+            if (i.bundleId && wholesalePriceByBundle.has(`${i.bundleId}::${i.id}`)) parts.push("(Bulk)");
             else parts.push(`(Size ${i.size})`);
             if (i.color) parts.push(`(Color ${i.color})`);
             parts.push(`x ${i.qty}`);

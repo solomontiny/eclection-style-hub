@@ -215,11 +215,11 @@ function AccountPage() {
               <div key={order.id} className="flex flex-wrap items-center justify-between gap-3 p-4 hover:bg-muted/20">
                 <div>
                   <p className="font-medium">{order.order_number}</p>
-                  <p className="text-xs text-muted-foreground">{fmtDate(order.created_at)} · <span className="capitalize">{order.payment_status}</span></p>
+                  <p className="text-xs text-muted-foreground">{fmtDate(order.created_at)} · Payment: <span className="capitalize">{order.payment_status}</span></p>
                 </div>
                 <div className="text-right">
                   <p className="font-semibold text-primary">{fmtNGN(Number(order.total))}</p>
-                  <p className="text-xs capitalize text-muted-foreground">{order.status}</p>
+                  <p className="text-xs capitalize text-muted-foreground">Order status: {order.status}</p>
                 </div>
               </div>
             ))}

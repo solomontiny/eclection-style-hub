@@ -48,7 +48,7 @@ function OrdersPage() {
               <div>
                 <p className="font-medium">{order.order_number}</p>
                 <p className="text-xs text-muted-foreground">
-                  {fmtDate(order.created_at)} ·{" "}
+                  {fmtDate(order.created_at)} · Payment:{" "}
                   <span className="capitalize">{order.payment_status}</span>
                   {" "}·{" "}
                   <span className="capitalize">
@@ -58,7 +58,7 @@ function OrdersPage() {
               </div>
               <div className="text-right">
                 <p className="font-semibold">{fmtNGN(Number(order.total))}</p>
-                <p className="text-xs capitalize text-muted-foreground">{order.status}</p>
+                <p className="text-xs capitalize text-muted-foreground">Order status: {order.status}</p>
                 <Link to="/account/orders/$id" params={{ id: order.id }} className="text-xs text-primary underline mt-1 block">Track Order</Link>
               </div>
             </div>

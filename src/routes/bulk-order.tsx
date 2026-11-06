@@ -240,8 +240,24 @@ function BulkOrderPage() {
   const nextWholesaleTier = getNextWholesaleTier(currentBundleTotal);
   const wholesaleUnitPrice =
     wholesaleTier?.pricePerPiece ?? WHOLESALE_TIERS[0].pricePerPiece;
-  const totalPrice = currentBundleTotal * wholesaleUnitPrice;
-  const meetsWholesaleMinimum = currentBundleTotal >= WHOLESALE_BUNDLE_SIZE;
+  const wholesalePriceByProduct = new Map<string, number>();
+  for (const item of bundleItems) {
+    if (wholesalePriceByProduct.has(item.product.id)) continue;
+    const productTotal = bundleItems
+      .filter((entry) => entry.product.id === item.product.id)
+      .reduce((sum, entry) => sum + entry.qty, 0);
+    const productTier = getWholesaleTier(productTotal);
+    wholesalePriceByProduct.set(
+      item.product.id,
+      productTier?.pricePerPiece ?? WHOLESALE_TIERS[0].pricePerPiece,
+    );
+  }
+  const totalPrice = bundleItems.reduce(
+    (sum, item) =>
+      sum + item.qty * (wholesalePriceByProduct.get(item.product.id) ?? WHOLESALE_TIERS[0].pricePerPiece),
+    0,
+  );
+  const meetsWholesaleMinimum = currentBundleTotal >= WHOLESALE_BUNDLE_SIZE && currentBundleTotal % WHOLESALE_BUNDLE_SIZE === 0;
 
   const addToBundle = (product: Product, lines: ColourLine[]) => {
     setBundleItems((current) => {
@@ -261,8 +277,12 @@ function BulkOrderPage() {
   };
 
   const finalizeBundle = () => {
-    if (!meetsWholesaleMinimum) {
+    if (currentBundleTotal < WHOLESALE_BUNDLE_SIZE) {
       toast.error(`Select at least ${WHOLESALE_BUNDLE_SIZE} pieces for wholesale pricing.`);
+      return;
+    }
+    if (currentBundleTotal % WHOLESALE_BUNDLE_SIZE !== 0) {
+      toast.error("Wholesale quantities must be in multiples of 10 pieces.");
       return;
     }
     const bundleId = `bundle_${Date.now()}`;
@@ -284,6 +304,11 @@ function BulkOrderPage() {
           {meetsWholesaleMinimum ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
           {currentBundleTotal} Pieces Selected ({bundleCount} bundle{bundleCount === 1 ? "" : "s"})
         </div>
+        {currentBundleTotal > 0 && currentBundleTotal % WHOLESALE_BUNDLE_SIZE !== 0 && (
+          <p className="text-sm text-destructive">
+            Wholesale quantities must be in multiples of 10 pieces.
+          </p>
+        )}
         {nextWholesaleTier ? (
           <p className="text-sm text-muted-foreground">
             {currentBundleTotal < WHOLESALE_BUNDLE_SIZE
@@ -358,7 +383,11 @@ function BulkOrderPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Price Per Piece</span>
-                    <span className="font-semibold">{formatCurrencyPrice(wholesaleUnitPrice, currency)}</span>
+                    <span className="font-semibold">
+                      {new Set(bundleItems.map((item) => item.product.id)).size <= 1
+                        ? formatCurrencyPrice(wholesaleUnitPrice, currency)
+                        : "Varies by product"}
+                    </span>
                   </div>
                   <div className="flex justify-between border-t border-border pt-3 font-display text-lg">
                     <span>Grand Total</span>
