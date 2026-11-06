@@ -457,7 +457,7 @@ export async function uploadProductImage(
   const blob = optimised.blob;
   const width = optimised.width;
   const height = optimised.height;
-  const format = optimised.format === "jpeg" ? "webp" : optimised.format;
+  const format = optimised.format;
   const storagePath = generateStoragePath(format);
 
   const { data, error } = await supabase.storage

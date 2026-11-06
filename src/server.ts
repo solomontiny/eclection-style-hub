@@ -55,15 +55,6 @@ async function getServerEntry(): Promise<ServerEntry> {
         if (createEntry) {
           return createEntry({
             fetch(request, requestOpts) {
-              console.log("[createServerEntry.fetch]", {
-                method: request?.method,
-                url: request?.url,
-                requestOptsUndefined: requestOpts === undefined,
-                contextPresent: requestOpts != null && typeof requestOpts === "object" && "context" in requestOpts && (requestOpts as Record<string, unknown>).context != null,
-              });
-              if (!request || typeof request.method !== "string") {
-                console.warn("[createServerEntry.fetch] WARNING: Request or request.method is undefined or invalid!");
-              }
               return rawHandler.fetch(request, requestOpts);
             },
           });
@@ -129,10 +120,6 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       bindServerEnvironment(env);
-      console.log("[Server fetch]", {
-        method: request?.method,
-        url: request?.url,
-      });
       const handler = await getServerEntry();
       const response = await handler.fetch(request, { context: ctx });
       return await normalizeCatastrophicSsrResponse(response);

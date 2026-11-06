@@ -168,7 +168,7 @@ export function OrdersPage() {
             size="sm"
             onClick={async () => {
               try {
-                const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+                const { data, error } = await supabase.from("orders").select("id, order_number, customer_name, customer_email, customer_phone, total, status, payment_status, payment_method, currency, created_at").order("created_at", { ascending: false });
                 if (error) throw error;
                 const headers = ["order_number", "customer_name", "customer_email", "customer_phone", "total", "status", "payment_status", "payment_method", "currency", "created_at"];
                 const rows = (data || []).map((o: any) => [

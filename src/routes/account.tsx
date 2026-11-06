@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef } from "react";
 import { Package, Camera, User, Loader2 } from "lucide-react";
@@ -35,12 +35,40 @@ function AccountPage() {
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["account-orders", user?.id],
     enabled: !!user,
+    refetchOnMount: true,
     queryFn: async () => {
       const { data, error } = await supabase.from("orders").select("id, order_number, total, status, payment_status, created_at").eq("user_id", user!.id).order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
   });
+
+  const { data: notifications = [], isLoading: notificationsLoading, error: notificationsError } = useQuery({
+    queryKey: ["customer-notifications", user?.id],
+    enabled: !!user,
+    refetchOnMount: true,
+    refetchInterval: 60000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customer_notifications")
+        .select("id, type, title, message, is_read, created_at, order_id, orders(order_number)")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const markNotificationRead = async (notificationId: string) => {
+    const { error } = await supabase.rpc("mark_customer_notification_read", {
+      p_notification_id: notificationId,
+    });
+    if (error) {
+      toast.error(error.message || "Could not update notification.");
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["customer-notifications", user?.id] });
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -123,6 +151,53 @@ function AccountPage() {
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Member since</p>
           <p className="mt-2 font-medium">{profile?.created_at ? fmtDate(profile.created_at) : "—"}</p>
         </div>
+      </div>
+
+      <div className="mt-12">
+        <h2 className="font-display text-2xl">Notifications</h2>
+        {notificationsLoading ? (
+          <p className="mt-5 text-muted-foreground">Loading notifications…</p>
+        ) : notificationsError ? (
+          <p className="mt-5 text-red-500 text-sm">Could not load notifications.</p>
+        ) : notifications.length === 0 ? (
+          <div className="mt-5 rounded-2xl border border-border p-8 text-center">
+            <p className="text-muted-foreground">No notifications yet.</p>
+          </div>
+        ) : (
+          <div className="mt-5 divide-y divide-border rounded-2xl border border-border overflow-hidden">
+            {notifications.map((notification: any) => {
+              const orderNumber = notification.orders?.order_number ?? notification.orders?.[0]?.order_number;
+              return (
+                <div key={notification.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div>
+                    <p className="font-medium">
+                      {notification.title}
+                      {!notification.is_read && <span className="ml-2 inline-block h-2 w-2 rounded-full bg-primary align-middle" />}
+                    </p>
+                    {notification.message && <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>}
+                    {orderNumber && (
+                      <Link to="/account/orders" className="text-xs text-primary underline mt-1 block">
+                        View order {orderNumber}
+                      </Link>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">{fmtDate(notification.created_at)}</p>
+                    {!notification.is_read && (
+                      <button
+                        type="button"
+                        onClick={() => markNotificationRead(notification.id)}
+                        className="text-xs text-primary underline mt-1"
+                      >
+                        Mark as read
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="mt-12">

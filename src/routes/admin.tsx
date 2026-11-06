@@ -47,7 +47,6 @@ export const Route = createFileRoute("/admin")({
     }
 
     if (!isAdmin) {
-      console.log("[ADMIN DEBUG] Authorization failed: Not an admin");
       throw redirect({ to: "/" });
     }
     // Send /admin to /admin/dashboard
@@ -83,8 +82,8 @@ function AdminLayout() {
         .eq("is_read", false);
       return count ?? 0;
     },
-    staleTime: 30 * 1000,
-    refetchInterval: 60000,
+    staleTime: 60 * 1000,
+    refetchInterval: 120000,
   });
 
   return (

@@ -155,7 +155,6 @@ function buildEmailHtml(args: {
 }
 
 export const getTaxSettings = createServerFn({ method: "GET" }).handler(async () => {
-  console.log("Fetching tax settings...");
   const { data: settings, error } = await getSupabaseAdmin()
     .from("shop_settings")
     .select("tax_percent")
@@ -171,7 +170,6 @@ export const getTaxSettings = createServerFn({ method: "GET" }).handler(async ()
     });
     return { taxPercent: 0, vatEnabled: false };
   }
-  console.log("Fetched tax settings:", settings);
   const taxPercent = settings ? Number(settings.tax_percent) : 0;
   return {
     taxPercent,
@@ -228,14 +226,6 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       .maybeSingle();
 
     const serverUrl = getEnvVar("SUPABASE_URL") || "";
-    console.log("[createOrderServerFn] shop_settings diagnostic:", {
-      hasError: !!settingsError,
-      errorCode: settingsError?.code ?? null,
-      errorMessage: settingsError?.message ?? null,
-      recordFound: !!shopSettings,
-      bankTransferEnabled: shopSettings?.bank_transfer_enabled ?? null,
-      isExpectedProject: serverUrl.includes("qwwpaxljefedekeysuye"),
-    });
 
     if (settingsError || !shopSettings?.bank_transfer_enabled) {
       throw new Error("Bank transfer payments are temporarily unavailable.");
@@ -654,11 +644,6 @@ async function deliverPaymentReceipt(
       emailSent = true;
     } else {
       emailError = "LOVABLE_EMAIL_API_KEY is not configured.";
-      console.log("[NOTIFICATION] Bank transfer receipt email (no API key):", {
-        to: order.customer_email,
-        subject: `Order #${order.order_number}`,
-        orderId: order.id,
-      });
     }
   } catch (err: unknown) {
     emailError = (err as Error)?.message || "Email delivery failed.";
@@ -903,14 +888,6 @@ export const sendOrderReceipt = createServerFn({ method: "POST" })
       const businessHtml = buildEmailHtml({ snapshot, paystackRef, audience: "business" });
       void customerHtml;
       void businessHtml;
-
-      console.log("📧 Verified order", {
-        ref: snapshot.orderRef,
-        paystackRef,
-        customer: snapshot.customer.email,
-        business: CONTACT.email,
-        subject,
-      });
 
       return {
         status: "sent" as const,

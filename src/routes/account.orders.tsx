@@ -18,6 +18,8 @@ function OrdersPage() {
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["account-orders", user?.id],
     enabled: !!user,
+    refetchOnMount: true,
+    refetchInterval: 60000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")

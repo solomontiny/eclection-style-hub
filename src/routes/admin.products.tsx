@@ -137,7 +137,7 @@ function ProductsPage() {
           <button
             onClick={async () => {
               try {
-                const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+                const { data, error } = await supabase.from("products").select("id, name, slug, sku, price, sale_price, stock, status, category_id, created_at").order("created_at", { ascending: false });
                 if (error) throw error;
                 const headers = ["id", "name", "slug", "sku", "price", "sale_price", "stock", "status", "category_id", "created_at"];
                 const rows = (data || []).map((p: any) => [p.id, p.name, p.slug, p.sku, p.price, p.sale_price, p.stock, p.status, p.category_id, p.created_at]);

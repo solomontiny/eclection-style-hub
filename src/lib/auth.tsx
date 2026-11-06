@@ -171,8 +171,6 @@ export function AuthProvider({
             };
           }
 
-          console.log("[SIGNUP SUCCESS]", data.user?.email);
-
           // Treat as success if user created, even if session is null (email confirmation pending)
           return { data };
         } catch (err) {
@@ -193,7 +191,6 @@ export function AuthProvider({
           if (error) {
             console.error("[LOGOUT ERROR]", error.message);
           } else {
-            console.log("[LOGOUT SUCCESS]");
             setUser(null);
             setSession(null);
           }

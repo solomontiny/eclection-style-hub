@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useRef } from "react";
 import { useAuth } from "@/lib/auth";
@@ -44,6 +44,7 @@ function CheckoutPage() {
   const { currency } = useStore();
   const { items, subtotal, clear } = useCart();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
   const form = useForm<CustomerForm>({
@@ -161,6 +162,7 @@ function CheckoutPage() {
       }
 
       clear();
+      qc.invalidateQueries({ queryKey: ["account-orders"] });
       if (import.meta.env.DEV) console.log("[checkout] navigating to /payment-instructions", order.orderId);
       await navigate({
         to: "/payment-instructions",

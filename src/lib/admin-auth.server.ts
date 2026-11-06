@@ -11,14 +11,6 @@ export async function getAuthenticatedUserFromRequest() {
   const authUrl = getEnvVar("SUPABASE_URL");
   const authKey = getEnvVar("SUPABASE_ANON_KEY");
 
-  console.log("[getAuthenticatedUserFromRequest] Auth transport:", {
-    hasAuthHeader: !!authHeader,
-    hasBearerToken: !!token,
-    hasCookie: !!cookieHeader,
-    hasAuthUrl: !!authUrl,
-    hasAuthKey: !!authKey,
-  });
-
   if (!token || !authUrl || !authKey) {
     console.warn("[getAuthenticatedUserFromRequest] Missing headers or env vars:", {
       hasAuthHeader: !!authHeader,
@@ -43,9 +35,6 @@ export async function getAuthenticatedUserFromRequest() {
     console.error("[getAuthenticatedUserFromRequest] auth.getUser error:", error.message);
   }
 
-  console.log("[getAuthenticatedUserFromRequest] Authentication result:", {
-    authenticated: !!user,
-  });
   return user ?? null;
 }
 

@@ -256,11 +256,7 @@ export const newOrderNotification = createServerFn({ method: "POST" })
         );
         emailSent = true;
       } else {
-        console.log("[NOTIFICATION] Admin email (no API key configured):", {
-          to: CONTACT.email,
-          subject,
-          orderId: order.id,
-        });
+        // Email provider not configured; no sensitive details logged.
       }
     } catch (err: any) {
       console.error("[NOTIFICATION] Failed to send admin email:", err?.message);
@@ -356,11 +352,7 @@ export async function sendCustomerOrderEmail(orderId: string) {
       );
       emailSent = true;
     } else {
-      console.log("[NOTIFICATION] Customer receipt (no API key):", {
-        to: order.customer_email,
-        subject,
-        orderId,
-      });
+      // Email provider not configured; no sensitive details logged.
     }
   } catch (err: any) {
     console.error("[NOTIFICATION] Customer email failed:", err?.message);
@@ -425,12 +417,7 @@ export const sendCustomerStatusChangeEmail = createServerFn({ method: "POST" })
       );
       emailSent = true;
     } else {
-      console.log("[NOTIFICATION] Customer status update (no API key):", {
-        to: order.customer_email,
-        subject,
-        orderId: data.orderId,
-        status: order.status,
-      });
+      // Email provider not configured; no sensitive details logged.
     }
   } catch (err: any) {
     console.error("[NOTIFICATION] Customer status email failed:", err?.message);
