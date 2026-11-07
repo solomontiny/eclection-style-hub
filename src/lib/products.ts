@@ -515,9 +515,11 @@ export async function deleteProduct(id: string) {
 /**
  * Format currency (NGN)
  */
-export const formatNaira = (n: number) =>
-  new Intl.NumberFormat("en-NG", {
+export const formatNaira = (n: number) => {
+  const safe = Number.isFinite(n) ? n : 0;
+  return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
     maximumFractionDigits: 0,
-  }).format(n);
+  }).format(safe);
+};

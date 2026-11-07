@@ -14,8 +14,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatCurrencyPrice, COUNTRIES } from "@/lib/currency-browser";
 import { useStore } from "@/lib/store-context";
 import {
+  getEffectiveProductBasePrice,
   getNextWholesaleTier,
   getWholesaleTier,
+  isValidWholesaleQuantity,
   WHOLESALE_BUNDLE_SIZE,
   WHOLESALE_TIERS,
 } from "@/lib/wholesale-pricing";
@@ -236,28 +238,34 @@ function BulkOrderPage() {
   const currentBundleTotal = bundleItems.reduce((sum, item) => sum + item.qty, 0);
 
   const bundleCount = Number((currentBundleTotal / WHOLESALE_BUNDLE_SIZE).toFixed(1));
-  const wholesaleTier = getWholesaleTier(currentBundleTotal);
   const nextWholesaleTier = getNextWholesaleTier(currentBundleTotal);
-  const wholesaleUnitPrice =
-    wholesaleTier?.pricePerPiece ?? WHOLESALE_TIERS[0].pricePerPiece;
   const wholesalePriceByProduct = new Map<string, number>();
+  const productQtyById = new Map<string, number>();
   for (const item of bundleItems) {
-    if (wholesalePriceByProduct.has(item.product.id)) continue;
-    const productTotal = bundleItems
-      .filter((entry) => entry.product.id === item.product.id)
-      .reduce((sum, entry) => sum + entry.qty, 0);
+    productQtyById.set(item.product.id, (productQtyById.get(item.product.id) ?? 0) + item.qty);
+  }
+  for (const [productId, productTotal] of productQtyById) {
+    const product = bundleItems.find((entry) => entry.product.id === productId)?.product;
+    const retailPrice = product ? getEffectiveProductBasePrice(product) : 0;
     const productTier = getWholesaleTier(productTotal);
-    wholesalePriceByProduct.set(
-      item.product.id,
-      productTier?.pricePerPiece ?? WHOLESALE_TIERS[0].pricePerPiece,
-    );
+    wholesalePriceByProduct.set(productId, productTier?.pricePerPiece ?? retailPrice);
   }
   const totalPrice = bundleItems.reduce(
-    (sum, item) =>
-      sum + item.qty * (wholesalePriceByProduct.get(item.product.id) ?? WHOLESALE_TIERS[0].pricePerPiece),
+    (sum, item) => {
+      const retailPrice = getEffectiveProductBasePrice(item.product);
+      const unit = wholesalePriceByProduct.get(item.product.id) ?? retailPrice;
+      return sum + item.qty * unit;
+    },
     0,
   );
-  const meetsWholesaleMinimum = currentBundleTotal >= WHOLESALE_BUNDLE_SIZE && currentBundleTotal % WHOLESALE_BUNDLE_SIZE === 0;
+  const invalidWholesaleProducts = Array.from(productQtyById.entries())
+    .filter(([, qty]) => !isValidWholesaleQuantity(qty))
+    .map(([productId, qty]) => ({
+      productId,
+      qty,
+      name: bundleItems.find((entry) => entry.product.id === productId)?.product.name ?? "Selected product",
+    }));
+  const meetsWholesaleMinimum = bundleItems.length > 0 && invalidWholesaleProducts.length === 0;
 
   const addToBundle = (product: Product, lines: ColourLine[]) => {
     setBundleItems((current) => {
@@ -281,13 +289,29 @@ function BulkOrderPage() {
       toast.error(`Select at least ${WHOLESALE_BUNDLE_SIZE} pieces for wholesale pricing.`);
       return;
     }
-    if (currentBundleTotal % WHOLESALE_BUNDLE_SIZE !== 0) {
-      toast.error("Wholesale quantities must be in multiples of 10 pieces.");
+    if (invalidWholesaleProducts.length > 0) {
+      const details = invalidWholesaleProducts
+        .slice(0, 2)
+        .map((entry) => `${entry.name}: ${entry.qty}`)
+        .join(", ");
+      toast.error(
+        `Each selected product must have a wholesale quantity in multiples of 10 (minimum 10). ${details}${invalidWholesaleProducts.length > 2 ? "..." : ""}`,
+      );
+      return;
+    }
+    const invalidPriceProducts = bundleItems.filter((item) => {
+      const base = getEffectiveProductBasePrice(item.product);
+      return !Number.isFinite(base) || base <= 0;
+    });
+    if (invalidPriceProducts.length > 0) {
+      toast.error(`${invalidPriceProducts[0].product.name} has an invalid price and cannot be added to cart.`);
       return;
     }
     const bundleId = `bundle_${Date.now()}`;
     bundleItems.forEach((item) => {
-      addItem(item.product, item.size, item.color, item.qty, true, bundleId, wholesaleUnitPrice);
+      const productQty = productQtyById.get(item.product.id) ?? item.qty;
+      const tier = getWholesaleTier(productQty);
+      addItem(item.product, item.size, item.color, item.qty, true, bundleId, tier?.pricePerPiece);
     });
     setBundleItems([]);
     toast.success("Bulk order added to cart!");
@@ -304,10 +328,16 @@ function BulkOrderPage() {
           {meetsWholesaleMinimum ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
           {currentBundleTotal} Pieces Selected ({bundleCount} bundle{bundleCount === 1 ? "" : "s"})
         </div>
-        {currentBundleTotal > 0 && currentBundleTotal % WHOLESALE_BUNDLE_SIZE !== 0 && (
-          <p className="text-sm text-destructive">
-            Wholesale quantities must be in multiples of 10 pieces.
-          </p>
+        {invalidWholesaleProducts.length > 0 && (
+          <div className="mx-auto max-w-2xl rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-left text-sm text-destructive">
+            <p className="font-medium">Each selected product must independently meet wholesale quantity rules.</p>
+            <p className="mt-1 text-destructive/90">Use multiples of 10 pieces per product (minimum 10), because wholesale pricing and checkout validation are applied per product.</p>
+            <ul className="mt-2 list-disc pl-5 text-destructive/90">
+              {invalidWholesaleProducts.slice(0, 4).map((entry) => (
+                <li key={entry.productId}>{entry.name}: {entry.qty} piece{entry.qty === 1 ? "" : "s"}</li>
+              ))}
+            </ul>
+          </div>
         )}
         {nextWholesaleTier ? (
           <p className="text-sm text-muted-foreground">
@@ -385,7 +415,10 @@ function BulkOrderPage() {
                     <span>Price Per Piece</span>
                     <span className="font-semibold">
                       {new Set(bundleItems.map((item) => item.product.id)).size <= 1
-                        ? formatCurrencyPrice(wholesaleUnitPrice, currency)
+                        ? formatCurrencyPrice(
+                            wholesalePriceByProduct.get(bundleItems[0]?.product.id ?? "") ?? getEffectiveProductBasePrice(bundleItems[0]?.product ?? { price: 0 }),
+                            currency,
+                          )
                         : "Varies by product"}
                     </span>
                   </div>
@@ -395,7 +428,7 @@ function BulkOrderPage() {
                   </div>
                   {!meetsWholesaleMinimum && (
                     <p className="text-xs text-muted-foreground">
-                      Estimated at the starting tier. Select at least {WHOLESALE_BUNDLE_SIZE} pieces to qualify.
+                      Estimated from selected quantities. Each product must reach a wholesale quantity (10, 20, 30… pieces) before this can be added to cart.
                     </p>
                   )}
                 </div>

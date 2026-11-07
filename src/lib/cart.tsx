@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import type { Product } from "./products";
-import { getWholesaleTier } from "./wholesale-pricing";
+import { getEffectiveProductBasePrice, getWholesaleTier } from "./wholesale-pricing";
 
 export type CartItem = {
   id: string;
@@ -32,6 +33,14 @@ const CartContext = createContext<CartContextValue | null>(null);
 const itemKey = (id: string, size: string, color?: string, bundleId?: string) =>
   bundleId ? `${bundleId}::${id}-${size}-${color || "none"}` : `${id}-${size}-${color || "none"}`;
 
+function safeMoney(value: number, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function isPayablePrice(value: number) {
+  return Number.isFinite(value) && value > 0;
+}
+
 function repriceWholesaleGroups(items: CartItem[]) {
   const quantities = new Map<string, number>();
   for (const item of items) {
@@ -45,7 +54,9 @@ function repriceWholesaleGroups(items: CartItem[]) {
     if (!item.isBulk || !item.bundleId) return item;
     const groupKey = `${item.bundleId}::${item.id}`;
     const tier = getWholesaleTier(quantities.get(groupKey) ?? 0);
-    return { ...item, price: tier?.pricePerPiece ?? item.retailPrice };
+    const safeRetail = safeMoney(item.retailPrice);
+    const safeWholesale = tier?.pricePerPiece != null ? safeMoney(tier.pricePerPiece, safeRetail) : null;
+    return { ...item, price: safeWholesale ?? safeRetail };
   });
 }
 
@@ -54,17 +65,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
   const addItem = (product: Product, size = "M", color?: string, qty = 1, isBulk = false, bundleId?: string, customPrice?: number) => {
-    const retailPrice =
-      product.sale_price != null
-        ? product.sale_price
-        : product.price * (1 - (product.discount_percent ?? 0) / 100);
-    const itemPrice = isBulk ? (customPrice ?? retailPrice) : retailPrice;
+    const retailPrice = getEffectiveProductBasePrice(product);
+    const safeCustom = customPrice != null && Number.isFinite(customPrice) && customPrice > 0 ? customPrice : null;
+    const itemPrice = isBulk ? (safeCustom ?? retailPrice) : retailPrice;
+    if (!isPayablePrice(itemPrice)) {
+      toast.error(`${product.name} has an invalid price and cannot be added to cart.`);
+      return;
+    }
     setItems((arr) => {
       const key = itemKey(product.id, size, color, bundleId);
       const existing = arr.find((it) => itemKey(it.id, it.size, it.color, it.bundleId) === key);
       if (existing) {
         return repriceWholesaleGroups(arr.map((it) => {
-          return itemKey(it.id, it.size, it.color, it.bundleId) === key ? { ...it, price: itemPrice, qty: it.qty + qty } : it;
+          return itemKey(it.id, it.size, it.color, it.bundleId) === key ? { ...it, price: itemPrice, retailPrice: isPayablePrice(retailPrice) ? retailPrice : it.retailPrice, qty: it.qty + qty } : it;
         }));
       }
       return repriceWholesaleGroups([
@@ -73,7 +86,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           id: product.id,
           name: product.name,
           price: itemPrice,
-          retailPrice,
+          retailPrice: isPayablePrice(retailPrice) ? retailPrice : itemPrice,
           image: (color && product.color_images?.[color]) ?? product.image ?? product.image_url ?? "",
           size,
           color,
@@ -100,7 +113,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<CartContextValue>(() => {
     const count = items.reduce((s, it) => s + it.qty, 0);
-    const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
+    const subtotal = items.reduce((s, it) => s + safeMoney(it.price) * it.qty, 0);
     return { items, count, subtotal, open, setOpen, addItem, updateQty, removeItem, clear };
   }, [items, open]);
 

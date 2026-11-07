@@ -18,7 +18,9 @@ import {
   convertToPaymentCurrency,
 } from "./currency";
 import {
+  getEffectiveProductBasePrice,
   getWholesaleTier,
+  isValidWholesaleQuantity,
   WHOLESALE_BUNDLE_SIZE,
 } from "./wholesale-pricing";
 
@@ -285,7 +287,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
 
       const wholesalePriceByBundle = new Map<string, number>();
       for (const [groupingKey, quantity] of wholesaleQuantityByBundle) {
-        if (quantity < WHOLESALE_BUNDLE_SIZE || quantity % WHOLESALE_BUNDLE_SIZE !== 0) {
+        if (!isValidWholesaleQuantity(quantity)) {
           throw new Error("Wholesale quantities must be in multiples of 10 pieces, with a minimum of 10.");
         }
 
@@ -303,14 +305,14 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         if (!product) throw new Error("One of the items in your cart is no longer available.");
 
         // Wholesale unit pricing was derived from the validated bundle quantity above.
-        const base =
-          product.sale_price != null
-            ? Number(product.sale_price)
-            : Number(product.price) * (1 - Number(product.discount_percent ?? 0) / 100);
+        const base = getEffectiveProductBasePrice(product);
         const wholesalePrice = item.bundleId
           ? wholesalePriceByBundle.get(`${item.bundleId}::${item.id}`)
           : undefined;
         const price = wholesalePrice ?? base;
+        if (!Number.isFinite(price) || price <= 0) {
+          throw new Error(`${product.name} has an invalid price and cannot be ordered.`);
+        }
         const itemSubtotal = price * item.qty;
         subtotal += itemSubtotal;
 
@@ -325,6 +327,9 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
           subtotal: itemSubtotal,
         };
       });
+      if (!Number.isFinite(subtotal) || subtotal <= 0) {
+        throw new Error("We could not calculate a valid order total. Please refresh your cart and try again.");
+      }
 
       const total = subtotal;
       const shippingAddress =

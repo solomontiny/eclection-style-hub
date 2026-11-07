@@ -35,6 +35,7 @@ function ProductsPage() {
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<Partial<Product> | null>(null);
   const [open, setOpen] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -84,6 +85,7 @@ function ProductsPage() {
   });
 
   function openNew() {
+    setDuplicateWarning(null);
     setEditing({
       status: "active",
       price: 0,
@@ -95,11 +97,37 @@ function ProductsPage() {
   }
 
   function openEdit(p: Product) {
+    setDuplicateWarning(null);
     setEditing(p);
     setOpen(true);
   }
 
   async function openDuplicateAsBundle(p: Product) {
+    const { data: existingBundles } = await supabase
+      .from("products")
+      .select("id")
+      .eq("product_type", "bundle")
+      .eq("name", p.name)
+      .limit(1);
+
+    if (existingBundles && existingBundles.length > 0) {
+      setDuplicateWarning(`A bundle product named "${p.name}" already exists. Review the duplicate before saving.`);
+      toast.warning(`A bundle product named "${p.name}" already exists. Review the duplicate before saving.`);
+    } else {
+      setDuplicateWarning(null);
+    }
+
+    const { data: bundleRows } = await supabase
+      .from("bundles")
+      .select("child_product_id, quantity, products:child_product_id(id, name)")
+      .eq("parent_product_id", p.id);
+
+    const bundleItems = (bundleRows || []).map((item: any) => ({
+      ...(item.products || {}),
+      id: item.child_product_id,
+      quantity: item.quantity,
+    }));
+
     const baseSku = p.sku ? `${p.sku}-BDL` : `${slugify(p.name).toUpperCase()}-BDL`;
     const uniqueSku = await generateUniqueSku(supabase, baseSku);
 
@@ -119,6 +147,7 @@ function ProductsPage() {
       colors: p.colors,
       sizes: p.sizes,
       color_images: p.color_images,
+      bundle_items: bundleItems,
     });
     setOpen(true);
   }
@@ -239,6 +268,9 @@ function ProductsPage() {
 
                         <div>
                           <p className="font-medium">{p.name}</p>
+                          <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${p.product_type === "bundle" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                            {p.product_type === "bundle" ? "Bundle" : "Standard"}
+                          </span>
                           <p className="text-xs text-muted-foreground">{p.sku || p.slug}</p>
                         </div>
                       </div>
@@ -305,6 +337,7 @@ function ProductsPage() {
         open={open}
         onOpenChange={setOpen}
         initial={editing}
+        duplicateWarning={duplicateWarning}
         categories={categories as { id: string; name: string }[]}
         onSaved={() => {
           setOpen(false);
@@ -321,12 +354,14 @@ function ProductDialog({
   initial,
   categories,
   onSaved,
+  duplicateWarning,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initial: Partial<Product> | null;
   categories: { id: string; name: string }[];
   onSaved: () => void;
+  duplicateWarning?: string | null;
 }) {
   const [form, setForm] = useState<Partial<Product>>(initial ?? {});
   const [colorsText, setColorsText] = useState("");
@@ -414,6 +449,15 @@ function ProductDialog({
             uploadedUrls.push(...results.map((r) => r.publicUrl));
         }
 
+        let uploadIndex = 0;
+        const finalImages = images
+          .map((img) => {
+            if (!img.file) return img.url;
+            const uploadedUrl = uploadedUrls[uploadIndex++];
+            return uploadedUrl || img.url;
+          })
+          .filter(Boolean) as string[];
+
         const productSlug = form.id
           ? await generateUniqueSlug(supabase, form.name, form.id)
           : await generateUniqueSlug(supabase, form.name);
@@ -428,7 +472,7 @@ function ProductDialog({
             sale_price: form.sale_price == null || form.sale_price === 0 ? null : Number(form.sale_price),
             discount_percent: Number(form.discount_percent || 0),
             stock: Number(form.stock || 0),
-            images: uploadedUrls,
+            images: finalImages,
             status: form.status ?? "draft",
             featured: !!form.featured,
             product_type: form.product_type || "standard",
@@ -439,36 +483,74 @@ function ProductDialog({
         };
 
         let result;
+        let productId = form.id;
+        let createdProductId: string | null = null;
         if (form.id) {
             result = await supabase.from("products").update(payload).eq("id", form.id);
         } else {
-            result = await supabase.from("products").insert(payload);
+            result = await supabase.from("products").insert(payload).select("id").single();
+            productId = result.data?.id ?? productId;
+            createdProductId = typeof productId === "string" ? productId : null;
         }
 
         if (result?.error) throw result.error;
+        if (!productId) throw new Error("Product was saved but its ID could not be retrieved.");
         
-        // Storage cleanup
-        const removedImages = (initial?.images || []).filter(oldUrl => !uploadedUrls.includes(oldUrl));
-        if (removedImages.length > 0) {
-            const paths = removedImages.map(url => {
+        // Storage cleanup for images removed from an existing product.
+        // Duplicate-as-bundle reuses the original image URLs, so new products never delete them.
+        // Before deleting, check both images and color_images references in other products.
+        const removedImages = (initial?.images || []).filter((oldUrl) => !finalImages.includes(oldUrl));
+        if (form.id && removedImages.length > 0) {
+            const { data: otherProducts } = await supabase
+                .from("products")
+                .select("images, color_images")
+                .neq("id", form.id);
+
+            const referencedUrls = new Set<string>();
+            for (const product of otherProducts || []) {
+                for (const url of product.images || []) referencedUrls.add(url);
+                for (const value of Object.values(product.color_images || {})) {
+                    if (typeof value === "string" && value) referencedUrls.add(value);
+                }
+            }
+
+            const paths: string[] = [];
+            for (const url of removedImages) {
+                if (referencedUrls.has(url)) continue;
                 const marker = "/storage/v1/object/public/product-images/";
-                return url.includes(marker) ? decodeURIComponent(url.split(marker)[1]) : "";
-            }).filter(Boolean);
+                const path = url.includes(marker) ? decodeURIComponent(url.split(marker)[1]) : "";
+                if (path) paths.push(path);
+            }
             if (paths.length > 0) await supabase.storage.from("product-images").remove(paths);
         }
 
         // Bundle persistence
-        if (form.product_type === 'bundle' && form.bundle_items) {
-            await supabase.from("bundles").delete().eq("parent_product_id", form.id!);
-            await supabase.from("bundles").insert(
-                form.bundle_items.map((item: any) => ({
-                    parent_product_id: form.id!,
-                    child_product_id: item.id,
-                    quantity: item.quantity
-                }))
-            );
-        } else if (form.id) {
-            await supabase.from("bundles").delete().eq("parent_product_id", form.id);
+        try {
+            if (form.product_type === 'bundle' && form.bundle_items) {
+                const deleteResult = await supabase.from("bundles").delete().eq("parent_product_id", productId);
+                if (deleteResult.error) throw deleteResult.error;
+
+                if (form.bundle_items.length > 0) {
+                    const insertResult = await supabase.from("bundles").insert(
+                        form.bundle_items.map((item: any) => ({
+                            parent_product_id: productId,
+                            child_product_id: item.id,
+                            quantity: item.quantity
+                        }))
+                    );
+                    if (insertResult.error) throw insertResult.error;
+                }
+            } else if (form.id) {
+                const deleteResult = await supabase.from("bundles").delete().eq("parent_product_id", form.id);
+                if (deleteResult.error) throw deleteResult.error;
+            }
+        } catch (bundleError) {
+            if (createdProductId) {
+                throw new Error(
+                    `Bundle product was created, but saving bundle items failed: ${(bundleError as Error).message}. The product was kept to avoid data loss; edit it and save bundle items again.`,
+                );
+            }
+            throw bundleError;
         }
 
         toast.success(form.id ? "Product updated" : "Product created");
@@ -510,6 +592,11 @@ function ProductDialog({
         </DialogHeader>
 
         <div className="grid gap-4">
+          {duplicateWarning && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {duplicateWarning}
+            </div>
+          )}
           <div>
             <Label>Name</Label>
             <Input value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} />
@@ -566,6 +653,9 @@ function ProductDialog({
             <div>
               <Label>Stock</Label>
               <Input type="number" value={form.stock ?? ""} onChange={(e) => set("stock", Number(e.target.value))} />
+              {form.product_type === "bundle" && (
+                <p className="mt-1 text-xs text-muted-foreground">Enter or confirm the bundle stock quantity. Stock is not copied from the original product.</p>
+              )}
             </div>
           </div>
 
