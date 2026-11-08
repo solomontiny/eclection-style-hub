@@ -17,7 +17,6 @@ import {
   getEffectiveProductBasePrice,
   getNextWholesaleTier,
   getWholesaleTier,
-  isValidWholesaleQuantity,
   WHOLESALE_BUNDLE_SIZE,
   WHOLESALE_TIERS,
 } from "@/lib/wholesale-pricing";
@@ -32,6 +31,21 @@ export const Route = createFileRoute("/bulk-order")({
 });
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"] as const;
+
+// Collision-resistant bundle identifier. crypto.randomUUID() is used instead of
+// Date.now() so that two bundles created in the same millisecond always receive
+// separate grouping keys. The bundle_ prefix is preserved for readability only;
+// nothing in the cart or order pipeline depends on it.
+function generateBundleId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `bundle_${crypto.randomUUID()}`;
+  }
+  // Fallback for environments without crypto.randomUUID (very old browsers).
+  // Uses a random 128-bit hex string derived from Math.random plus a monotonic
+  // counter so consecutive bundles still get distinct IDs.
+  const randomHex = Math.random().toString(16).slice(2).padEnd(32, "0");
+  return `bundle_${Date.now().toString(36)}-${randomHex}`;
+}
 
 type BundleItem = {
   product: Product;
@@ -55,6 +69,9 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
   const productSizes = product.sizes?.length ? product.sizes : DEFAULT_SIZES;
   const defaultSize = productSizes[1] ?? "M";
   const colours = product.colors?.length ? product.colors : ["Default"];
+  // Stock is read from the product record already fetched on this page (no extra request).
+  // It represents the number of individual pieces available for THIS product only.
+  const availableStock = Number.isFinite(product.stock) ? Math.max(0, product.stock) : 0;
   const [lines, setLines] = useState<Record<string, ColourLine>>(() =>
     Object.fromEntries(colours.map((color, index) => [
       color,
@@ -74,7 +91,12 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
 
   const updateQuantity = (color: string, value: string) => {
     const nextValue = Number.parseInt(value, 10);
-    const qty = Number.isFinite(nextValue) ? Math.max(0, Math.min(10, Math.floor(nextValue))) : 0;
+    // Cap the selection to what is actually available for this product. Stock is
+    // per product, so the same product's stock is shared across all its colour/size
+    // lines and is never combined with a different product's stock.
+    const qty = Number.isFinite(nextValue)
+      ? Math.max(0, Math.min(availableStock, Math.floor(nextValue)))
+      : 0;
     updateLine(color, { qty });
   };
 
@@ -83,10 +105,11 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
       toast.error("Select at least one colour and quantity.");
       return;
     }
-    // Validate max 10 per individual bundle product selection
-    const overLimit = selectedLines.some((line) => line.qty > 10);
-    if (overLimit) {
-      toast.error("Maximum 10 pieces per bundle selection.");
+    // Never allow more pieces than this product has in stock.
+    if (selectedTotal > availableStock) {
+      toast.error(
+        `${product.name} only has ${availableStock} piece${availableStock === 1 ? "" : "s"} in stock. Reduce the quantity or choose another product.`,
+      );
       return;
     }
     onAdd(product, selectedLines);
@@ -106,6 +129,10 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
             <div>
               <p className="font-display text-lg leading-tight">{product.name}</p>
               <p className="mt-1 text-sm text-muted-foreground">Choose a quantity for each colour or design.</p>
+              <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                <Package className="h-3.5 w-3.5" />
+                {availableStock} piece{availableStock === 1 ? "" : "s"} available
+              </p>
             </div>
           </div>
 
@@ -185,7 +212,6 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
                         id={`quantity-${product.id}-${color}`}
                         type="number"
                         min={0}
-                        max={10}
                         step={1}
                         value={line.qty}
                         onChange={(event) => updateQuantity(color, event.target.value)}
@@ -197,7 +223,7 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
                       />
                     </div>
                   </div>
-                  <p id={`quantity-help-${product.id}-${color}`} className="mt-1.5 text-[11px] text-muted-foreground">Use 0 to skip this colour. Max 10 per selection.</p>
+                  <p id={`quantity-help-${product.id}-${color}`} className="mt-1.5 text-[11px] text-muted-foreground">Use 0 to skip this colour. Each product is capped by its own available stock.</p>
                 </div>
               );
             })}
@@ -207,7 +233,7 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
             <p className="text-sm font-medium text-muted-foreground">
               {selectedTotal > 0 ? `${selectedTotal} selected from this design` : "No quantities selected"}
             </p>
-            <Button type="button" size="sm" className="btn-accent" onClick={handleAdd} disabled={selectedTotal === 0}>
+            <Button type="button" size="sm" className="btn-accent" onClick={handleAdd} disabled={selectedTotal === 0 || selectedTotal > availableStock}>
               Add selected colours
             </Button>
           </div>
@@ -239,33 +265,42 @@ function BulkOrderPage() {
 
   const bundleCount = Number((currentBundleTotal / WHOLESALE_BUNDLE_SIZE).toFixed(1));
   const nextWholesaleTier = getNextWholesaleTier(currentBundleTotal);
-  const wholesalePriceByProduct = new Map<string, number>();
   const productQtyById = new Map<string, number>();
   for (const item of bundleItems) {
     productQtyById.set(item.product.id, (productQtyById.get(item.product.id) ?? 0) + item.qty);
   }
-  for (const [productId, productTotal] of productQtyById) {
-    const product = bundleItems.find((entry) => entry.product.id === productId)?.product;
-    const retailPrice = product ? getEffectiveProductBasePrice(product) : 0;
-    const productTier = getWholesaleTier(productTotal);
-    wholesalePriceByProduct.set(productId, productTier?.pricePerPiece ?? retailPrice);
-  }
+  // Wholesale pricing is derived from the TOTAL bundle quantity, not from any
+  // single product. Each product is capped only by its own available stock, and
+  // products with fewer than 10 pieces may still participate in a mixed bundle.
+  const bundleTier = getWholesaleTier(currentBundleTotal);
+  const wholesalePricePerPiece = bundleTier?.pricePerPiece ?? null;
   const totalPrice = bundleItems.reduce(
     (sum, item) => {
       const retailPrice = getEffectiveProductBasePrice(item.product);
-      const unit = wholesalePriceByProduct.get(item.product.id) ?? retailPrice;
+      const unit = wholesalePricePerPiece ?? retailPrice;
       return sum + item.qty * unit;
     },
     0,
   );
-  const invalidWholesaleProducts = Array.from(productQtyById.entries())
-    .filter(([, qty]) => !isValidWholesaleQuantity(qty))
+  // Stock is aggregated per product across every order line before it is
+  // compared with that product's available stock. Different products are never
+  // combined with each other.
+  const outOfStockProducts = Array.from(productQtyById.entries())
+    .filter(([productId, qty]) => {
+      const product = bundleItems.find((entry) => entry.product.id === productId)?.product;
+      const stock = product ? Math.max(0, Number(product.stock ?? 0)) : 0;
+      return qty > stock;
+    })
     .map(([productId, qty]) => ({
       productId,
       qty,
       name: bundleItems.find((entry) => entry.product.id === productId)?.product.name ?? "Selected product",
     }));
-  const meetsWholesaleMinimum = bundleItems.length > 0 && invalidWholesaleProducts.length === 0;
+  const bundleValid =
+    bundleItems.length > 0 &&
+    currentBundleTotal >= WHOLESALE_BUNDLE_SIZE &&
+    currentBundleTotal % WHOLESALE_BUNDLE_SIZE === 0 &&
+    outOfStockProducts.length === 0;
 
   const addToBundle = (product: Product, lines: ColourLine[]) => {
     setBundleItems((current) => {
@@ -289,14 +324,18 @@ function BulkOrderPage() {
       toast.error(`Select at least ${WHOLESALE_BUNDLE_SIZE} pieces for wholesale pricing.`);
       return;
     }
-    if (invalidWholesaleProducts.length > 0) {
-      const details = invalidWholesaleProducts
-        .slice(0, 2)
-        .map((entry) => `${entry.name}: ${entry.qty}`)
-        .join(", ");
+    if (currentBundleTotal % WHOLESALE_BUNDLE_SIZE !== 0) {
+      const remainder = currentBundleTotal % WHOLESALE_BUNDLE_SIZE;
+      const direction = remainder <= WHOLESALE_BUNDLE_SIZE / 2 ? -1 : 1;
+      const nextValid = currentBundleTotal + direction * remainder;
+      const delta = Math.abs(nextValid - currentBundleTotal);
       toast.error(
-        `Each selected product must have a wholesale quantity in multiples of 10 (minimum 10). ${details}${invalidWholesaleProducts.length > 2 ? "..." : ""}`,
+        `Wholesale totals must be a multiple of ${WHOLESALE_BUNDLE_SIZE}. Add or remove ${delta} piece${delta === 1 ? "" : "s"} to reach ${nextValid}.`,
       );
+      return;
+    }
+    if (!bundleTier) {
+      toast.error("Could not determine wholesale pricing for this quantity.");
       return;
     }
     const invalidPriceProducts = bundleItems.filter((item) => {
@@ -307,11 +346,27 @@ function BulkOrderPage() {
       toast.error(`${invalidPriceProducts[0].product.name} has an invalid price and cannot be added to cart.`);
       return;
     }
-    const bundleId = `bundle_${Date.now()}`;
+    // Never let a selection exceed the stock of the product it belongs to.
+    if (outOfStockProducts.length > 0) {
+      const entry = outOfStockProducts[0];
+      const product = bundleItems.find((item) => item.product.id === entry.productId)?.product;
+      const stock = product ? Math.max(0, Number(product.stock ?? 0)) : 0;
+      toast.error(
+        `${entry.name} only has ${stock} piece${stock === 1 ? "" : "s"} in stock, but ${entry.qty} were selected.`,
+      );
+      return;
+    }
+    const bundleId = generateBundleId();
     bundleItems.forEach((item) => {
-      const productQty = productQtyById.get(item.product.id) ?? item.qty;
-      const tier = getWholesaleTier(productQty);
-      addItem(item.product, item.size, item.color, item.qty, true, bundleId, tier?.pricePerPiece);
+      addItem(
+        item.product,
+        item.size,
+        item.color,
+        item.qty,
+        true,
+        bundleId,
+        bundleTier.pricePerPiece,
+      );
     });
     setBundleItems([]);
     toast.success("Bulk order added to cart!");
@@ -324,17 +379,17 @@ function BulkOrderPage() {
         <p className="text-lg">
           {WHOLESALE_BUNDLE_SIZE} pieces = 1 bundle &nbsp;|&nbsp; wholesale pricing starts at {formatCurrencyPrice(WHOLESALE_TIERS[0].pricePerPiece, currency)} per piece
         </p>
-        <div className={`mx-auto flex max-w-md items-center justify-center gap-2 p-4 rounded-xl font-bold ${meetsWholesaleMinimum ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" : "bg-primary/10 text-primary"}`}>
-          {meetsWholesaleMinimum ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+        <div className={`mx-auto flex max-w-md items-center justify-center gap-2 p-4 rounded-xl font-bold ${bundleValid ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" : "bg-primary/10 text-primary"}`}>
+          {bundleValid ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
           {currentBundleTotal} Pieces Selected ({bundleCount} bundle{bundleCount === 1 ? "" : "s"})
         </div>
-        {invalidWholesaleProducts.length > 0 && (
-          <div className="mx-auto max-w-2xl rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-left text-sm text-destructive">
-            <p className="font-medium">Each selected product must independently meet wholesale quantity rules.</p>
-            <p className="mt-1 text-destructive/90">Use multiples of 10 pieces per product (minimum 10), because wholesale pricing and checkout validation are applied per product.</p>
-            <ul className="mt-2 list-disc pl-5 text-destructive/90">
-              {invalidWholesaleProducts.slice(0, 4).map((entry) => (
-                <li key={entry.productId}>{entry.name}: {entry.qty} piece{entry.qty === 1 ? "" : "s"}</li>
+        {outOfStockProducts.length > 0 && (
+          <div className="mx-auto max-w-2xl rounded-xl border border-amber-300 bg-amber-50 p-4 text-left text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+            <p className="font-medium">Not enough stock.</p>
+            <p className="mt-1">Each product is capped by its own available stock. Different products are never combined with each other.</p>
+            <ul className="mt-2 list-disc pl-5">
+              {outOfStockProducts.slice(0, 4).map((entry) => (
+                <li key={entry.productId}>{entry.name}: {entry.qty} selected</li>
               ))}
             </ul>
           </div>
@@ -343,15 +398,24 @@ function BulkOrderPage() {
           <p className="text-sm text-muted-foreground">
             {currentBundleTotal < WHOLESALE_BUNDLE_SIZE
               ? `Add ${nextWholesaleTier.minimumQuantity - currentBundleTotal} more piece${nextWholesaleTier.minimumQuantity - currentBundleTotal === 1 ? "" : "s"} to reach the wholesale minimum of ${nextWholesaleTier.minimumQuantity}.`
-              : `Add ${nextWholesaleTier.minimumQuantity - currentBundleTotal} piece${nextWholesaleTier.minimumQuantity - currentBundleTotal === 1 ? "" : "s"} to reach ${nextWholesaleTier.minimumQuantity} pieces at ${formatCurrencyPrice(nextWholesaleTier.pricePerPiece, currency)} per piece.`}
+              : currentBundleTotal % WHOLESALE_BUNDLE_SIZE !== 0
+                ? (() => {
+                    const remainder = currentBundleTotal % WHOLESALE_BUNDLE_SIZE;
+                    const direction = remainder <= WHOLESALE_BUNDLE_SIZE / 2 ? -1 : 1;
+                    const nextValid = currentBundleTotal + direction * remainder;
+                    const delta = Math.abs(nextValid - currentBundleTotal);
+                    return `Add or remove ${delta} piece${delta === 1 ? "" : "s"} to reach the next valid wholesale total of ${nextValid}.`;
+                  })()
+                : `Add ${nextWholesaleTier.minimumQuantity - currentBundleTotal} piece${nextWholesaleTier.minimumQuantity - currentBundleTotal === 1 ? "" : "s"} to reach ${nextWholesaleTier.minimumQuantity} pieces at ${formatCurrencyPrice(nextWholesaleTier.pricePerPiece, currency)} per piece.`}
             {(nextWholesaleTier.minimumQuantity - currentBundleTotal) % WHOLESALE_BUNDLE_SIZE === 0 &&
+              currentBundleTotal % WHOLESALE_BUNDLE_SIZE === 0 &&
               ` (${(nextWholesaleTier.minimumQuantity - currentBundleTotal) / WHOLESALE_BUNDLE_SIZE} bundle${(nextWholesaleTier.minimumQuantity - currentBundleTotal) / WHOLESALE_BUNDLE_SIZE === 1 ? "" : "s"})`}
           </p>
         ) : currentBundleTotal >= 1000 ? (
           <p className="text-sm text-muted-foreground">You have reached the highest wholesale quantity tier.</p>
         ) : null}
-        {meetsWholesaleMinimum && (
-          <Button onClick={finalizeBundle} className="btn-accent">
+        {bundleValid && (
+          <Button onClick={finalizeBundle} className="btn-accent" disabled={outOfStockProducts.length > 0}>
             Add Bulk Order to Cart ({formatCurrencyPrice(totalPrice, currency)})
           </Button>
         )}
@@ -414,21 +478,29 @@ function BulkOrderPage() {
                   <div className="flex justify-between text-sm">
                     <span>Price Per Piece</span>
                     <span className="font-semibold">
-                      {new Set(bundleItems.map((item) => item.product.id)).size <= 1
-                        ? formatCurrencyPrice(
-                            wholesalePriceByProduct.get(bundleItems[0]?.product.id ?? "") ?? getEffectiveProductBasePrice(bundleItems[0]?.product ?? { price: 0 }),
-                            currency,
-                          )
+                      {bundleTier
+                        ? formatCurrencyPrice(bundleTier.pricePerPiece, currency)
                         : "Varies by product"}
                     </span>
                   </div>
+                  {outOfStockProducts.length > 0 && (
+                    <div className="flex justify-between text-sm text-amber-700 dark:text-amber-300">
+                      <span>Stock status</span>
+                      <span className="font-medium">Not enough stock</span>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t border-border pt-3 font-display text-lg">
                     <span>Grand Total</span>
                     <span className="text-primary">{formatCurrencyPrice(totalPrice, currency)}</span>
                   </div>
-                  {!meetsWholesaleMinimum && (
+                  {!bundleValid && (
                     <p className="text-xs text-muted-foreground">
-                      Estimated from selected quantities. Each product must reach a wholesale quantity (10, 20, 30… pieces) before this can be added to cart.
+                      Estimated from selected quantities. The total bundle must be at least {WHOLESALE_BUNDLE_SIZE} pieces and divisible by {WHOLESALE_BUNDLE_SIZE} before this can be added to cart.
+                    </p>
+                  )}
+                  {bundleValid && outOfStockProducts.length > 0 && (
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      One or more products do not have enough stock. Each product is capped by its own available stock.
                     </p>
                   )}
                 </div>

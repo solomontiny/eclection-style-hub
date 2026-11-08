@@ -42,18 +42,20 @@ function isPayablePrice(value: number) {
 }
 
 function repriceWholesaleGroups(items: CartItem[]) {
+  // Wholesale pricing groups are defined by bundleId only. The quantity for
+  // each group is aggregated across every product in the bundle and the tier
+  // price per piece is applied uniformly to all items in that group. Separate
+  // bulk-order bundles are never combined with each other.
   const quantities = new Map<string, number>();
   for (const item of items) {
     if (item.isBulk && item.bundleId) {
-      const groupKey = `${item.bundleId}::${item.id}`;
-      quantities.set(groupKey, (quantities.get(groupKey) ?? 0) + item.qty);
+      quantities.set(item.bundleId, (quantities.get(item.bundleId) ?? 0) + item.qty);
     }
   }
 
   return items.map((item) => {
     if (!item.isBulk || !item.bundleId) return item;
-    const groupKey = `${item.bundleId}::${item.id}`;
-    const tier = getWholesaleTier(quantities.get(groupKey) ?? 0);
+    const tier = getWholesaleTier(quantities.get(item.bundleId) ?? 0);
     const safeRetail = safeMoney(item.retailPrice);
     const safeWholesale = tier?.pricePerPiece != null ? safeMoney(tier.pricePerPiece, safeRetail) : null;
     return { ...item, price: safeWholesale ?? safeRetail };

@@ -258,13 +258,23 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
 
       const productsById = new Map(products.map((product) => [product.id, product]));
 
-      // 1b. Reject out-of-stock items before creating the order.
+      // 1b. Reject out-of-stock items before creating the order. Stock is aggregated
+      // by product ID across every order line; different products are never
+      // combined with each other.
+      const requestedQuantityByProduct = new Map<string, number>();
       for (const item of items) {
-        const product = productsById.get(item.id);
+        requestedQuantityByProduct.set(
+          item.id,
+          (requestedQuantityByProduct.get(item.id) ?? 0) + item.qty,
+        );
+      }
+      for (const [productId, requestedQty] of requestedQuantityByProduct) {
+        const product = productsById.get(productId);
         if (!product) throw new Error("One of the items in your cart is no longer available.");
-        if (Math.max(0, Number(product.stock ?? 0)) < item.qty) {
+        const availableStock = Math.max(0, Number(product.stock ?? 0));
+        if (availableStock < requestedQty) {
           throw new Error(
-            `${product.name} does not have enough stock. Only ${product.stock} available.`,
+            `${product.name} does not have enough stock. Only ${availableStock} available.`,
           );
         }
       }
@@ -278,15 +288,17 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
           throw new Error("Wholesale pricing is only available for eligible bundle products.");
         }
 
-        const groupingKey = `${item.bundleId}::${item.id}`;
+        // Wholesale quantity is aggregated across every product inside a
+        // single bulk-order bundle. Each bundle keeps its own pricing group;
+        // separate bundles are never combined with each other.
         wholesaleQuantityByBundle.set(
-          groupingKey,
-          (wholesaleQuantityByBundle.get(groupingKey) ?? 0) + item.qty,
+          item.bundleId,
+          (wholesaleQuantityByBundle.get(item.bundleId) ?? 0) + item.qty,
         );
       }
 
       const wholesalePriceByBundle = new Map<string, number>();
-      for (const [groupingKey, quantity] of wholesaleQuantityByBundle) {
+      for (const [bundleId, quantity] of wholesaleQuantityByBundle) {
         if (!isValidWholesaleQuantity(quantity)) {
           throw new Error("Wholesale quantities must be in multiples of 10 pieces, with a minimum of 10.");
         }
@@ -295,7 +307,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         if (!tier) {
           throw new Error("Could not determine wholesale pricing for this quantity.");
         }
-        wholesalePriceByBundle.set(groupingKey, tier.pricePerPiece);
+        wholesalePriceByBundle.set(bundleId, tier.pricePerPiece);
       }
 
       // 2. Calculate totals (authoritative, server-side, no VAT)
@@ -307,7 +319,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         // Wholesale unit pricing was derived from the validated bundle quantity above.
         const base = getEffectiveProductBasePrice(product);
         const wholesalePrice = item.bundleId
-          ? wholesalePriceByBundle.get(`${item.bundleId}::${item.id}`)
+          ? wholesalePriceByBundle.get(item.bundleId)
           : undefined;
         const price = wholesalePrice ?? base;
         if (!Number.isFinite(price) || price <= 0) {
@@ -375,9 +387,9 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
           .map((i) => {
             const p = productsById.get(i.id);
             const parts = [p?.name];
-            if (i.bundleId && wholesalePriceByBundle.has(`${i.bundleId}::${i.id}`)) parts.push("(Bulk)");
-            else parts.push(`(Size ${i.size})`);
-            if (i.color) parts.push(`(Color ${i.color})`);
+            if (i.size) parts.push(`Size ${i.size}`);
+            if (i.color) parts.push(`Color ${i.color}`);
+            if (i.bundleId && wholesalePriceByBundle.has(i.bundleId)) parts.push("Bulk");
             parts.push(`x ${i.qty}`);
             return parts.join(" ");
           })
