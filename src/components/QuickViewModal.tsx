@@ -159,9 +159,6 @@ export function QuickViewModal({ product, isOpen, onClose }: { product: Product 
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Size</p>
                   <SizeChartDialog
-                    selectedSize={size}
-                    onSelectSize={setSize}
-                    closeOnSelect={true}
                   />
                 </div>
                 <div className="flex flex-wrap gap-2">

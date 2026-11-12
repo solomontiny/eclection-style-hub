@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Package, ShoppingCart, Users, DollarSign, AlertTriangle, Clock3, CheckCircle2, Truck, Activity, TrendingUp, Repeat } from "lucide-react";
 import { loadPerfReport, resetPerfReport, type PerfReport, getBandwidthSummary } from "@/lib/perf-monitor";
+import { summarizePaidRevenue } from "@/lib/admin-order-view.mjs";
 
 export const Route = createFileRoute("/admin/dashboard")({
   component: DashboardPage,
@@ -28,9 +29,9 @@ function DashboardPage() {
         supabase.from("products").select("id, name, price, status, created_at").order("created_at", { ascending: false }).limit(5),
         supabase.from("notifications").select("id", { count: "exact", head: true }).eq("is_read", false),
       ]);
-      const validOrders = (orders.data ?? []).filter((o) => o.status !== "cancelled");
+      const validOrders = (orders.data ?? []).filter((o) => o.status !== "cancelled" && o.payment_status === "paid");
       const today = new Date().toISOString().slice(0, 10);
-      const revenue = validOrders.reduce((s, o) => s + Number(o.total ?? 0), 0);
+      const revenue = summarizePaidRevenue(orders.data);
       const todayRevenue = validOrders.filter((o) => o.created_at.slice(0, 10) === today).reduce((s, o) => s + Number(o.total ?? 0), 0);
       return {
         productCount: products.count ?? 0,

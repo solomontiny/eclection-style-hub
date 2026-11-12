@@ -10,12 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Upload, Trash2, Play, Image as ImageIcon, Plus, Copy, Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { ADVERT_VIDEO_MAX_BYTES, validateAdvertVideo } from "@/lib/advert-upload-validation.mjs";
 
 export const Route = createFileRoute("/admin/settings")({ component: SettingsPage });
 
-const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+const ALLOWED_VIDEO_TYPES = ["video/mp4"];
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB for video, 5MB for images
+const MAX_FILE_SIZE = ADVERT_VIDEO_MAX_BYTES;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 function SettingsPage() {
@@ -110,12 +111,16 @@ function SettingsPage() {
   ) {
     const allowedTypes = type === "video" ? ALLOWED_VIDEO_TYPES : ALLOWED_IMAGE_TYPES;
     const maxSize = type === "video" ? MAX_FILE_SIZE : MAX_IMAGE_SIZE;
+    if (type === "video") {
+      const validationError = validateAdvertVideo(file);
+      if (validationError) { toast.error(validationError); return; }
+    }
     if (!allowedTypes.includes(file.type)) {
       toast.error(`Invalid file type for ${type}. Allowed: ${allowedTypes.join(", ")}`);
       return;
     }
     if (file.size > maxSize) {
-      toast.error(`File too large. Max ${type === "video" ? "50MB" : "5MB"}.`);
+      toast.error(type === "video" ? "Video must be 15 MB or smaller. 3–10 MB is recommended." : "File too large. Max 5MB.");
       return;
     }
     setUploading(true);
@@ -178,7 +183,7 @@ function SettingsPage() {
                 <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("video-file-input")?.click()} disabled={uploadingVideo}>
                   {uploadingVideo ? "Uploading…" : <><Upload size={14} className="mr-1" /> Video</>}
                 </Button>
-                <input id="video-file-input" type="file" accept="video/mp4,video/webm,video/quicktime" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setVideoFile(f); uploadMedia(f, setUploadingVideo, "video"); e.target.value = ""; } }} />
+                <input id="video-file-input" type="file" accept="video/mp4" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setVideoFile(f); uploadMedia(f, setUploadingVideo, "video"); e.target.value = ""; } }} />
               </div>
               {settings.video_url && (
                 <div className="flex items-center gap-1">

@@ -188,9 +188,6 @@ return <section className="container-x py-16 md:py-24">
           <div className="flex items-center justify-between">
             <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Select Size</label>
             <SizeChartDialog
-              selectedSize={selectedSize}
-              onSelectSize={setSelectedSize}
-              closeOnSelect={true}
             />
           </div>
           <div className="flex gap-3 mt-3">
