@@ -10,6 +10,7 @@ import {
   setOrderIdInSearch,
   summarizePaidRevenue,
 } from "../src/lib/admin-order-view.mjs";
+import { getDeliveryLocation } from "../src/lib/delivery-location.mjs";
 
 const fixture = (overrides = {}) => ({
   id: "order-1",
@@ -63,6 +64,36 @@ test("dashboard revenue excludes pending and cancelled orders", () => {
       fixture({ status: "cancelled", total: 4000 }),
     ]),
     15000,
+  );
+});
+
+test("delivery location displays only saved order fields with safe fallbacks", () => {
+  const location = getDeliveryLocation({
+    customer_name: "Local Recipient",
+    customer_phone: "08000000000",
+    shipping_address: {
+      address: "12 Local Test Road",
+      city: "Ikeja",
+      state: "Lagos",
+      country: "Nigeria",
+      postal_code: "100001",
+      delivery_instructions: "Blue gate",
+    },
+  });
+  assert.deepEqual(location, {
+    recipient: "Local Recipient",
+    phone: "08000000000",
+    address: "12 Local Test Road",
+    city: "Ikeja",
+    state: "Lagos",
+    country: "Nigeria",
+    postalCode: "100001",
+    instructions: "Blue gate",
+  });
+  assert.equal(getDeliveryLocation({ shipping_address: { address: "" } }).city, "Not provided");
+  assert.equal(
+    getDeliveryLocation({ shipping_address: "12 Plain Address" }).address,
+    "12 Plain Address",
   );
 });
 

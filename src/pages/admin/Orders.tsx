@@ -33,6 +33,7 @@ import { cancelOrder } from "@/lib/cancel-order.functions";
 import { arrayToCsv, downloadCsv } from "@/lib/csv-export";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getOrderIdFromSearch, setOrderIdInSearch } from "@/lib/admin-order-view.mjs";
+import { getDeliveryLocation } from "@/lib/delivery-location.mjs";
 
 export const Route = createFileRoute("/admin/orders")({
   component: OrdersPage,
@@ -376,6 +377,15 @@ function OrderDetailsDialog({ orderId, onClose }: { orderId: string | null; onCl
       {isError && <p role="alert" className="py-8 text-center text-destructive">Could not load this order. Check that the ID is valid and try again.</p>}
       {!isLoading && !isError && !order && <p className="py-8 text-center text-muted-foreground">Order not found.</p>}
       {order && <div className="space-y-5 text-sm">
+        <section className="rounded-lg border border-border p-4">
+          <h3 className="mb-3 font-semibold">Delivery Location</h3>
+          {(() => {
+            const delivery = getDeliveryLocation(order);
+            return <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+              {[["Recipient", delivery.recipient], ["Delivery phone", delivery.phone], ["Address", delivery.address], ["City", delivery.city], ["State", delivery.state], ["Country", delivery.country], ["Postal code", delivery.postalCode], ["Landmark / instructions", delivery.instructions]].map(([label, value]) => <div key={label}><dt className="text-muted-foreground">{label}</dt><dd className="break-words font-medium">{value}</dd></div>)}
+            </dl>;
+          })()}
+        </section>
         <section className="grid gap-3 sm:grid-cols-2">
           <p><b>Order ID:</b> {order.id}</p><p><b>Reference:</b> {order.order_number}</p>
           <p><b>Created:</b> {new Date(order.created_at).toLocaleString()}</p><p><b>Status:</b> {order.status}</p>
