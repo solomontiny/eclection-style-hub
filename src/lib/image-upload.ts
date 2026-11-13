@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getProductImageThumbnailUrl } from "@/lib/responsive-image-utils.mjs";
 
 export interface UploadedImage {
   path: string;
@@ -567,21 +568,5 @@ export async function replaceProductImage(
 }
 
 export function getThumbnailUrl(imageUrl: string, width: number): string | null {
-  if (!imageUrl || !Number.isFinite(width) || width <= 0) return null;
-
-  try {
-    const url = new URL(imageUrl);
-    const marker = "/storage/v1/object/public/product-images/";
-    const markerIndex = url.pathname.indexOf(marker);
-    if (markerIndex === -1) return null;
-
-    const objectPath = url.pathname.slice(markerIndex + marker.length);
-    url.pathname = `${url.pathname.slice(0, markerIndex)}/storage/v1/render/image/public/product-images/${objectPath}`;
-    url.searchParams.set("width", String(Math.round(width)));
-    url.searchParams.set("height", String(Math.round(width)));
-    url.searchParams.set("resize", "cover");
-    return url.toString();
-  } catch {
-    return null;
-  }
+  return getProductImageThumbnailUrl(imageUrl, width, import.meta.env.VITE_SUPABASE_URL?.trim());
 }

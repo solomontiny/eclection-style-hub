@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef } from "react";
 import { Package, Camera, User, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,15 @@ import { fmtDate, fmtNGN } from "@/lib/admin-utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { fallbackToOriginalImage, getResponsiveImageProps } from "@/lib/responsive-images";
+import {
+  countUnreadCustomerNotifications,
+  customerNotificationPageQueryKey,
+  customerOrderPageQueryKey,
+  fetchCustomerNotificationPage,
+  fetchCustomerOrderPage,
+  markCustomerNotificationRead,
+} from "@/lib/customer-account-queries.mjs";
 
 export const Route = createFileRoute("/account")({
   beforeLoad: async () => {
@@ -21,6 +30,7 @@ function AccountPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [uploading, setUploading] = useState(false);
+  const [olderNotificationCursors, setOlderNotificationCursors] = useState<{ createdAt: string; id: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: profile } = useQuery({
@@ -32,32 +42,46 @@ function AccountPage() {
     },
   });
 
-  const { data: orders = [], isLoading } = useQuery({
-    queryKey: ["account-orders", user?.id],
-    enabled: !!user,
-    refetchOnMount: true,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("orders").select("id, order_number, total, status, payment_status, created_at").eq("user_id", user!.id).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
+  const ordersQuery = useQuery({
+    queryKey: customerOrderPageQueryKey(user?.id),
+    enabled: !!user?.id,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    queryFn: () => fetchCustomerOrderPage({ client: supabase, userId: user!.id }),
   });
+  const orders = ordersQuery.data?.items ?? [];
 
-  const { data: notifications = [], isLoading: notificationsLoading, error: notificationsError } = useQuery({
-    queryKey: ["customer-notifications", user?.id],
-    enabled: !!user,
-    refetchOnMount: true,
+  const notificationsQuery = useQuery({
+    queryKey: customerNotificationPageQueryKey(user?.id),
+    enabled: !!user?.id,
+    staleTime: 15_000,
     refetchInterval: 60000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customer_notifications")
-        .select("id, type, title, message, is_read, created_at, order_id, orders(order_number)")
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
+    refetchIntervalInBackground: false,
+    queryFn: () => fetchCustomerNotificationPage({ client: supabase, userId: user!.id }),
   });
+  const olderNotificationQueries = useQueries({
+    queries: olderNotificationCursors.map((cursor) => ({
+      queryKey: customerNotificationPageQueryKey(user?.id, cursor),
+      enabled: !!user?.id,
+      staleTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      queryFn: () => fetchCustomerNotificationPage({ client: supabase, userId: user!.id, cursor }),
+    })),
+  });
+  const notificationPages = [notificationsQuery.data, ...olderNotificationQueries.map((query) => query.data)].filter(
+    (page): page is NonNullable<typeof notificationsQuery.data> => !!page,
+  );
+  const notifications = notificationPages.flatMap((page) => page.items);
+  const lastNotificationPage = notificationPages.at(-1);
+  const unreadNotifications = countUnreadCustomerNotifications(notifications);
+  const avatarImageProps = profile?.avatar_url
+    ? getResponsiveImageProps(profile.avatar_url, {
+        sizes: "96px",
+        widths: [100, 200],
+        fallbackWidth: 100,
+        fallbackHeight: 100,
+      })
+    : null;
 
   const markNotificationRead = async (notificationId: string) => {
     const { error } = await supabase.rpc("mark_customer_notification_read", {
@@ -67,7 +91,10 @@ function AccountPage() {
       toast.error(error.message || "Could not update notification.");
       return;
     }
-    qc.invalidateQueries({ queryKey: ["customer-notifications", user?.id] });
+    qc.setQueriesData<{ items: { id: string; is_read: boolean }[]; nextCursor: { createdAt: string; id: string } | null }>(
+      { queryKey: ["customer-notifications", user?.id] },
+      (page) => markCustomerNotificationRead(page, notificationId),
+    );
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,9 +127,9 @@ function AccountPage() {
 
       toast.success("Profile picture updated successfully!");
       qc.invalidateQueries({ queryKey: ["account-profile", user.id] });
-    } catch (err: any) {
+    } catch (err) {
       console.error("Profile picture upload failed:", err);
-      toast.error(err.message || "Failed to upload profile picture.");
+      toast.error(err instanceof Error ? err.message : "Failed to upload profile picture.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -114,7 +141,18 @@ function AccountPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 pb-8 border-b border-border">
         <div className="relative group">
           <Avatar className="h-24 w-24 border-2 border-primary/20 shadow-md">
-            <AvatarImage src={profile?.avatar_url ?? undefined} alt={profile?.display_name ?? "Profile"} className="object-cover" />
+            <AvatarImage
+              src={avatarImageProps?.src}
+              srcSet={avatarImageProps?.srcSet || undefined}
+              sizes={avatarImageProps?.sizes}
+              width={avatarImageProps?.width}
+              height={avatarImageProps?.height}
+              loading="lazy"
+              decoding="async"
+              onError={fallbackToOriginalImage}
+              alt={profile?.display_name ?? "Profile"}
+              className="object-cover"
+            />
             <AvatarFallback className="bg-primary/10 text-primary text-2xl font-semibold">
               {profile?.display_name ? profile.display_name.charAt(0).toUpperCase() : <User className="h-10 w-10" />}
             </AvatarFallback>
@@ -155,9 +193,10 @@ function AccountPage() {
 
       <div className="mt-12">
         <h2 className="font-display text-2xl">Notifications</h2>
-        {notificationsLoading ? (
+        <p className="mt-1 text-sm text-muted-foreground">{unreadNotifications} unread in loaded notifications</p>
+        {notificationsQuery.isLoading ? (
           <p className="mt-5 text-muted-foreground">Loading notifications…</p>
-        ) : notificationsError ? (
+        ) : notificationsQuery.error ? (
           <p className="mt-5 text-red-500 text-sm">Could not load notifications.</p>
         ) : notifications.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-border p-8 text-center">
@@ -165,8 +204,10 @@ function AccountPage() {
           </div>
         ) : (
           <div className="mt-5 divide-y divide-border rounded-2xl border border-border overflow-hidden">
-            {notifications.map((notification: any) => {
-              const orderNumber = notification.orders?.order_number ?? notification.orders?.[0]?.order_number;
+            {notifications.map((notification) => {
+              const orderNumber = Array.isArray(notification.orders)
+                ? notification.orders[0]?.order_number
+                : notification.orders?.order_number;
               return (
                 <div key={notification.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                   <div>
@@ -198,11 +239,36 @@ function AccountPage() {
             })}
           </div>
         )}
+        {lastNotificationPage?.nextCursor && (
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4"
+            disabled={olderNotificationQueries.some((query) => query.isLoading)}
+            onClick={() => {
+              const failedQuery = olderNotificationQueries.find((query) => query.isError);
+              if (failedQuery) {
+                void failedQuery.refetch();
+                return;
+              }
+              const cursor = lastNotificationPage.nextCursor;
+              if (cursor && !olderNotificationCursors.some((item) => item.id === cursor.id && item.createdAt === cursor.createdAt)) {
+                setOlderNotificationCursors((current) => [...current, cursor]);
+              }
+            }}
+          >
+            {olderNotificationQueries.some((query) => query.isLoading)
+              ? "Loading…"
+              : olderNotificationQueries.some((query) => query.isError)
+                ? "Retry loading notifications"
+                : "Load older notifications"}
+          </Button>
+        )}
       </div>
 
       <div className="mt-12">
         <h2 className="font-display text-2xl">Order history</h2>
-        {isLoading ? (
+        {ordersQuery.isLoading ? (
           <p className="mt-5 text-muted-foreground">Loading orders…</p>
         ) : orders.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-border p-8 text-center">
@@ -211,7 +277,7 @@ function AccountPage() {
           </div>
         ) : (
           <div className="mt-5 divide-y divide-border rounded-2xl border border-border overflow-hidden">
-            {orders.map((order) => (
+            {orders.slice(0, 5).map((order) => (
               <div key={order.id} className="flex flex-wrap items-center justify-between gap-3 p-4 hover:bg-muted/20">
                 <div>
                   <p className="font-medium">{order.order_number}</p>
@@ -224,6 +290,11 @@ function AccountPage() {
               </div>
             ))}
           </div>
+        )}
+        {!ordersQuery.isLoading && (
+          <Link to="/account/orders" className="mt-4 inline-block text-sm text-primary underline">
+            View all orders
+          </Link>
         )}
       </div>
     </section>

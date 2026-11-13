@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCart } from "@/lib/cart";
 import { useStore } from "@/lib/store-context";
 import { formatCurrencyPrice } from "@/lib/currency-browser";
+import { fallbackToOriginalImage, getResponsiveImageProps } from "@/lib/responsive-images";
 import {
   Sheet,
   SheetContent,
@@ -79,7 +80,28 @@ export function CartDrawer() {
               {groupedItems.others.map((item) => (
                 <div key={cartItemKey(item.id, item.size, item.color, item.bundleId)} className="flex gap-3 border-b pb-3">
                   <div className="h-16 w-14 rounded-lg bg-muted overflow-hidden">
-                    {item.image && <img loading="lazy" decoding="async" src={item.image} alt="" className="h-full w-full object-cover" />}
+                    {item.image && (() => {
+                      const imageProps = getResponsiveImageProps(item.image, {
+                        sizes: "56px",
+                        widths: [100, 200],
+                        fallbackWidth: 100,
+                        fallbackHeight: 100,
+                      });
+                      return (
+                        <img
+                          loading="lazy"
+                          decoding="async"
+                          src={imageProps.src}
+                          srcSet={imageProps.srcSet || undefined}
+                          sizes={imageProps.sizes}
+                          width={imageProps.width}
+                          height={imageProps.height}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          onError={fallbackToOriginalImage}
+                        />
+                      );
+                    })()}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{item.name}</p>

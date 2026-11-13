@@ -151,9 +151,9 @@ return <section className="container-x py-16 md:py-24">
         <div className="aspect-[4/5] rounded-3xl overflow-hidden bg-muted shadow-sm">
           {primaryImage ? (
             <img
-              loading="lazy"
+              loading="eager"
               decoding="async"
-              fetchPriority="low"
+              fetchPriority="high"
               src={primaryImageProps!.src}
               srcSet={primaryImageProps!.srcSet}
               sizes={primaryImageProps!.sizes}
@@ -161,7 +161,7 @@ return <section className="container-x py-16 md:py-24">
               width={primaryImageProps!.width}
               height={primaryImageProps!.height}
               className="h-full w-full object-cover"
-              onError={(event) => { event.currentTarget.style.display = "none"; }}
+              onError={fallbackToOriginalImage}
             />
           ) : (
             <span className="text-sm text-muted-foreground">No image available</span>

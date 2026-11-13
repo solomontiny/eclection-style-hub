@@ -1,14 +1,19 @@
-import { getThumbnailUrl } from "@/lib/image-upload";
+import {
+  createResponsiveImageProps,
+  getProductImageThumbnailUrl,
+  handleResponsiveImageError,
+} from "@/lib/responsive-image-utils.mjs";
+import type { ResponsiveImageOptions } from "@/lib/responsive-image-utils.mjs";
 import type { SyntheticEvent } from "react";
 
-export function fallbackToOriginalImage(event: SyntheticEvent<HTMLImageElement>) {
-  const image = event.currentTarget;
-  if (image.currentSrc && image.currentSrc !== image.src) {
-    image.removeAttribute("srcset");
-    image.removeAttribute("sizes");
-    return;
-  }
-  image.style.display = "none";
+const configuredSupabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+
+function createConfiguredResponsiveImageProps(imageUrl: string, options: ResponsiveImageOptions = {}) {
+  return createResponsiveImageProps(imageUrl, { ...options, supabaseUrl: configuredSupabaseUrl });
+}
+
+export function fallbackToOriginalImage(event: SyntheticEvent<HTMLImageElement>, fallbackSrc?: string) {
+  handleResponsiveImageError(event.currentTarget, fallbackSrc);
 }
 
 export interface ResponsiveImageProps {
@@ -24,23 +29,12 @@ export interface ResponsiveImageProps {
 }
 
 export function getSrcSet(baseUrl: string, widths: number[] = [200, 400, 800, 1200]): string {
-  return widths
-    .map((w) => {
-      const thumbUrl = getThumbnailUrl(baseUrl, w);
-      return thumbUrl ? `${thumbUrl} ${w}w` : null;
-    })
-    .filter(Boolean)
-    .join(", ");
+  return createConfiguredResponsiveImageProps(baseUrl, { widths }).srcSet;
 }
 
 export function getResponsiveImageProps(
   imageUrl: string,
-  options: {
-    sizes?: string;
-    widths?: number[];
-    fallbackWidth?: number;
-    fallbackHeight?: number;
-  } = {}
+  options: ResponsiveImageOptions = {}
 ): {
   src: string;
   srcSet: string;
@@ -48,17 +42,7 @@ export function getResponsiveImageProps(
   width: number;
   height: number;
 } {
-  const { sizes = "(max-width: 640px) 200px, (max-width: 1024px) 400px, 800px", widths = [200, 400, 800, 1200] } = options;
-  
-  const srcSet = getSrcSet(imageUrl, widths);
-  
-  return {
-    src: imageUrl,
-    srcSet,
-    sizes,
-    width: options.fallbackWidth || 800,
-    height: options.fallbackHeight || 1000,
-  };
+  return createConfiguredResponsiveImageProps(imageUrl, options);
 }
 
 export function getProductCardImageProps(imageUrl: string) {
@@ -98,7 +82,7 @@ export function getQuickViewImageProps(imageUrl: string) {
 }
 
 export function getThumbnailProps(imageUrl: string, size: number) {
-  const thumbUrl = getThumbnailUrl(imageUrl, size);
+  const thumbUrl = getProductImageThumbnailUrl(imageUrl, size, configuredSupabaseUrl);
   if (!thumbUrl) return null;
   return {
     src: thumbUrl,

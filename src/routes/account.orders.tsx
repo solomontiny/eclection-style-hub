@@ -1,9 +1,16 @@
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fmtDate, fmtNGN } from "@/lib/admin-utils";
+import { Button } from "@/components/ui/button";
+import {
+  CUSTOMER_ORDER_PAGE_SIZE,
+  customerOrderPageQueryKey,
+  fetchCustomerOrderPage,
+} from "@/lib/customer-account-queries.mjs";
 
 export const Route = createFileRoute("/account/orders")({
   beforeLoad: async () => {
@@ -15,26 +22,35 @@ export const Route = createFileRoute("/account/orders")({
 
 function OrdersPage() {
   const { user } = useAuth();
-  const { data: orders = [], isLoading } = useQuery({
-    queryKey: ["account-orders", user?.id],
-    enabled: !!user,
-    refetchOnMount: true,
-    refetchInterval: 60000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("id, order_number, total, status, payment_status, payment_method, created_at")
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
+  const [olderOrderCursors, setOlderOrderCursors] = useState<{ createdAt: string; id: string }[]>([]);
+  const ordersQuery = useQuery({
+    queryKey: customerOrderPageQueryKey(user?.id),
+    enabled: !!user?.id,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    queryFn: () => fetchCustomerOrderPage({ client: supabase, userId: user!.id }),
   });
+  const olderOrderQueries = useQueries({
+    queries: olderOrderCursors.map((cursor) => ({
+      queryKey: customerOrderPageQueryKey(user?.id, cursor),
+      enabled: !!user?.id,
+      staleTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      queryFn: () => fetchCustomerOrderPage({ client: supabase, userId: user!.id, cursor }),
+    })),
+  });
+  const orderPages = [ordersQuery.data, ...olderOrderQueries.map((query) => query.data)].filter(
+    (page): page is NonNullable<typeof ordersQuery.data> => !!page,
+  );
+  const orders = orderPages.flatMap((page) => page.items);
+  const lastOrderPage = orderPages.at(-1);
+  const loadingOlderOrders = olderOrderQueries.some((query) => query.isLoading);
 
   return (
     <section className="container-x py-12 md:py-16 max-w-4xl">
       <h1 className="font-display text-4xl">My Orders</h1>
-      {isLoading ? (
+      {ordersQuery.isLoading ? (
         <p className="mt-5 text-muted-foreground">Loading orders…</p>
       ) : orders.length === 0 ? (
         <div className="mt-5 rounded-2xl border border-border p-8 text-center">
@@ -65,6 +81,34 @@ function OrdersPage() {
           ))}
         </div>
       )}
+      {lastOrderPage?.nextCursor && (
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4"
+          disabled={loadingOlderOrders}
+          onClick={() => {
+            const failedQuery = olderOrderQueries.find((query) => query.isError);
+            if (failedQuery) {
+              void failedQuery.refetch();
+              return;
+            }
+            const cursor = lastOrderPage.nextCursor;
+            if (cursor && !olderOrderCursors.some((item) => item.id === cursor.id && item.createdAt === cursor.createdAt)) {
+              setOlderOrderCursors((current) => [...current, cursor]);
+            }
+          }}
+        >
+          {loadingOlderOrders
+            ? "Loading…"
+            : olderOrderQueries.some((query) => query.isError)
+              ? "Retry loading orders"
+              : "Load older orders"}
+        </Button>
+      )}
+      <p className="mt-3 text-xs text-muted-foreground">
+        Showing orders newest first, {CUSTOMER_ORDER_PAGE_SIZE} at a time.
+      </p>
     </section>
   );
 }

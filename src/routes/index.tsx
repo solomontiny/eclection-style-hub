@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ShieldCheck, Truck, Sparkles, Building2, ShoppingBag, Package, Lock, HeadphonesIcon, Award } from "lucide-react";
 import heroImg from "@/assets/supplier-affordable-hero.png";
 import { Product, getFeaturedProducts, getNewArrivals, getBundleProducts, getOnSaleProducts, getCategories } from "@/lib/products";
+import { fallbackToOriginalImage, getCategoryImageProps } from "@/lib/responsive-images";
 import { ProductCard } from "@/components/ProductCard";
 import { VideoAdvert } from "@/components/VideoAdvert";
 import { LocationSection } from "@/components/LocationSection";
@@ -70,7 +71,7 @@ function Home() {
   return (
     <>
       <section className="relative h-[60vh] min-h-[400px] sm:h-[75vh] sm:min-h-[550px] w-full overflow-hidden">
-        <img loading="lazy" decoding="async"
+        <img loading="eager" fetchPriority="high" decoding="async"
           src={heroImg}
           alt="SupplierAffordable fashion collection"
           width={1920}
@@ -100,6 +101,7 @@ function Home() {
           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide md:grid md:grid-cols-3 lg:grid-cols-4 md:gap-6">
             {(categories.length ? categories : []).map((c) => {
               const imgSrc = c.image_url || categoryProductImage.get(c.id);
+              const imageProps = imgSrc ? getCategoryImageProps(imgSrc) : null;
               return (
                 <Link
                   key={c.id}
@@ -110,15 +112,16 @@ function Home() {
                   <div className="relative aspect-[3/4] w-full">
                     {imgSrc ? (
                       <img
-                        src={imgSrc}
+                        src={imageProps!.src}
+                        srcSet={imageProps!.srcSet || undefined}
+                        sizes={imageProps!.sizes}
+                        width={imageProps!.width}
+                        height={imageProps!.height}
                         alt={c.name}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         loading="lazy"
                         decoding="async"
-                        onError={(e) => {
-                          const t = e.currentTarget as HTMLImageElement;
-                          if (t.src !== heroImg) t.src = heroImg;
-                        }}
+                        onError={(event) => fallbackToOriginalImage(event, heroImg)}
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/5 via-secondary to-accent/10">
