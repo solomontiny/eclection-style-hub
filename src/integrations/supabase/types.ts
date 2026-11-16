@@ -365,6 +365,8 @@ export type Database = {
       }
       orders: {
         Row: {
+          checkout_attempt_key: string | null
+          checkout_request_fingerprint: string | null
           coupon_code: string | null
           courier: string | null
           created_at: string
@@ -398,6 +400,8 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          checkout_attempt_key?: string | null
+          checkout_request_fingerprint?: string | null
           coupon_code?: string | null
           courier?: string | null
           created_at?: string
@@ -431,6 +435,8 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          checkout_attempt_key?: string | null
+          checkout_request_fingerprint?: string | null
           coupon_code?: string | null
           courier?: string | null
           created_at?: string

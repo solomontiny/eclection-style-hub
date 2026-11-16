@@ -287,7 +287,8 @@ export function OrdersPage() {
                 <TableHead className="w-32">Customer</TableHead>
                 <TableHead className="text-right w-20">Total</TableHead>
                 <TableHead className="w-24">Method</TableHead>
-                <TableHead className="w-24">Status</TableHead>
+                <TableHead className="w-28">Payment Status</TableHead>
+                <TableHead className="w-28">Delivery Status</TableHead>
                 <TableHead className="text-right w-28">Created</TableHead>
                 <TableHead className="w-40">Actions</TableHead>
               </TableRow>
@@ -295,13 +296,13 @@ export function OrdersPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="p-6 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="p-6 text-center text-muted-foreground">
                     Loading…
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="p-6 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="p-6 text-center text-muted-foreground">
                     No orders found
                   </TableCell>
                 </TableRow>
@@ -321,16 +322,16 @@ export function OrdersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col items-start gap-1">
-                        <Badge
-                          variant={o.payment_status === "paid" ? "default" : o.payment_status === "pending" ? "outline" : "destructive"}
-                        >
-                          Payment: {o.payment_status}
-                        </Badge>
-                        <Badge variant={o.delivery_status === "delivered" ? "default" : "secondary"}>
-                          Delivery: {o.delivery_status === "delivered" ? "Delivered" : "Not Delivered"}
-                        </Badge>
-                      </div>
+                      <Badge
+                        variant={o.payment_status === "paid" ? "default" : o.payment_status === "pending" ? "outline" : "destructive"}
+                      >
+                        {o.payment_status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={o.delivery_status === "delivered" ? "default" : "secondary"}>
+                        {o.delivery_status === "delivered" ? "Delivered" : "Not Delivered"}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {new Date(o.created_at).toLocaleDateString()}

@@ -23,6 +23,7 @@ import {
   isValidWholesaleQuantity,
   WHOLESALE_BUNDLE_SIZE,
 } from "./wholesale-pricing";
+import { createCheckoutRequestFingerprint } from "./checkout-request-fingerprint.mjs";
 
 // Legacy gateway handlers remain inert unless intentionally re-enabled.
 const PAYSTACK_ENABLED = false;
@@ -203,10 +204,11 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         deliveryInstructions: z.string().optional(),
       }),
       currency: z.string().optional().default("NGN"),
+      checkoutAttemptKey: z.string().trim().min(8).max(128),
     }),
   )
   .handler(async ({ data }) => {
-    const { items, customer, currency } = data;
+    const { items, customer, currency, checkoutAttemptKey } = data;
     let supabaseAdmin;
     try {
       supabaseAdmin = getSupabaseAdmin();
@@ -364,13 +366,14 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       const vatAmount = 0;
       const vatRate = 0;
       const taxableSubtotal = subtotal;
+
       const orderData = {
         user_id: authenticatedUser.id,
         customer_name: customer.name,
         customer_email: customer.email,
         customer_phone: customer.phone && customer.phone.trim() !== "" ? customer.phone : null,
         shipping_address: shippingAddress,
-        subtotal: subtotal,
+        subtotal,
         discount,
         shipping,
         vat_amount: vatAmount,
@@ -396,9 +399,20 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
           .join(", "),
       };
 
+      const checkoutRequestFingerprint = await createCheckoutRequestFingerprint(
+        orderData,
+        orderItems,
+      );
+
+      const orderPayload = {
+        ...orderData,
+        checkout_attempt_key: checkoutAttemptKey,
+        checkout_request_fingerprint: checkoutRequestFingerprint,
+      };
+
       const { data: createdOrders, error: createOrderError } = await supabaseAdmin.rpc(
         "create_order_with_stock_reservations",
-        { p_order: orderData, p_items: orderItems },
+        { p_order: orderPayload, p_items: orderItems },
       );
 
       if (createOrderError) {

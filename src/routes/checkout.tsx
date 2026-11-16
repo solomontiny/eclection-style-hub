@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createOrderServerFn } from "@/lib/orders.functions";
+import { clearCheckoutAttemptKey, resolveCheckoutAttemptKey } from "@/lib/checkout-attempt.mjs";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -139,11 +140,24 @@ function CheckoutPage() {
         return;
       }
 
+      const checkoutAttempt = resolveCheckoutAttemptKey({
+        items: items.map((i) => ({
+          id: i.id,
+          size: i.size,
+          color: i.color,
+          qty: i.qty,
+          isBulk: !!i.isBulk,
+          bundleId: i.bundleId,
+        })),
+        storage: typeof window !== "undefined" ? window.localStorage : undefined,
+      });
+
       const order = await createOrderServerFn({
         data: {
           items: items.map((i) => ({ id: i.id, size: i.size, color: i.color, qty: i.qty, isBulk: !!i.isBulk, bundleId: i.bundleId })),
           customer: data,
           currency,
+          checkoutAttemptKey: checkoutAttempt.key,
         },
         headers: { Authorization: `Bearer ${currentSession.access_token}` },
       });
@@ -161,17 +175,28 @@ function CheckoutPage() {
         return;
       }
 
+      clearCheckoutAttemptKey(typeof window !== "undefined" ? window.localStorage : undefined);
       clear();
       qc.invalidateQueries({ queryKey: ["account-orders"] });
-      if (import.meta.env.DEV) console.log("[checkout] navigating to /payment-instructions", order.orderId);
-      await navigate({
-        to: "/payment-instructions",
-        search: { orderId: order.orderId },
-      });
+
+      try {
+        await navigate({
+          to: "/payment-instructions",
+          search: { orderId: order.orderId },
+        });
+      } catch (navError) {
+        if (import.meta.env.DEV) console.error("[checkout] navigation failed after order creation", navError);
+        toast.success("Order created. Redirecting to payment instructions...");
+        window.location.assign(`/payment-instructions?orderId=${encodeURIComponent(order.orderId)}`);
+      }
       return;
     } catch (e: any) {
       if (import.meta.env.DEV) console.error("[checkout] failed", e);
-      toast.error(e?.message || "Checkout failed. Please try again.");
+      const message = e?.message || "Checkout failed. Please try again.";
+      if (/checkout attempt does not match|start a new checkout attempt/i.test(message)) {
+        clearCheckoutAttemptKey(typeof window !== "undefined" ? window.localStorage : undefined);
+      }
+      toast.error(message);
     } finally {
       submittingRef.current = false;
       setLoading(false);
