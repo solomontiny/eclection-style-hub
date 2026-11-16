@@ -46,6 +46,7 @@ type OrderRow = {
   customer_email: string;
   total: number;
   status: string;
+  delivery_status: "not_delivered" | "delivered";
   payment_method: string;
   payment_status: string;
   created_at: string;
@@ -68,6 +69,7 @@ export function OrdersPage() {
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [deliveringId, setDeliveringId] = useState<string | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(() => getOrderIdFromSearch(window.location.search));
 
   useEffect(() => {
@@ -88,7 +90,7 @@ export function OrdersPage() {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          "id, order_number, customer_name, customer_email, customer_phone, total, subtotal, shipping, discount, currency, status, payment_method, payment_status, paystack_reference, shipping_address, notes, tracking_number, created_at",
+          "id, order_number, customer_name, customer_email, customer_phone, total, subtotal, shipping, discount, currency, status, delivery_status, payment_method, payment_status, paystack_reference, shipping_address, notes, tracking_number, created_at",
         )
         .order("created_at", { ascending: false });
 
@@ -162,6 +164,32 @@ export function OrdersPage() {
       toast.error(e instanceof Error ? e.message : "Order cancellation failed");
     } finally {
       setCancellingId(null);
+    }
+  };
+
+  const markOrderDelivered = async (order: OrderRow) => {
+    if (deliveringId || order.delivery_status === "delivered" || order.status === "cancelled") return;
+    setDeliveringId(order.id);
+    try {
+      // Update only the fulfillment status, and only if it has not changed since
+      // the order row was loaded. RLS limits this update to administrators.
+      const { data, error } = await supabase
+        .from("orders")
+        .update({ delivery_status: "delivered" })
+        .eq("id", order.id)
+        .eq("delivery_status", "not_delivered")
+        .select("id")
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) throw new Error("This order has changed. Refresh the list and try again.");
+      toast.success(`Order ${order.order_number} marked as delivered`);
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["admin-order-detail", order.id] });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Could not update delivery status");
+    } finally {
+      setDeliveringId(null);
     }
   };
 
@@ -293,7 +321,16 @@ export function OrdersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={o.payment_status === "paid" ? "default" : o.payment_status === "pending" ? "outline" : "destructive"}>{o.payment_status}</Badge>
+                      <div className="flex flex-col items-start gap-1">
+                        <Badge
+                          variant={o.payment_status === "paid" ? "default" : o.payment_status === "pending" ? "outline" : "destructive"}
+                        >
+                          Payment: {o.payment_status}
+                        </Badge>
+                        <Badge variant={o.delivery_status === "delivered" ? "default" : "secondary"}>
+                          Delivery: {o.delivery_status === "delivered" ? "Delivered" : "Not Delivered"}
+                        </Badge>
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {new Date(o.created_at).toLocaleDateString()}
@@ -342,6 +379,23 @@ export function OrdersPage() {
                           {o.status === "cancelled" ? "cancelled" : o.payment_status}
                         </Badge>
                       )}
+                      {o.delivery_status !== "delivered" && o.status !== "cancelled" && (
+                        <ConfirmDialog
+                          trigger={
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={deliveringId === o.id}
+                            >
+                              {deliveringId === o.id ? "Updating..." : "Mark as Delivered"}
+                            </Button>
+                          }
+                          title={`Mark order ${o.order_number} as delivered?`}
+                          description="Confirm that the customer has received this order. Its payment status will not change."
+                          confirmLabel="Mark as Delivered"
+                          onConfirm={() => markOrderDelivered(o)}
+                        />
+                      )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -389,6 +443,7 @@ function OrderDetailsDialog({ orderId, onClose }: { orderId: string | null; onCl
         <section className="grid gap-3 sm:grid-cols-2">
           <p><b>Order ID:</b> {order.id}</p><p><b>Reference:</b> {order.order_number}</p>
           <p><b>Created:</b> {new Date(order.created_at).toLocaleString()}</p><p><b>Status:</b> {order.status}</p>
+          <p><b>Delivery status:</b> {order.delivery_status === "delivered" ? "Delivered" : "Not Delivered"}</p>
           <p><b>Payment status:</b> {order.payment_status}</p><p><b>Method:</b> {order.payment_method || "Not provided"}</p>
           <p><b>Customer:</b> {order.customer_name}</p><p><b>Email:</b> {order.customer_email}</p><p><b>Phone:</b> {order.customer_phone || "Not provided"}</p>
         </section>

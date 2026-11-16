@@ -372,6 +372,7 @@ export type Database = {
           customer_email: string
           customer_name: string
           customer_phone: string | null
+          delivery_status: "not_delivered" | "delivered"
           discount: number
           estimated_delivery: string | null
           id: string
@@ -404,6 +405,7 @@ export type Database = {
           customer_email: string
           customer_name: string
           customer_phone?: string | null
+          delivery_status?: "not_delivered" | "delivered"
           discount?: number
           estimated_delivery?: string | null
           id?: string
@@ -436,6 +438,7 @@ export type Database = {
           customer_email?: string
           customer_name?: string
           customer_phone?: string | null
+          delivery_status?: "not_delivered" | "delivered"
           discount?: number
           estimated_delivery?: string | null
           id?: string
