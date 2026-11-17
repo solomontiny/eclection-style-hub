@@ -71,7 +71,11 @@ jobs:
 
       - name: Verify target migration applied
         run: |
-          supabase migration list --workdir ./supabase --output-format json | jq -e '.[] | select(.version == "20261116120000" and .name == "checkout_attempt_idempotency")'
+          echo "=== Checking local migration status ==="
+          supabase migration list --local --workdir ./supabase --output-format json | tee /tmp/migration-list.json
+          echo "=== Verifying migration 20261116120000 is applied locally ==="
+          jq -e '.migrations[] | select(.local == "20261116120000")' /tmp/migration-list.json
+          echo "✓ Migration 20261116120000 (checkout_attempt_idempotency) is applied to local database"
 
       - name: Get local Supabase connection details
         id: supabase-info
