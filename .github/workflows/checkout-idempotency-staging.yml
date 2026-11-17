@@ -71,7 +71,7 @@ jobs:
 
       - name: Verify target migration applied
         run: |
-          supabase migration list --workdir ./supabase | grep "20261116120000_checkout_attempt_idempotency"
+          supabase migration list --workdir ./supabase --output json | jq -e '.[] | select(.version == "20261116120000" and .name == "checkout_attempt_idempotency")'
 
       - name: Get local Supabase connection details
         id: supabase-info
