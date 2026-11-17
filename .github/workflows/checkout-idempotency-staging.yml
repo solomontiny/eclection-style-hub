@@ -40,17 +40,22 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Install Supabase CLI and jq
+        uses: supabase/setup-cli@v3
+        with:
+          version: v2.stable
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Verify Supabase CLI and jq
         run: |
-          curl -fsSL https://github.com/supabase/cli/releases/download/v1.197.4/supabase_linux_amd64.tar.gz | tar -xz
-          sudo mv supabase /usr/local/bin/
-          sudo apt-get update && sudo apt-get install -y jq
           supabase --version
           jq --version
 
@@ -92,4 +97,8 @@ jobs:
       - name: Stop local Supabase stack
         if: always()
         run: |
-          supabase stop --workdir ./supabase --no-backup
+          if command -v supabase >/dev/null 2>&1; then
+            supabase stop --workdir ./supabase --no-backup || echo "Warning: supabase stop failed"
+          else
+            echo "Warning: Supabase CLI not available, skipping stack cleanup"
+          fi
