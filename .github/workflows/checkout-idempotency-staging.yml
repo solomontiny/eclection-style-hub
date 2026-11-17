@@ -74,7 +74,10 @@ jobs:
           echo "=== Checking local migration status ==="
           supabase migration list --local --workdir ./supabase --output-format json | tee /tmp/migration-list.json
           echo "=== Verifying migration 20261116120000 is applied locally ==="
-          jq -e '.migrations[] | select(.local == "20261116120000")' /tmp/migration-list.json
+          # JSON structure: { "message": "...", "migrations": [{ "local": "...", "remote": "...", "time": "..." }] }
+          # When using --local: "remote" = applied to local DB, "local" = exists in filesystem
+          # We must verify the migration was APPLIED to the database (.remote field)
+          jq -e '.migrations[] | select(.remote == "20261116120000")' /tmp/migration-list.json
           echo "✓ Migration 20261116120000 (checkout_attempt_idempotency) is applied to local database"
 
       - name: Get local Supabase connection details
