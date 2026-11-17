@@ -1,0 +1,95 @@
+name: Checkout Idempotency Staging
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checkout-idempotency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository (staging-harness commit)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify implementation commit is ancestor
+        run: |
+          IMPLEMENTATION_COMMIT="7baae6e53b4fc9d348784c8292760f12faa46a33"
+          echo "Verifying that $IMPLEMENTATION_COMMIT is an ancestor of HEAD..."
+          if git merge-base --is-ancestor "$IMPLEMENTATION_COMMIT" HEAD; then
+            echo "✓ Implementation commit is an ancestor of HEAD"
+            git log --oneline -1 "$IMPLEMENTATION_COMMIT"
+            git log --oneline -1 HEAD
+          else
+            echo "✗ FAIL: Implementation commit $IMPLEMENTATION_COMMIT is NOT an ancestor of HEAD"
+            echo "This workflow must run from a staging-harness commit that includes the implementation commit as an ancestor."
+            exit 1
+          fi
+
+      - name: Verify checked-out commit
+        run: |
+          echo "Current HEAD commit:"
+          git log -1 --format="%H %s"
+          git show --stat HEAD
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Supabase CLI and jq
+        run: |
+          curl -fsSL https://github.com/supabase/cli/releases/download/v1.197.4/supabase_linux_amd64.tar.gz | tar -xz
+          sudo mv supabase /usr/local/bin/
+          sudo apt-get update && sudo apt-get install -y jq
+          supabase --version
+          jq --version
+
+      - name: Start local Supabase stack
+        run: |
+          supabase start --workdir ./supabase
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
+
+      - name: Apply all migrations
+        run: |
+          supabase db reset --workdir ./supabase
+
+      - name: Verify target migration applied
+        run: |
+          supabase migration list --workdir ./supabase | grep "20261116120000_checkout_attempt_idempotency"
+
+      - name: Get local Supabase connection details
+        id: supabase-info
+        run: |
+          echo "SUPABASE_URL=$(supabase status --workdir ./supabase --output json | jq -r '.api_url')" >> $GITHUB_OUTPUT
+          echo "SUPABASE_ANON_KEY=$(supabase status --workdir ./supabase --output json | jq -r '.anon_key')" >> $GITHUB_OUTPUT
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status --workdir ./supabase --output json | jq -r '.service_role_key')" >> $GITHUB_OUTPUT
+          echo "DB_URL=$(supabase status --workdir ./supabase --output json | jq -r '.db_url')" >> $GITHUB_OUTPUT
+
+      - name: Run database integration tests
+        env:
+          SUPABASE_URL: ${{ steps.supabase-info.outputs.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ steps.supabase-info.outputs.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.supabase-info.outputs.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ steps.supabase-info.outputs.DB_URL }}
+        run: |
+          node --test tests/checkout-idempotency.test.mjs
+
+      - name: Run existing unit tests
+        run: |
+          node --test tests/checkout-attempt.test.mjs tests/checkout-request-fingerprint.test.mjs
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: |
+          supabase stop --workdir ./supabase --no-backup
