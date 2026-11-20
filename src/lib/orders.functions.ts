@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { z } from "zod";
 import { CONTACT } from "./contact";
-import { getSupabaseAdmin, getEnvVar } from "./supabase-admin.server";
+import { getSupabaseAdmin } from "./supabase-admin.server";
 import { newOrderNotification, sendCustomerOrderEmail } from "./notifications";
 import { reserveStock, restoreStock, getOrderStockReservations, emitStockAlerts } from "./stock";
 import {
@@ -306,7 +306,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       .eq("id", "default")
       .maybeSingle();
 
-    const serverUrl = getEnvVar("SUPABASE_URL") || "";
+    const serverUrl = process.env.SUPABASE_URL || "";
     console.log("[createOrderServerFn] shop_settings diagnostic:", {
       hasError: !!settingsError,
       errorCode: settingsError?.code ?? null,
@@ -531,8 +531,8 @@ export const verifyBankTransferPayment = createServerFn({ method: "POST" })
     const headers = getRequestHeaders();
     const authHeader = headers.get("authorization");
     const cookieHeader = headers.get("cookie");
-    const authUrl = getEnvVar("SUPABASE_URL");
-    const authKey = getEnvVar("SUPABASE_ANON_KEY");
+const authUrl = process.env.SUPABASE_URL;
+const authKey = process.env.SUPABASE_ANON_KEY;
 
     let isAdmin = false;
     if ((authHeader || cookieHeader) && authUrl && authKey) {
