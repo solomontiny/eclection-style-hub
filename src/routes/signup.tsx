@@ -24,7 +24,9 @@ function SignupPage() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resendBusy, setResendBusy] = useState(false);
   const busyRef = React.useRef(false);
+  const resendBusyRef = React.useRef(false);
   const [err, setErr] = useState("");
   const [signupSuccess, setSignupSuccess] = useState(false);
 
@@ -60,11 +62,12 @@ function SignupPage() {
   }
 
   async function resendVerification() {
-    if (busyRef.current) return;
-    busyRef.current = true;
-    setBusy(true);
+    if (resendBusyRef.current) return;
+    resendBusyRef.current = true;
+    setResendBusy(true);
     setErr("");
     console.log("[RESEND START]", email.trim());
+
     try {
       const { error } = await supabase.auth.resend({
         type: 'signup',
@@ -83,8 +86,8 @@ function SignupPage() {
       console.error("[RESEND EXCEPTION]", err);
       setErr(err.message || "Failed to resend verification email");
     } finally {
-      busyRef.current = false;
-      setBusy(false);
+      resendBusyRef.current = false;
+      setResendBusy(false);
     }
   }
 
@@ -97,8 +100,8 @@ function SignupPage() {
             We've sent a verification email to {email}. Please check your inbox and click the verification link to activate your account.
           </p>
           <div className="flex flex-col gap-3">
-            <Button onClick={resendVerification} disabled={busy}>
-              {busy ? "Sending..." : "Resend verification email"}
+            <Button onClick={resendVerification} disabled={resendBusy}>
+              {resendBusy ? "Sending..." : "Resend verification email"}
             </Button>
             <Link to="/login" search={{ redirect: undefined }} className="text-center text-primary font-medium hover:underline">
               Back to Login

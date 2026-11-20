@@ -72,13 +72,14 @@ function LoginPage() {
   async function resendVerification() {
     if (busyRef.current) return;
     busyRef.current = true;
+    setBusy(true);
     setErr("");
     try {
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: signupEmail,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}/verify-email`,
         }
       });
       if (error) throw error;
@@ -87,6 +88,7 @@ function LoginPage() {
       setErr(err.message || "Failed to resend verification email");
     } finally {
       busyRef.current = false;
+      setBusy(false);
     }
   }
 
