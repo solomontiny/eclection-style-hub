@@ -49,6 +49,8 @@ function SignupPage() {
         setBusy(false);
       } else {
         setSignupSuccess(true);
+        busyRef.current = false;
+        setBusy(false);
       }
     } catch (err) {
       setErr("An unexpected error occurred.");
