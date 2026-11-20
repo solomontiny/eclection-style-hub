@@ -61,6 +61,8 @@ function LoginPage() {
       } else if (mode === "signup") {
         setSignupEmail(email.trim());
         setSignupSuccess(true);
+        setBusy(false);
+        busyRef.current = false;
       }
     } catch (err) {
       setErr("An unexpected error occurred.");
