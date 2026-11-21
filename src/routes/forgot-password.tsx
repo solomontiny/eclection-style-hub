@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,12 +17,23 @@ export const Route = createFileRoute("/forgot-password")({
 function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
 
+  // Handle cooldown timer
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setInterval(() => {
+        setCooldown((prev) => Math.max(0, prev - 1));
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [cooldown]);
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || cooldown > 0) return;
     setBusy(true);
     setStatus("idle");
     setMessage("");
@@ -33,7 +44,13 @@ function ForgotPasswordPage() {
 
     if (error) {
       setStatus("error");
-      setMessage(error.message);
+      // Handle rate limiting (429)
+      if (error.message.includes("rate limit") || error.message.includes("too many requests") || error.status === 429) {
+        setCooldown(60);
+        setMessage("Too many requests. Please wait 60 seconds before trying again.");
+      } else {
+        setMessage(error.message);
+      }
       setBusy(false);
     } else {
       setStatus("success");
@@ -64,8 +81,8 @@ function ForgotPasswordPage() {
               />
             </label>
             {status === "error" && <p className="text-destructive text-sm">{message}</p>}
-            <Button type="submit" disabled={busy}>
-              {busy ? "Sending..." : "Send reset email"}
+            <Button type="submit" disabled={busy || cooldown > 0}>
+              {busy ? "Sending..." : cooldown > 0 ? `Try again in ${cooldown}s` : "Send reset email"}
             </Button>
           </form>
         )}

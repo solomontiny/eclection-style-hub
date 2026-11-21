@@ -17,12 +17,12 @@ type AuthContextValue = {
     email: string,
     password: string,
     rememberMe: boolean
-  ) => Promise<{ error?: string }>;
+  ) => Promise<{ error?: string; data?: any; emailConfirmationRequired?: boolean }>;
   signUp: (
     email: string,
     password: string,
     displayName?: string
-  ) => Promise<{ error?: string; data?: any }>;
+  ) => Promise<{ error?: string; data?: any; emailConfirmationRequired?: boolean }>;
   signOut: () => Promise<void>;
 };
 
@@ -40,6 +40,9 @@ const mapAuthError = (message: string) => {
   }
   if (message.includes("Invalid email")) {
     return "Invalid email address.";
+  }
+  if (message.includes("rate limit") || message.includes("too many requests")) {
+    return "Too many requests. Please wait a moment and try again.";
   }
   return message;
 };
@@ -114,7 +117,7 @@ export function AuthProvider({
             };
           }
 
-          return {};
+          return { data, emailConfirmationRequired: false };
         } catch (err) {
           console.error("[SIGNIN EXCEPTION]", err);
           return {
@@ -155,8 +158,12 @@ export function AuthProvider({
 
           console.log("[SIGNUP SUCCESS]", data.user?.email);
 
-          // Treat as success if user created, even if session is null (email confirmation pending)
-          return { data };
+          // Check if email confirmation is needed (session will be null if email not confirmed)
+          const emailConfirmationRequired = !data.session && !!data.user;
+          
+          // If there's a user but no session, email confirmation is required
+          // If there's a session, user is already signed in (email confirmation not required or auto-confirmed)
+          return { data, emailConfirmationRequired };
         } catch (err) {
           console.error("[SIGNUP EXCEPTION]", err);
 

@@ -21,7 +21,14 @@ function VerifyEmailPage() {
       if (!isSubscribed) return;
 
       if (session) {
-        setStatus("success");
+        // Check if user's email is confirmed
+        if (session.user.email_confirmed_at) {
+          setStatus("success");
+        } else {
+          // Session exists but email not confirmed - this shouldn't happen via email link
+          // but could happen if user was already signed in
+          setStatus("verifying");
+        }
       } else if (error) {
         setStatus("error");
         setErrorMsg("The verification link is invalid or has expired.");
@@ -36,10 +43,11 @@ function VerifyEmailPage() {
     // Listen for auth state change (e.g., user clicking the email link)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isSubscribed) return;
-      if (event === 'SIGNED_IN' && session) {
-        setStatus("success");
-      } else if (event === 'USER_UPDATED' && session) {
-        setStatus("success");
+      // Handle various events that indicate successful email confirmation
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'PASSWORD_RECOVERY') && session) {
+        if (session.user.email_confirmed_at) {
+          setStatus("success");
+        }
       }
     });
 

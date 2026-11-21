@@ -33,6 +33,17 @@ function LoginPage() {
   const [err, setErr] = useState("");
   const [signupSuccess, setSignupSuccess] = useState(false);
   const [signupEmail, setSignupEmail] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Handle resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setInterval(() => {
+        setResendCooldown((prev) => Math.max(0, prev - 1));
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [resendCooldown]);
 
   useEffect(() => {
     if (!loading && user) {
@@ -59,8 +70,10 @@ function LoginPage() {
         setBusy(false);
         busyRef.current = false;
       } else if (mode === "signup") {
-        setSignupEmail(email.trim());
-        setSignupSuccess(true);
+        if (res.emailConfirmationRequired) {
+          setSignupEmail(email.trim());
+          setSignupSuccess(true);
+        }
         setBusy(false);
         busyRef.current = false;
       }
@@ -73,6 +86,7 @@ function LoginPage() {
 
   async function resendVerification() {
     if (busyRef.current) return;
+    if (resendCooldown > 0) return;
     busyRef.current = true;
     setBusy(true);
     setErr("");
@@ -84,10 +98,24 @@ function LoginPage() {
           emailRedirectTo: `${window.location.origin}/verify-email`,
         }
       });
-      if (error) throw error;
-      alert("Verification email resent successfully!");
+      if (error) {
+        // Handle rate limiting (429)
+        if (error.message.includes("rate limit") || error.message.includes("too many requests") || error.status === 429) {
+          setResendCooldown(60); // 60 second cooldown
+          setErr("Too many requests. Please wait 60 seconds before trying again.");
+        } else {
+          throw error;
+        }
+      } else {
+        alert("Verification email resent successfully!");
+      }
     } catch (err: any) {
-      setErr(err.message || "Failed to resend verification email");
+      if (err.message?.includes("rate limit") || err.message?.includes("too many requests") || err.status === 429) {
+        setResendCooldown(60);
+        setErr("Too many requests. Please wait 60 seconds before trying again.");
+      } else {
+        setErr(err.message || "Failed to resend verification email");
+      }
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -102,13 +130,16 @@ function LoginPage() {
           <p className="text-muted-foreground text-sm mb-6">
             We've sent a verification email to {signupEmail}. Please check your inbox and click the verification link to activate your account.
           </p>
+          <p className="text-xs text-muted-foreground mb-4">
+            If you don't see the email, check your spam folder or use the resend button below.
+          </p>
           <div className="flex flex-col gap-3">
             <button
               onClick={resendVerification}
               className="btn-primary"
-              disabled={busy}
+              disabled={busy || resendCooldown > 0}
             >
-              {busy ? "Sending..." : "Resend verification email"}
+              {busy ? "Sending..." : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend verification email"}
             </button>
             <button
               onClick={() => { setSignupSuccess(false); setMode("signin"); setErr(""); }}

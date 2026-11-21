@@ -91,11 +91,12 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
 
   const updateQuantity = (color: string, value: string) => {
     const nextValue = Number.parseInt(value, 10);
-    // Cap the selection to what is actually available for this product. Stock is
-    // per product, so the same product's stock is shared across all its colour/size
+    // Cap the selection to what is actually available for this product AND max 10 per product.
+    // Stock is per product, so the same product's stock is shared across all its colour/size
     // lines and is never combined with a different product's stock.
+    // Business rule: A single product selected inside a bundle cannot exceed quantity 10.
     const qty = Number.isFinite(nextValue)
-      ? Math.max(0, Math.min(availableStock, Math.floor(nextValue)))
+      ? Math.max(0, Math.min(10, availableStock, Math.floor(nextValue)))
       : 0;
     updateLine(color, { qty });
   };
@@ -103,6 +104,12 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
   const handleAdd = () => {
     if (selectedTotal === 0) {
       toast.error("Select at least one colour and quantity.");
+      return;
+    }
+    // Business rule: A single product selected inside a bundle cannot exceed quantity 10.
+    const overLimit = selectedLines.some((line) => line.qty > 10);
+    if (overLimit) {
+      toast.error("Maximum 10 pieces per bundle selection for a single product.");
       return;
     }
     // Never allow more pieces than this product has in stock.
@@ -212,6 +219,7 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
                         id={`quantity-${product.id}-${color}`}
                         type="number"
                         min={0}
+                        max={10}
                         step={1}
                         value={line.qty}
                         onChange={(event) => updateQuantity(color, event.target.value)}
@@ -223,7 +231,7 @@ function ProductEntry({ product, onAdd }: ProductEntryProps) {
                       />
                     </div>
                   </div>
-                  <p id={`quantity-help-${product.id}-${color}`} className="mt-1.5 text-[11px] text-muted-foreground">Use 0 to skip this colour. Each product is capped by its own available stock.</p>
+                  <p id={`quantity-help-${product.id}-${color}`} className="mt-1.5 text-[11px] text-muted-foreground">Use 0 to skip this colour. Max 10 per product. Capped by available stock.</p>
                 </div>
               );
             })}

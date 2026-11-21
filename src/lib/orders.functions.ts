@@ -393,6 +393,21 @@ try {
           );
         }
 
+        // Business rule: A single product selected inside a bundle cannot exceed quantity 10.
+        const productQtyInBundle = new Map<string, number>();
+        for (const item of bundleItems) {
+          const current = productQtyInBundle.get(item.id) ?? 0;
+          productQtyInBundle.set(item.id, current + item.qty);
+        }
+        for (const [productId, qty] of productQtyInBundle.entries()) {
+          if (qty > 10) {
+            const product = products.find((p) => p.id === productId);
+            throw new Error(
+              `Product ${product?.name ?? productId} exceeds maximum quantity of 10 per bundle selection. Requested: ${qty}.`
+            );
+          }
+        }
+
         const tier = getWholesaleTier(totalBundleQty);
         if (!tier) {
           throw new Error(`Unable to determine wholesale tier for ${totalBundleQty} pieces.`);
@@ -418,6 +433,12 @@ try {
           if (!isValidWholesaleQuantity(item.qty)) {
             throw new Error(
               `Invalid wholesale quantity for ${product.name}: ${item.qty} pieces. Must be at least ${WHOLESALE_BUNDLE_SIZE} and a multiple of ${WHOLESALE_BUNDLE_SIZE}.`
+            );
+          }
+          // Business rule: A single product selected inside a bundle cannot exceed quantity 10.
+          if (item.qty > 10) {
+            throw new Error(
+              `Product ${product.name} exceeds maximum quantity of 10 per bundle selection. Requested: ${item.qty}.`
             );
           }
           const tier = getWholesaleTier(item.qty);

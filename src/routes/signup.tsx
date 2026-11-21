@@ -25,10 +25,21 @@ function SignupPage() {
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
   const [resendBusy, setResendBusy] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const busyRef = React.useRef(false);
   const resendBusyRef = React.useRef(false);
   const [err, setErr] = useState("");
   const [signupSuccess, setSignupSuccess] = useState(false);
+
+  // Handle resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setInterval(() => {
+        setResendCooldown((prev) => Math.max(0, prev - 1));
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [resendCooldown]);
 
   useEffect(() => {
     if (!loading && user) {
@@ -49,8 +60,12 @@ function SignupPage() {
         setErr(res.error);
         busyRef.current = false;
         setBusy(false);
-      } else {
+      } else if (res.emailConfirmationRequired) {
         setSignupSuccess(true);
+        busyRef.current = false;
+        setBusy(false);
+      } else {
+        // User is already signed in (no email confirmation needed)
         busyRef.current = false;
         setBusy(false);
       }
@@ -63,6 +78,7 @@ function SignupPage() {
 
   async function resendVerification() {
     if (resendBusyRef.current) return;
+    if (resendCooldown > 0) return;
     resendBusyRef.current = true;
     setResendBusy(true);
     setErr("");
@@ -78,13 +94,25 @@ function SignupPage() {
       });
       if (error) {
         console.error("[RESEND ERROR]", error);
-        throw error;
+        // Handle rate limiting (429)
+        if (error.message.includes("rate limit") || error.message.includes("too many requests") || error.status === 429) {
+          setResendCooldown(60); // 60 second cooldown
+          setErr("Too many requests. Please wait 60 seconds before trying again.");
+        } else {
+          throw error;
+        }
+      } else {
+        console.log("[RESEND SUCCESS]");
+        alert("Verification email resent successfully!");
       }
-      console.log("[RESEND SUCCESS]");
-      alert("Verification email resent successfully!");
     } catch (err: any) {
       console.error("[RESEND EXCEPTION]", err);
-      setErr(err.message || "Failed to resend verification email");
+      if (err.message?.includes("rate limit") || err.message?.includes("too many requests") || err.status === 429) {
+        setResendCooldown(60);
+        setErr("Too many requests. Please wait 60 seconds before trying again.");
+      } else {
+        setErr(err.message || "Failed to resend verification email");
+      }
     } finally {
       resendBusyRef.current = false;
       setResendBusy(false);
@@ -99,9 +127,12 @@ function SignupPage() {
           <p className="text-muted-foreground text-sm mb-6">
             We've sent a verification email to {email}. Please check your inbox and click the verification link to activate your account.
           </p>
+          <p className="text-xs text-muted-foreground mb-4">
+            If you don't see the email, check your spam folder or use the resend button below.
+          </p>
           <div className="flex flex-col gap-3">
-            <Button onClick={resendVerification} disabled={resendBusy}>
-              {resendBusy ? "Sending..." : "Resend verification email"}
+            <Button onClick={resendVerification} disabled={resendBusy || resendCooldown > 0}>
+              {resendBusy ? "Sending..." : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend verification email"}
             </Button>
             <Link to="/login" search={{ redirect: undefined }} className="text-center text-primary font-medium hover:underline">
               Back to Login
