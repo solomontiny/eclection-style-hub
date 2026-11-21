@@ -69,15 +69,16 @@ function PaymentInstructionsPage() {
 
       const { data: settings } = await supabase
         .from("shop_settings")
-        .select("bank_accounts, whatsapp_number, bank_transfer_instructions")
+        .select("bank_transfer_enabled")
         .eq("id", "default")
         .maybeSingle();
 
       return {
         ...data,
-        bank_accounts: settings?.bank_accounts ?? [],
-        whatsapp_number: settings?.whatsapp_number ?? null,
-        bank_transfer_instructions: settings?.bank_transfer_instructions ?? null,
+        bank_accounts: [],
+        whatsapp_number: null,
+        bank_transfer_instructions: null,
+        bank_transfer_enabled: settings?.bank_transfer_enabled ?? false,
       } as OrderData;
     },
   });

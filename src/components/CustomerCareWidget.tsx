@@ -24,7 +24,7 @@ function autoReply(input: string): Msg {
   if (/(pay|payment|transfer|bank|card|promo|code|discount)/.test(q))
     return {
       from: "bot",
-      text: `💳 Add items to your cart, go to checkout and pay via **Bank Transfer**.\n\n**Bank Details:**\nBank: Moniepoint\nAccount Name: Supplier Affordable Fashion\nAccount Number: 3003227813\n\nAfter payment, send your proof of payment via WhatsApp to: 09076786117\n\nYour order will remain pending until payment is verified.`,
+      text: `💳 Add items to your cart, go to checkout and pay via **Bank Transfer (Moniepoint)**.\n\nBank details will be shown at checkout and in your order confirmation.\n\nAfter payment, send your proof of payment via WhatsApp using the button on the payment instructions page.\n\nYour order will remain pending until payment is verified.`,
       quickReplies: ["Delivery & shipping", "Email support"],
     };
   if (/(size|fit|measur)/.test(q))

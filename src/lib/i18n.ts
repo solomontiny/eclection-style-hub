@@ -26,7 +26,7 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     subtotal: "Subtotal",
     shipping: "Shipping",
     tax: "Tax",
-    currencyNotice: "Prices shown in your selected currency for convenience. Payments processed securely via Paystack.",
+    currencyNotice: "Prices shown in your selected currency for convenience. Payments via Bank Transfer (Moniepoint) - manual verification required.",
   },
   fr: {
     home: "Accueil",
@@ -46,7 +46,7 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     subtotal: "Sous-total",
     shipping: "Livraison",
     tax: "Taxe",
-    currencyNotice: "Prix affichés dans votre devise sélectionnée par commodité. Paiements sécurisés via Paystack.",
+    currencyNotice: "Prix affichés dans votre devise sélectionnée par commodité. Paiements par virement bancaire (Moniepoint) - vérification manuelle requise.",
   },
   ar: {
     home: "الرئيسية",
@@ -66,7 +66,7 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     subtotal: "المجموع الفرعي",
     shipping: "الشحن",
     tax: "الضريبة",
-    currencyNotice: "الأسعار المعروضة بالعملة المحددة لراحتك. تتم معالجة المدفوعات بشكل آمن عبر Paystack.",
+    currencyNotice: "الأسعار المعروضة بالعملة المحددة لراحتك. المدفوعات عبر التحويل البنكي (Moniepoint) - مطلوبة التحقق اليدوي.",
   },
   sw: {
     home: "Nyumbani",
@@ -86,7 +86,7 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     subtotal: "Jumla Ndogo",
     shipping: "Usafirishaji",
     tax: "Kodi",
-    currencyNotice: "Bei zimeonyeshwa kwa sarafu uliyochagua kwa urahisi. Malipo yanafanyika salama kupitia Paystack.",
+    currencyNotice: "Bei zimeonyeshwa kwa sarafu uliyochagua kwa urahisi. Malipo kwa kutumia uhamisho wa benki (Moniepoint) - uhakiki wa mkono unahitajika.",
   },
 };
 
