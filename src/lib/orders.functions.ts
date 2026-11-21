@@ -310,7 +310,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
     // Bank transfer checkout gate: only allow new orders when enabled in shop_settings
     const { data: shopSettings, error: settingsError } = await getSupabaseAdmin()
       .from("shop_settings")
-      .select("bank_transfer_enabled")
+      .select("bank_transfer_enabled, bank_accounts")
       .eq("id", "default")
       .maybeSingle();
 
@@ -321,10 +321,20 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       errorMessage: settingsError?.message ?? null,
       recordFound: !!shopSettings,
       bankTransferEnabled: shopSettings?.bank_transfer_enabled ?? null,
+      bankAccountsCount: Array.isArray(shopSettings?.bank_accounts) ? shopSettings.bank_accounts.length : 0,
       isExpectedProject: serverUrl.includes("clvxfobvtqwdmuzqbehk"),
     });
 
-    if (settingsError || !shopSettings?.bank_transfer_enabled) {
+    // Validate bank accounts have required fields
+    const hasValidBankAccounts = Array.isArray(shopSettings?.bank_accounts) &&
+      shopSettings.bank_accounts.length > 0 &&
+      shopSettings.bank_accounts.some((acc: any) =>
+        typeof acc?.bank_name === 'string' && acc.bank_name.trim() !== '' &&
+        typeof acc?.account_name === 'string' && acc.account_name.trim() !== '' &&
+        typeof acc?.account_number === 'string' && acc.account_number.trim() !== ''
+      );
+
+    if (settingsError || !shopSettings?.bank_transfer_enabled || !hasValidBankAccounts) {
       throw new Error("Bank transfer payments are temporarily unavailable.");
     }
 

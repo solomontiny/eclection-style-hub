@@ -580,7 +580,57 @@ profiles: {
       }
     }
     Views: {
-      [_ in never]: never
+      shop_payment_config: {
+        Row: {
+          id: string
+          bank_transfer_enabled: boolean | null
+          bank_accounts: Json | null
+          whatsapp_number: string | null
+          bank_transfer_instructions: string | null
+        }
+        Insert: {
+          id?: string
+          bank_transfer_enabled?: boolean | null
+          bank_accounts?: Json | null
+          whatsapp_number?: string | null
+          bank_transfer_instructions?: string | null
+        }
+        Update: {
+          id?: string
+          bank_transfer_enabled?: boolean | null
+          bank_accounts?: Json | null
+          whatsapp_number?: string | null
+          bank_transfer_instructions?: string | null
+        }
+        Relationships: []
+      }
+      shop_video_config: {
+        Row: {
+          id: string
+          video_url: string | null
+          video_title: string | null
+          video_description: string | null
+          poster_image_url: string | null
+          is_video_advert_enabled: boolean | null
+        }
+        Insert: {
+          id?: string
+          video_url?: string | null
+          video_title?: string | null
+          video_description?: string | null
+          poster_image_url?: string | null
+          is_video_advert_enabled?: boolean | null
+        }
+        Update: {
+          id?: string
+          video_url?: string | null
+          video_title?: string | null
+          video_description?: string | null
+          poster_image_url?: string | null
+          is_video_advert_enabled?: boolean | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {

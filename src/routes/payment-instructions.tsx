@@ -68,16 +68,26 @@ function PaymentInstructionsPage() {
       if (error || !data) throw new Error("Order not found");
 
       const { data: settings } = await supabase
-        .from("shop_settings")
-        .select("bank_transfer_enabled")
+        .from("shop_payment_config")
+        .select("bank_accounts, whatsapp_number, bank_transfer_instructions, bank_transfer_enabled")
         .eq("id", "default")
         .maybeSingle();
 
+      const rawAccounts = settings?.bank_accounts ?? [];
+      const bankAccounts: BankAccount[] = Array.isArray(rawAccounts)
+        ? rawAccounts.map((acc: any) => ({
+            bankName: acc.bank_name ?? "",
+            accountName: acc.account_name ?? "",
+            accountNumber: acc.account_number ?? "",
+            sortCode: acc.sort_code ?? undefined,
+          }))
+        : [];
+
       return {
         ...data,
-        bank_accounts: [],
-        whatsapp_number: null,
-        bank_transfer_instructions: null,
+        bank_accounts: bankAccounts,
+        whatsapp_number: settings?.whatsapp_number ?? null,
+        bank_transfer_instructions: settings?.bank_transfer_instructions ?? null,
         bank_transfer_enabled: settings?.bank_transfer_enabled ?? false,
       } as OrderData;
     },

@@ -20,7 +20,7 @@ export function VideoAdvert() {
     queryKey: ["shop_settings_video"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("shop_settings")
+        .from("shop_video_config")
         .select("video_url, video_title, video_description, poster_image_url, is_video_advert_enabled")
         .eq("id", "default")
         .single();
