@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getSupabaseAdmin } from "./supabase-admin.server";
 import { CONTACT } from "./contact";
-import { sendLovableEmail } from "@lovable.dev/email-js";
+import { sendEmail } from "./email.server";
 import { PAYSTACK_SUPPORTED_CURRENCIES } from "./currency";
 
 type SupportedCurrency = typeof PAYSTACK_SUPPORTED_CURRENCIES[number];
@@ -244,25 +244,15 @@ export const newOrderNotification = createServerFn({ method: "POST" })
     let emailSent = false;
 
     try {
-      const apiKey = process.env.LOVABLE_EMAIL_API_KEY;
-      if (apiKey) {
-        await sendLovableEmail(
-          {
-            to: CONTACT.email,
-            from: CONTACT.email,
-            subject,
-            html: adminHtml,
-            text: `New order #${order.order_number} — ${naira(Number(order.total))}. View: ${process.env.ADMIN_BASE_URL || "https://supplieraffordable.com"}/admin/orders`,
-          },
-          { apiKey }
-        );
-        emailSent = true;
-      } else {
-        console.log("[NOTIFICATION] Admin email (no API key configured):", {
-          to: CONTACT.email,
-          subject,
-          orderId: order.id,
-        });
+      const result = await sendEmail({
+        to: CONTACT.email,
+        subject,
+        html: adminHtml,
+        text: `New order #${order.order_number} — ${naira(Number(order.total))}. View: ${process.env.ADMIN_BASE_URL || "https://supplieraffordable.com"}/admin/orders`,
+      });
+      emailSent = result.success;
+      if (!result.success) {
+        console.error("[NOTIFICATION] Failed to send admin email:", result.error);
       }
     } catch (err: any) {
       console.error("[NOTIFICATION] Failed to send admin email:", err?.message);
@@ -344,25 +334,15 @@ export async function sendCustomerOrderEmail(orderId: string) {
 
   let emailSent = false;
   try {
-    const apiKey = process.env.LOVABLE_EMAIL_API_KEY;
-    if (apiKey) {
-      await sendLovableEmail(
-        {
-          to: order.customer_email,
-          from: CONTACT.email,
-          subject,
-          html: customerHtml,
-          text: `Order #${order.order_number} — ${naira(Number(order.total))}. Thank you for shopping with SupplierAffordable!`,
-        },
-        { apiKey }
-      );
-      emailSent = true;
-    } else {
-      console.log("[NOTIFICATION] Customer receipt (no API key):", {
-        to: order.customer_email,
-        subject,
-        orderId,
-      });
+    const result = await sendEmail({
+      to: order.customer_email,
+      subject,
+      html: customerHtml,
+      text: `Order #${order.order_number} — ${naira(Number(order.total))}. Thank you for shopping with SupplierAffordable!`,
+    });
+    emailSent = result.success;
+    if (!result.success) {
+      console.error("[NOTIFICATION] Customer email failed:", result.error);
     }
   } catch (err: any) {
     console.error("[NOTIFICATION] Customer email failed:", err?.message);
@@ -413,26 +393,15 @@ export const sendCustomerStatusChangeEmail = createServerFn({ method: "POST" })
 
   let emailSent = false;
   try {
-    const apiKey = process.env.LOVABLE_EMAIL_API_KEY;
-    if (apiKey) {
-      await sendLovableEmail(
-        {
-          to: order.customer_email,
-          from: CONTACT.email,
-          subject,
-          html: customerHtml,
-          text: `Order #${order.order_number} is now ${label}.`,
-        },
-        { apiKey }
-      );
-      emailSent = true;
-    } else {
-      console.log("[NOTIFICATION] Customer status update (no API key):", {
-        to: order.customer_email,
-        subject,
-        orderId: data.orderId,
-        status: order.status,
-      });
+    const result = await sendEmail({
+      to: order.customer_email,
+      subject,
+      html: customerHtml,
+      text: `Order #${order.order_number} is now ${label}.`,
+    });
+    emailSent = result.success;
+    if (!result.success) {
+      console.error("[NOTIFICATION] Customer status email failed:", result.error);
     }
   } catch (err: any) {
     console.error("[NOTIFICATION] Customer status email failed:", err?.message);

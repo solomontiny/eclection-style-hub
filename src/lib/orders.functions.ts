@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { sendLovableEmail } from "@lovable.dev/email-js";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
@@ -8,6 +7,7 @@ import { CONTACT } from "./contact";
 import { getSupabaseAdmin, getEnvVar } from "./supabase-admin.server";
 import { newOrderNotification, sendCustomerOrderEmail } from "./notifications";
 import { getOrderStockReservations, emitStockAlerts } from "./stock";
+import { sendEmail } from "./email.server";
 import {
   getPaymentCurrency,
   PAYSTACK_SUPPORTED_CURRENCIES,
@@ -814,26 +814,16 @@ async function deliverPaymentReceipt(
   let emailSent = false;
   let emailError: string | null = null;
   try {
-    const apiKey = process.env.LOVABLE_EMAIL_API_KEY;
-    if (apiKey) {
-      await sendLovableEmail(
-        {
-          to: order.customer_email,
-          from: CONTACT.email,
-          subject: `Order #${order.order_number} — Payment Confirmed`,
-          html,
-          text: `Order #${order.order_number} — Payment confirmed. Amount: ₦${formattedAmount}. Method: Bank Transfer (Moniepoint). Status: Paid.`,
-        },
-        { apiKey },
-      );
-      emailSent = true;
-    } else {
-      emailError = "LOVABLE_EMAIL_API_KEY is not configured.";
-      console.log("[NOTIFICATION] Bank transfer receipt email (no API key):", {
-        to: order.customer_email,
-        subject: `Order #${order.order_number}`,
-        orderId: order.id,
-      });
+    const result = await sendEmail({
+      to: order.customer_email,
+      subject: `Order #${order.order_number} — Payment Confirmed`,
+      html,
+      text: `Order #${order.order_number} — Payment confirmed. Amount: ₦${formattedAmount}. Method: Bank Transfer (Moniepoint). Status: Paid.`,
+    });
+    emailSent = result.success;
+    if (!result.success) {
+      emailError = result.error || "Email delivery failed.";
+      console.error("[NOTIFICATION] Bank transfer receipt email failed:", emailError);
     }
   } catch (err: unknown) {
     emailError = (err as Error)?.message || "Email delivery failed.";
