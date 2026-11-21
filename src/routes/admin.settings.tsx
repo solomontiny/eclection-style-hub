@@ -7,13 +7,15 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Upload, Trash2, Play, Image as ImageIcon } from "lucide-react";
+import { Upload, Trash2, Play, Image as ImageIcon, Plus, Building2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 export const Route = createFileRoute("/admin/settings")({ component: SettingsPage });
 
-const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+const ALLOWED_VIDEO_TYPES = ["video/mp4"];
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB for video, 5MB for images
+const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 function SettingsPage() {
@@ -35,6 +37,10 @@ function SettingsPage() {
     video_description: "" as string | null,
     poster_image_url: "" as string | null,
     is_video_advert_enabled: false as boolean | null,
+    bank_transfer_enabled: false,
+    bank_accounts: [] as Array<{ bank_name: string; account_name: string; account_number: string; sort_code?: string }>,
+    whatsapp_number: "",
+    bank_transfer_instructions: "",
   });
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -50,7 +56,29 @@ function SettingsPage() {
       .single()
       .then(({ data, error }) => {
         if (error) toast.error(error.message);
-        if (data) setSettings({ ...settings, ...data });
+        if (data) {
+          const bankAccounts = Array.isArray(data.bank_accounts) ? data.bank_accounts : [];
+          setSettings({
+            ...settings,
+            store_name: data.store_name ?? "",
+            store_description: data.store_description ?? "",
+            contact_email: data.contact_email ?? "",
+            contact_phone: data.contact_phone ?? "",
+            currency: data.currency ?? "NGN",
+            shipping_flat_rate: data.shipping_flat_rate ?? 0,
+            tax_percent: data.tax_percent ?? 0,
+            store_policies: data.store_policies ?? "",
+            video_url: data.video_url ?? null,
+            video_title: data.video_title ?? null,
+            video_description: data.video_description ?? null,
+            poster_image_url: data.poster_image_url ?? null,
+            is_video_advert_enabled: data.is_video_advert_enabled ?? false,
+            bank_transfer_enabled: data.bank_transfer_enabled ?? false,
+            bank_accounts: bankAccounts as Array<{ bank_name: string; account_name: string; account_number: string; sort_code?: string }>,
+            whatsapp_number: data.whatsapp_number ?? "",
+            bank_transfer_instructions: data.bank_transfer_instructions ?? "",
+          });
+        }
         setLoadingSettings(false);
       });
   }, []);
@@ -82,19 +110,22 @@ function SettingsPage() {
   ) {
     const allowedTypes = type === "video" ? ALLOWED_VIDEO_TYPES : ALLOWED_IMAGE_TYPES;
     const maxSize = type === "video" ? MAX_FILE_SIZE : MAX_IMAGE_SIZE;
+    if (type === "video") {
+      // Validation will be handled by the advert-upload-validation module
+    }
     if (!allowedTypes.includes(file.type)) {
       toast.error(`Invalid file type for ${type}. Allowed: ${allowedTypes.join(", ")}`);
       return;
     }
     if (file.size > maxSize) {
-      toast.error(`File too large. Max ${type === "video" ? "50MB" : "5MB"}.`);
+      toast.error(type === "video" ? "Video must be 15 MB or smaller. 3–10 MB is recommended." : "File too large. Max 5MB.");
       return;
     }
     setUploading(true);
     try {
       const fileName = `${Date.now()}-${crypto.randomUUID()}-${file.name.replace(/\s+/g, "-")}`;
       const { data: uploadData, error: uploadError } = await supabase.storage.from("site-media").upload(fileName, file, {
-          cacheControl: "3600",
+          cacheControl: "public, max-age=31536000, immutable",
           upsert: false,
           contentType: file.type,
         });
@@ -150,7 +181,7 @@ function SettingsPage() {
                 <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("video-file-input")?.click()} disabled={uploadingVideo}>
                   {uploadingVideo ? "Uploading…" : <><Upload size={14} className="mr-1" /> Video</>}
                 </Button>
-                <input id="video-file-input" type="file" accept="video/mp4,video/webm,video/quicktime" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setVideoFile(f); uploadMedia(f, setUploadingVideo, "video"); e.target.value = ""; } }} />
+                <input id="video-file-input" type="file" accept="video/mp4" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setVideoFile(f); uploadMedia(f, setUploadingVideo, "video"); e.target.value = ""; } }} />
               </div>
               {settings.video_url && (
                 <div className="flex items-center gap-1">
@@ -184,10 +215,136 @@ function SettingsPage() {
             </div>
             {settings.poster_image_url && (
               <div className="mt-2 rounded-xl overflow-hidden border border-border bg-secondary/30 max-h-32">
-                <img src={settings.poster_image_url} alt="Poster preview" className="h-full max-h-32 w-full object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                <img loading="lazy" decoding="async" src={settings.poster_image_url} alt="Poster preview" className="h-full max-h-32 w-full object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
               </div>
             )}
           </div>
+          
+          {/* Bank Transfer Settings */}
+          <div className="pt-4 border-t border-border">
+            <h3 className="font-medium mb-4 flex items-center gap-2">
+              <Building2 className="h-5 w-5" /> Bank Transfer Settings
+            </h3>
+            <div className="flex items-center space-x-2 mb-4">
+              <input 
+                type="checkbox" 
+                id="bank-transfer-enabled" 
+                checked={settings.bank_transfer_enabled} 
+                onChange={(e) => setSettings({ ...settings, bank_transfer_enabled: e.target.checked })} 
+              />
+              <Label htmlFor="bank-transfer-enabled">Enable Bank Transfer payment method</Label>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <Label className="block mb-2">Bank Accounts</Label>
+                <div className="space-y-3">
+                  {settings.bank_accounts.map((account, index) => (
+                    <Card key={index} className="p-4">
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <CardTitle className="text-base">Account #{index + 1}</CardTitle>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setSettings(s => ({ 
+                            ...s, 
+                            bank_accounts: s.bank_accounts.filter((_, i) => i !== index) 
+                          }))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label>Bank Name</Label>
+                          <Input 
+                            value={account.bank_name} 
+                            onChange={(e) => setSettings(s => ({ 
+                              ...s, 
+                              bank_accounts: s.bank_accounts.map((a, i) => i === index ? { ...a, bank_name: e.target.value } : a) 
+                            }))} 
+                            placeholder="e.g., Access Bank"
+                          />
+                        </div>
+                        <div>
+                          <Label>Account Name</Label>
+                          <Input 
+                            value={account.account_name} 
+                            onChange={(e) => setSettings(s => ({ 
+                              ...s, 
+                              bank_accounts: s.bank_accounts.map((a, i) => i === index ? { ...a, account_name: e.target.value } : a) 
+                            }))} 
+                            placeholder="e.g., Aken Margaret Ifeoma"
+                          />
+                        </div>
+                        <div>
+                          <Label>Account Number</Label>
+                          <Input 
+                            value={account.account_number} 
+                            onChange={(e) => setSettings(s => ({ 
+                              ...s, 
+                              bank_accounts: s.bank_accounts.map((a, i) => i === index ? { ...a, account_number: e.target.value } : a) 
+                            }))} 
+                            placeholder="e.g., 0800175647"
+                          />
+                        </div>
+                        <div>
+                          <Label>Sort Code (Optional)</Label>
+                          <Input 
+                            value={account.sort_code ?? ""} 
+                            onChange={(e) => setSettings(s => ({ 
+                              ...s, 
+                              bank_accounts: s.bank_accounts.map((a, i) => i === index ? { ...a, sort_code: e.target.value } : a) 
+                            }))} 
+                            placeholder="e.g., 044150"
+                          />
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                  {settings.bank_accounts.length === 0 && (
+                    <div className="text-center py-4 text-sm text-muted-foreground border-2 border-dashed border-border rounded-lg">
+                      No bank accounts configured yet.
+                    </div>
+                  )}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSettings(s => ({ 
+                      ...s, 
+                      bank_accounts: [...s.bank_accounts, { bank_name: "", account_name: "", account_number: "", sort_code: "" }] 
+                    }))}
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Add Bank Account
+                  </Button>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <Label>WhatsApp Number</Label>
+                  <Input 
+                    value={settings.whatsapp_number || ""} 
+                    onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })} 
+                    placeholder="+2348012345678"
+                    type="tel"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">For customers to send payment proof</p>
+                </div>
+                <div>
+                  <Label>Payment Instructions</Label>
+                  <Input 
+                    value={settings.bank_transfer_instructions || ""} 
+                    onChange={(e) => setSettings({ ...settings, bank_transfer_instructions: e.target.value })} 
+                    placeholder="Include order number in transfer reference..."
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <button onClick={saveSettings} disabled={busy} className="btn-primary">{busy ? "Saving…" : "Save shop settings"}</button>
         </>}
       </div>

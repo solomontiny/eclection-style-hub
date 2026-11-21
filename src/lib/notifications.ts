@@ -5,6 +5,8 @@ import { CONTACT } from "./contact";
 import { sendLovableEmail } from "@lovable.dev/email-js";
 import { PAYSTACK_SUPPORTED_CURRENCIES } from "./currency";
 
+type SupportedCurrency = typeof PAYSTACK_SUPPORTED_CURRENCIES[number];
+
 function naira(n: number) {
   return "₦" + n.toLocaleString("en-NG");
 }
@@ -88,7 +90,7 @@ export const newOrderNotification = createServerFn({ method: "POST" })
       .select("product_name, quantity, unit_price, size, color, subtotal")
       .eq("order_id", order.id);
 
-    const orderCurrency = order.currency || "NGN";
+    const orderCurrency = (order.currency || "NGN") as SupportedCurrency;
     const isMultiCurrency = PAYSTACK_SUPPORTED_CURRENCIES.includes(orderCurrency) && orderCurrency !== "NGN";
 
     // Build detailed item rows with size, color, unit price, subtotal
@@ -156,14 +158,14 @@ export const newOrderNotification = createServerFn({ method: "POST" })
 
     // Build shipping address display
     const shippingAddr = order.shipping_address as ShippingAddress | null;
-    const addressParts = shippingAddr
+    const addressParts: string[] = shippingAddr
       ? [
           shippingAddr.address,
           shippingAddr.city,
           shippingAddr.state,
           shippingAddr.postal_code,
           shippingAddr.country
-        ].filter(Boolean)
+        ].filter((v): v is string => Boolean(v))
       : [];
 
     const adminHtml = `<!doctype html>
@@ -293,7 +295,7 @@ export async function sendCustomerOrderEmail(orderId: string) {
     .select("product_name, quantity, unit_price, size, color")
     .eq("order_id", orderId);
 
-  const orderCurrency = order.currency || "NGN";
+  const orderCurrency = (order.currency || "NGN") as SupportedCurrency;
   const isMultiCurrency = PAYSTACK_SUPPORTED_CURRENCIES.includes(orderCurrency) && orderCurrency !== "NGN";
 
   const itemRows = (items || [])

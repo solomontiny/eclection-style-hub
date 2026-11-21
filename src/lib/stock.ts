@@ -29,32 +29,88 @@ export function isPurchasable(stock: number | null | undefined): boolean {
  *
  * Calls the `reserve_stock` database function which atomically decrements
  * stock only when stock >= qty. Returns failure if insufficient stock.
+ * If a later reservation fails, all earlier successful reservations are restored.
+ * On rollback failure, returns a structured error with the original failure
+ * and the product IDs whose stock could not be restored (manual reconciliation required).
  */
 export async function reserveStock(
   supabase: SupabaseClient<Database>,
   reservations: { productId: string; qty: number }[],
-): Promise<{ ok: true } | { ok: false; insufficient: string[] }> {
-  const insufficient: string[] = [];
+): Promise<
+  | { ok: true }
+  | { ok: false; insufficient: string[] }
+  | { ok: false; insufficient: string[]; rollbackFailed: string[]; manualReconciliationRequired: true }
+> {
+  const successfulReservations: { productId: string; qty: number }[] = [];
 
   for (const { productId, qty } of reservations) {
     const { data, error } = await supabase.rpc("reserve_stock", {
       p_product_id: productId,
       p_qty: qty,
-    });
+    }) as { data: number | null; error: { message: string } | null };
 
     if (error) {
       console.error("reserveStock failed for product", productId, error.message);
-      return { ok: false, insufficient: [productId, ...insufficient] };
+      // Roll back all previously successful reservations
+      const rollback = await rollbackReservations(supabase, successfulReservations);
+      if (!rollback.ok) {
+        return {
+          ok: false,
+          insufficient: [productId],
+          rollbackFailed: rollback.failed,
+          manualReconciliationRequired: true,
+        };
+      }
+      return { ok: false, insufficient: [productId] };
     }
     // reserve_stock returns 1 on success, 0 on insufficient stock
     if (data !== 1) {
-      insufficient.push(productId);
+      // Roll back all previously successful reservations
+      const rollback = await rollbackReservations(supabase, successfulReservations);
+      if (!rollback.ok) {
+        return {
+          ok: false,
+          insufficient: [productId],
+          rollbackFailed: rollback.failed,
+          manualReconciliationRequired: true,
+        };
+      }
+      return { ok: false, insufficient: [productId] };
+    }
+    successfulReservations.push({ productId, qty });
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Roll back a list of successful stock reservations by restoring the stock.
+ * Used when a later reservation in the same checkout fails.
+ * Returns { ok: true } when every restoration succeeds.
+ * Returns { ok: false, failed: string[] } when one or more restorations fail.
+ */
+async function rollbackReservations(
+  supabase: SupabaseClient<Database>,
+  reservations: { productId: string; qty: number }[],
+): Promise<{ ok: true } | { ok: false; failed: string[] }> {
+  const failed: string[] = [];
+
+  for (const { productId, qty } of reservations) {
+    const { error } = await supabase.rpc("restore_stock", {
+      p_product_id: productId,
+      p_qty: qty,
+    }) as { data: null; error: { message: string } | null };
+
+    if (error) {
+      console.error("Failed to rollback reservation for product", productId, error.message);
+      failed.push(productId);
     }
   }
 
-  return insufficient.length > 0
-    ? { ok: false, insufficient }
-    : { ok: true };
+  if (failed.length > 0) {
+    return { ok: false, failed };
+  }
+  return { ok: true };
 }
 
 /**
@@ -62,21 +118,30 @@ export async function reserveStock(
  *
  * Calls the `restore_stock` database function which atomically adds
  * the quantity back to the product's stock.
+ * Returns an object indicating success or failure with details.
  */
 export async function restoreStock(
   supabase: SupabaseClient<Database>,
   reservations: { productId: string; qty: number }[],
-): Promise<void> {
+): Promise<{ ok: true } | { ok: false; failed: string[] }> {
+  const failed: string[] = [];
+
   for (const { productId, qty } of reservations) {
     const { error } = await supabase.rpc("restore_stock", {
       p_product_id: productId,
       p_qty: qty,
-    });
+    }) as { data: null; error: { message: string } | null };
 
     if (error) {
       console.error("restoreStock failed for product", productId, error.message);
+      failed.push(productId);
     }
   }
+
+  if (failed.length > 0) {
+    return { ok: false, failed };
+  }
+  return { ok: true };
 }
 
 /**
@@ -96,7 +161,7 @@ export async function getOrderStockReservations(
     return [];
   }
   return (data ?? [])
-    .filter((r) => r.product_id)
+    .filter((r): r is { product_id: string; quantity: number } => r.product_id != null)
     .map((r) => ({ productId: r.product_id, qty: Number(r.quantity) }));
 }
 

@@ -2,6 +2,14 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 /**
+ * Get an environment variable from the server runtime.
+ * In Cloudflare Workers, env vars are available on process.env.
+ */
+export function getEnvVar(name: string): string | undefined {
+  return process.env[name];
+}
+
+/**
  * Lazily created admin client.
  *
  * IMPORTANT: env vars are only injected at request time in the Worker runtime,

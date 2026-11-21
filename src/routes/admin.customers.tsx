@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Search, Eye, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -75,5 +76,5 @@ function CustomersPage() {
 
 function CustomerOrdersDialog({ userId, onClose }: { userId: string | null; onClose: () => void }) {
   const { data = [], isLoading } = useQuery({ queryKey: ["admin-customer-orders", userId], enabled: !!userId, queryFn: async () => { const { data, error } = await supabase.from("orders").select("order_number, total, status, created_at").eq("user_id", userId!).order("created_at", { ascending: false }); if (error) throw error; return data ?? []; } });
-  return <Dialog open={!!userId} onOpenChange={(open) => !open && onClose()}><DialogContent><DialogHeader><DialogTitle>Customer order history</DialogTitle></DialogHeader>{isLoading ? <p>Loading…</p> : data.length === 0 ? <p className="text-sm text-muted-foreground">No orders yet.</p> : <div className="space-y-2">{data.map((order) => <div key={order.order_number} className="flex justify-between border-b border-border py-2 text-sm"><span>{order.order_number}<span className="ml-2 text-muted-foreground capitalize">{order.status}</span></span><span>{fmtNGN(Number(order.total))}</span></div>)}</div>}</DialogContent></Dialog>;
+  return <Dialog open={!!userId} onOpenChange={(open) => !open && onClose()}><DialogContent><DialogHeader><DialogTitle>Customer order history</DialogTitle></DialogHeader>{isLoading ? <p>Loading…</p> : data.length === 0 ? <p className="text-sm text-muted-foreground">No orders yet.</p> : <div className="space-y-2">{data.map((order: { order_number: string; total: number; status: string }) => <div key={order.order_number} className="flex justify-between border-b border-border py-2 text-sm"><span>{order.order_number}<span className="ml-2 text-muted-foreground capitalize">{order.status}</span></span><span>{fmtNGN(Number(order.total))}</span></div>)}</div>}</DialogContent></Dialog>;
 }

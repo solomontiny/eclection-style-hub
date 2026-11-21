@@ -272,6 +272,14 @@ export type Database = {
           total: number
           updated_at: string
           user_id: string | null
+          delivery_status: "not_delivered" | "delivered"
+          courier: string | null
+          estimated_delivery: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          payment_amount: number | null
+          payment_currency: string | null
+          checkout_attempt_key: string | null
+          checkout_request_fingerprint: string | null
         }
         Insert: {
           coupon_code?: string | null
@@ -294,6 +302,14 @@ export type Database = {
           total?: number
           updated_at?: string
           user_id?: string | null
+          delivery_status?: "not_delivered" | "delivered"
+          courier?: string | null
+          estimated_delivery?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          payment_amount?: number | null
+          payment_currency?: string | null
+          checkout_attempt_key?: string | null
+          checkout_request_fingerprint?: string | null
         }
         Update: {
           coupon_code?: string | null
@@ -316,6 +332,14 @@ export type Database = {
           total?: number
           updated_at?: string
           user_id?: string | null
+          delivery_status?: "not_delivered" | "delivered"
+          courier?: string | null
+          estimated_delivery?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          payment_amount?: number | null
+          payment_currency?: string | null
+          checkout_attempt_key?: string | null
+          checkout_request_fingerprint?: string | null
         }
         Relationships: []
       }
@@ -399,7 +423,7 @@ export type Database = {
           },
         ]
       }
-      profiles: {
+profiles: {
         Row: {
           created_at: string
           display_name: string | null
@@ -407,6 +431,7 @@ export type Database = {
           phone: string | null
           updated_at: string
           user_id: string
+          avatar_url: string | null
         }
         Insert: {
           created_at?: string
@@ -415,6 +440,7 @@ export type Database = {
           phone?: string | null
           updated_at?: string
           user_id: string
+          avatar_url?: string | null
         }
         Update: {
           created_at?: string
@@ -423,66 +449,114 @@ export type Database = {
           phone?: string | null
           updated_at?: string
           user_id?: string
+          avatar_url?: string | null
         }
         Relationships: []
       }
-       shop_settings: {
-         Row: {
-           contact_email: string
-           contact_phone: string
-           created_at: string
-           currency: string
-           id: string
-           shipping_flat_rate: number
-           store_description: string
-           store_name: string
-           store_policies: string
-           tax_percent: number
-           updated_at: string
-           video_description: string | null
-           video_title: string | null
-           video_url: string | null
-           is_video_advert_enabled: boolean | null
-           poster_image_url: string | null
-         }
-         Insert: {
-           contact_email?: string
-           contact_phone?: string
-           created_at?: string
-           currency?: string
-           id?: string
-           shipping_flat_rate?: number
-           store_description?: string
-           store_name?: string
-           store_policies?: string
-           tax_percent?: number
-           updated_at?: string
-           video_description?: string | null
-           video_title?: string | null
-           video_url?: string | null
-           is_video_advert_enabled?: boolean | null
-           poster_image_url?: string | null
-         }
-         Update: {
-           contact_email?: string
-           contact_phone?: string
-           created_at?: string
-           currency?: string
-           id?: string
-           shipping_flat_rate?: number
-           store_description?: string
-           store_name?: string
-           store_policies?: string
-           tax_percent?: number
-           updated_at?: string
-           video_description?: string | null
-           video_title?: string | null
-           video_url?: string | null
-           is_video_advert_enabled?: boolean | null
-           poster_image_url?: string | null
-         }
-         Relationships: []
-       }
+      payment_receipts: {
+        Row: {
+          created_at: string
+          id: string
+          last_error: string | null
+          order_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          order_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          order_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_receipts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      shop_settings: {
+          Row: {
+            contact_email: string
+            contact_phone: string
+            created_at: string
+            currency: string
+            id: string
+            shipping_flat_rate: number
+            store_description: string
+            store_name: string
+            store_policies: string
+            tax_percent: number
+            updated_at: string
+            video_description: string | null
+            video_title: string | null
+            video_url: string | null
+            is_video_advert_enabled: boolean | null
+            poster_image_url: string | null
+            bank_transfer_enabled: boolean | null
+            bank_accounts: Json | null
+            whatsapp_number: string | null
+            bank_transfer_instructions: string | null
+          }
+          Insert: {
+            contact_email?: string
+            contact_phone?: string
+            created_at?: string
+            currency?: string
+            id?: string
+            shipping_flat_rate?: number
+            store_description?: string
+            store_name?: string
+            store_policies?: string
+            tax_percent?: number
+            updated_at?: string
+            video_description?: string | null
+            video_title?: string | null
+            video_url?: string | null
+            is_video_advert_enabled?: boolean | null
+            poster_image_url?: string | null
+            bank_transfer_enabled?: boolean | null
+            bank_accounts?: Json | null
+            whatsapp_number?: string | null
+            bank_transfer_instructions?: string | null
+          }
+          Update: {
+            contact_email?: string
+            contact_phone?: string
+            created_at?: string
+            currency?: string
+            id?: string
+            shipping_flat_rate?: number
+            store_description?: string
+            store_name?: string
+            store_policies?: string
+            tax_percent?: number
+            updated_at?: string
+            video_description?: string | null
+            video_title?: string | null
+            video_url?: string | null
+            is_video_advert_enabled?: boolean | null
+            poster_image_url?: string | null
+            bank_transfer_enabled?: boolean | null
+            bank_accounts?: Json | null
+            whatsapp_number?: string | null
+            bank_transfer_instructions?: string | null
+          }
+          Relationships: []
+        }
       user_roles: {
         Row: {
           created_at: string
@@ -516,6 +590,38 @@ export type Database = {
         }
         Returns: boolean
       }
+      reserve_stock: {
+        Args: {
+          p_product_id: string
+          p_qty: number
+        }
+        Returns: number
+      }
+      restore_stock: {
+        Args: {
+          p_product_id: string
+          p_qty: number
+        }
+        Returns: void
+      }
+      cancel_pending_order_and_restore_reserved_stock: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: string
+      }
+      create_order_with_stock_reservations: {
+        Args: {
+          p_order: Json
+          p_items: Json
+        }
+        Returns: {
+          id: string
+          order_number: string
+          total: number
+          payment_status: Database["public"]["Enums"]["payment_status"]
+        }
+      }
     }
     Enums: {
       app_role: "admin" | "customer"
@@ -527,6 +633,7 @@ export type Database = {
         | "out_for_delivery"
         | "delivered"
         | "cancelled"
+      payment_method: "paystack" | "bank_transfer"
       payment_status: "pending" | "paid" | "failed" | "refunded"
       product_status: "draft" | "active" | "archived"
     }
@@ -666,6 +773,7 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
+      payment_method: ["paystack", "bank_transfer"],
       payment_status: ["pending", "paid", "failed", "refunded"],
       product_status: ["draft", "active", "archived"],
     },

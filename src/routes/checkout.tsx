@@ -47,6 +47,19 @@ function CheckoutPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
+  
+  // Idempotency: generate/reuse attempt key for this checkout session
+  const [attemptKey, setAttemptKey] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const stored = sessionStorage.getItem("checkout_attempt_key");
+      if (stored) return stored;
+      const newKey = `checkout_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+      sessionStorage.setItem("checkout_attempt_key", newKey);
+      return newKey;
+    }
+    return `checkout_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+  });
+
   const form = useForm<CustomerForm>({
     resolver: zodResolver(CustomerSchema),
     defaultValues: { name: "", email: "", phone: "", address: "", city: "", state: "", country: "Nigeria", postalCode: "", deliveryInstructions: "", paymentMethod: "bank_transfer" },
@@ -118,10 +131,50 @@ function CheckoutPage() {
       return;
     }
 
+    // Build canonical payload for fingerprint (must match server)
+    const fingerprintPayload = JSON.stringify({
+      user_id: user.id,
+      customer_name: data.name,
+      customer_email: data.email,
+      customer_phone: data.phone && data.phone.trim() !== "" ? data.phone : null,
+      shipping_address: data.address || data.city || data.state
+        ? {
+            address: data.address ?? null,
+            city: data.city ?? null,
+            state: data.state ?? null,
+            country: data.country ?? null,
+            postal_code: data.postalCode ?? null,
+            delivery_instructions: data.deliveryInstructions ?? null,
+          }
+        : null,
+      subtotal,
+      total: subtotal,
+      currency: currency.toUpperCase(),
+      payment_currency: "NGN",
+      payment_amount: subtotal,
+      items: items.map((item) => ({
+        product_id: item.id,
+        unit_price: item.price,
+        quantity: item.qty,
+        size: item.size,
+        color: item.color,
+        bundle_id: item.bundleId,
+      })),
+    });
+
+    // Generate fingerprint using Web Crypto API
+    const fingerprint = await (async () => {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(fingerprintPayload);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    })();
+
     submittingRef.current = true;
     setLoading(true);
     if (import.meta.env.DEV) {
-      console.log("[checkout] submit start", { paymentMethod: data.paymentMethod, items: items.length });
+      console.log("[checkout] submit start", { paymentMethod: data.paymentMethod, items: items.length, attemptKey });
     }
 
     try {
@@ -131,6 +184,8 @@ function CheckoutPage() {
           customer: data,
           callbackUrl: `${window.location.origin}/thank-you`,
           currency,
+          checkoutAttemptKey: attemptKey,
+          checkoutRequestFingerprint: fingerprint,
         },
       });
 
@@ -147,6 +202,11 @@ function CheckoutPage() {
         return;
       }
 
+      // Success - clear attempt key for next checkout
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("checkout_attempt_key");
+      }
+
       clear();
       if (import.meta.env.DEV) console.log("[checkout] navigating to /payment-instructions", order.orderId);
       await navigate({
@@ -156,6 +216,7 @@ function CheckoutPage() {
       return;
     } catch (e: any) {
       if (import.meta.env.DEV) console.error("[checkout] failed", e);
+      // Keep attempt key for retry - do not clear on error
       toast.error(e?.message || "Checkout failed. Please try again.");
     } finally {
       submittingRef.current = false;

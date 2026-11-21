@@ -5,9 +5,9 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { z } from "zod";
 import { CONTACT } from "./contact";
-import { getSupabaseAdmin } from "./supabase-admin.server";
+import { getSupabaseAdmin, getEnvVar } from "./supabase-admin.server";
 import { newOrderNotification, sendCustomerOrderEmail } from "./notifications";
-import { reserveStock, restoreStock, getOrderStockReservations, emitStockAlerts } from "./stock";
+import { getOrderStockReservations, emitStockAlerts } from "./stock";
 import {
   getPaymentCurrency,
   PAYSTACK_SUPPORTED_CURRENCIES,
@@ -16,6 +16,12 @@ import {
   getOrderPaymentCurrency,
   convertToPaymentCurrency,
 } from "./currency";
+import {
+  isValidWholesaleQuantity,
+  getWholesaleTier,
+  WHOLESALE_BUNDLE_SIZE,
+} from "./wholesale-pricing";
+import { createHash } from "node:crypto";
 
 /**
  * Reads the Paystack LIVE secret key from the server runtime.
@@ -31,9 +37,6 @@ export function getPaystackSecret(): string | undefined {
   console.log(`PAYSTACK_SECRET_KEY configured: ${secret ? "YES" : "NO"}`);
   return secret;
 }
-
-/** Wholesale price per piece (1 bundle = 10 pieces = ₦60,000). */
-const BULK_UNIT_PRICE = 6000;
 
 const SnapshotSchema = z.object({
   orderRef: z.string().min(3).max(64),
@@ -282,11 +285,13 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       }),
       callbackUrl: z.string().url().optional(),
       currency: z.string().optional().default("NGN"),
+      checkoutAttemptKey: z.string().optional(),
+      checkoutRequestFingerprint: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {
-    const { items, customer, callbackUrl, currency } = data;
-    let supabaseAdmin;
+    const { items, customer, callbackUrl, currency, checkoutAttemptKey, checkoutRequestFingerprint } = data;
+    let supabaseAdmin: ReturnType<typeof getSupabaseAdmin>;
     try {
       supabaseAdmin = getSupabaseAdmin();
     } catch (supabaseError) {
@@ -320,7 +325,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       throw new Error("Bank transfer payments are temporarily unavailable.");
     }
 
-    try {
+try {
       // Determine payment currency: use display currency if supported, otherwise NGN
       const paymentCurrency = "NGN";
 
@@ -343,7 +348,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         throw new Error("We could not load your items. Please refresh your cart and try again.");
       }
 
-      // 1b. Reject out-of-stock items before creating the order.
+      // 1b. Reject out-of-stock items before creating the order (pre-check for better UX).
       for (const item of items) {
         const product = products.find((p) => p.id === item.id);
         if (!product) throw new Error("One of the items in your cart is no longer available.");
@@ -356,16 +361,71 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
 
       // 2. Calculate totals (authoritative, server-side, no VAT)
       let subtotal = 0;
+
+      // Group bulk items by bundleId to calculate tiered pricing per bundle
+      const bulkItemsByBundle = new Map<string, typeof items>();
+      const regularItems: typeof items = [];
+
+      for (const item of items) {
+        if (item.isBulk && item.bundleId) {
+          const bundleItems = bulkItemsByBundle.get(item.bundleId) ?? [];
+          bundleItems.push(item);
+          bulkItemsByBundle.set(item.bundleId, bundleItems);
+        } else if (item.isBulk) {
+          // Bulk item without bundleId - treat as its own bundle
+          const bundleItems = bulkItemsByBundle.get(`single-${item.id}`) ?? [];
+          bundleItems.push(item);
+          bulkItemsByBundle.set(`single-${item.id}`, bundleItems);
+        } else {
+          regularItems.push(item);
+        }
+      }
+
+      // Calculate wholesale price per bundle
+      const bundleWholesalePrices = new Map<string, number>();
+      for (const [bundleId, bundleItems] of bulkItemsByBundle.entries()) {
+        const totalBundleQty = bundleItems.reduce((sum, item) => sum + item.qty, 0);
+
+        // Validate wholesale quantity
+        if (!isValidWholesaleQuantity(totalBundleQty)) {
+          throw new Error(
+            `Invalid wholesale quantity for bundle ${bundleId.slice(0, 8)}: ${totalBundleQty} pieces. Must be at least ${WHOLESALE_BUNDLE_SIZE} and a multiple of ${WHOLESALE_BUNDLE_SIZE}.`
+          );
+        }
+
+        const tier = getWholesaleTier(totalBundleQty);
+        if (!tier) {
+          throw new Error(`Unable to determine wholesale tier for ${totalBundleQty} pieces.`);
+        }
+
+        bundleWholesalePrices.set(bundleId, tier.pricePerPiece);
+      }
+
       const orderItems = items.map((item) => {
         const product = products.find((p) => p.id === item.id);
         if (!product) throw new Error("One of the items in your cart is no longer available.");
 
-        // Bulk/wholesale pieces are a fixed ₦6,000 per piece.
         const base =
           product.sale_price != null
             ? Number(product.sale_price)
             : Number(product.price) * (1 - Number(product.discount_percent ?? 0) / 100);
-        const price = item.isBulk ? BULK_UNIT_PRICE : base;
+
+        let price: number;
+        if (item.isBulk && item.bundleId) {
+          price = bundleWholesalePrices.get(item.bundleId) ?? base;
+        } else if (item.isBulk) {
+          // Single bulk item without bundle - validate and price individually
+          if (!isValidWholesaleQuantity(item.qty)) {
+            throw new Error(
+              `Invalid wholesale quantity for ${product.name}: ${item.qty} pieces. Must be at least ${WHOLESALE_BUNDLE_SIZE} and a multiple of ${WHOLESALE_BUNDLE_SIZE}.`
+            );
+          }
+          const tier = getWholesaleTier(item.qty);
+          price = tier?.pricePerPiece ?? base;
+        } else {
+          price = base;
+        }
+
         const itemSubtotal = price * item.qty;
         subtotal += itemSubtotal;
 
@@ -376,7 +436,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
           quantity: item.qty,
           size: item.size || "",
           color: item.color || "",
-          bundle_id: item.bundleId || null, // Persist bundleId
+          bundle_id: item.bundleId || null,
           subtotal: itemSubtotal,
         };
       });
@@ -384,19 +444,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       const total = subtotal;
       const reference = `ESC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
-      // 2b. Reserve stock atomically. A row-level UPDATE ... WHERE stock >= qty
-      // prevents concurrent checkouts from overselling.
-      const reservation = await reserveStock(
-        supabaseAdmin,
-        items.map((i) => ({ productId: i.id, qty: i.qty })),
-      );
-      if (!reservation.ok) {
-        throw new Error(
-          "One or more items no longer have enough stock. Please refresh your cart and try again.",
-        );
-      }
-
-      // 3. Insert order
+      // 3. Build order and items JSON for the atomic RPC
       const shippingAddress =
         customer.address || customer.city || customer.state
           ? {
@@ -412,6 +460,45 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       // Calculate payment amount in payment currency major units
       const paymentAmountMajor = convertToPaymentCurrency(total, paymentCurrency);
 
+      const itemsData = orderItems.map((item) => ({
+        product_id: item.product_id,
+        product_name: item.product_name,
+        unit_price: item.unit_price,
+        quantity: item.quantity,
+        subtotal: item.subtotal,
+        size: item.size,
+        color: item.color,
+        bundle_id: item.bundle_id,
+      }));
+
+      // Build canonical payload for fingerprint (deterministic, sorted keys)
+      const fingerprintPayload = JSON.stringify({
+        user_id: authenticatedUser.id,
+        customer_name: customer.name,
+        customer_email: customer.email,
+        customer_phone: customer.phone && customer.phone.trim() !== "" ? customer.phone : null,
+        shipping_address: shippingAddress,
+        subtotal: subtotal,
+        total: total,
+        currency: currency.toUpperCase(),
+        payment_currency: paymentCurrency,
+        payment_amount: paymentAmountMajor,
+        items: itemsData.map((item) => ({
+          product_id: item.product_id,
+          unit_price: item.unit_price,
+          quantity: item.quantity,
+          size: item.size,
+          color: item.color,
+          bundle_id: item.bundle_id,
+        })),
+      });
+
+      // Generate fingerprint if not provided by client
+      const fingerprint = checkoutRequestFingerprint || createHash("sha256").update(fingerprintPayload).digest("hex");
+
+      // Use provided attempt key or generate one (should be provided by client for retries)
+      const attemptKey = checkoutAttemptKey || `attempt_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
       const orderData = {
         user_id: authenticatedUser.id,
         customer_name: customer.name,
@@ -419,12 +506,15 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
         customer_phone: customer.phone && customer.phone.trim() !== "" ? customer.phone : null,
         shipping_address: shippingAddress,
         subtotal: subtotal,
-        total,
-        payment_status: "pending" as const,
-        payment_method: "bank_transfer" as Database["public"]["Enums"]["payment_method"],
+        discount: 0,
+        shipping: 0,
+        vat_amount: 0,
+        vat_rate: 0,
+        taxable_subtotal: 0,
+        total: total,
         paystack_reference: reference,
         currency: currency.toUpperCase(), // display currency
-        payment_currency: paymentCurrency, // actual Paystack payment currency
+        payment_currency: paymentCurrency, // actual payment currency
         payment_amount: paymentAmountMajor, // payment amount in major units
         notes: items
           .map((i) => {
@@ -437,70 +527,48 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
             return parts.join(" ");
           })
           .join(", "),
+        checkout_attempt_key: attemptKey,
+        checkout_request_fingerprint: fingerprint,
       };
 
-      const { data: order, error: orderError } = await getSupabaseAdmin()
-        .from("orders")
-        .insert(orderData)
-        .select("id, order_number, total, payment_status")
-        .single();
+      // 4. Call the atomic RPC: creates order, order_items, reservations, and decrements stock in one transaction
+      const { data: rpcResult, error: rpcError } = await getSupabaseAdmin().rpc(
+        "create_order_with_stock_reservations",
+        {
+          p_order: orderData,
+          p_items: itemsData,
+        },
+      );
 
-      if (orderError) {
-        console.error("Failed to create order in Supabase:", {
-          code: orderError.code,
-          message: orderError.message,
-          details: orderError.details,
-          hint: orderError.hint,
+      if (rpcError) {
+        console.error("create_order_with_stock_reservations failed:", {
+          code: rpcError.code,
+          message: rpcError.message,
+          details: rpcError.details,
+          hint: rpcError.hint,
         });
-        // Roll back the stock reservation — the order was never saved.
-        void restoreStock(
-          supabaseAdmin,
-          items.map((i) => ({ productId: i.id, qty: i.qty })),
-        ).catch((err: unknown) =>
-          console.error("Stock restore after order insert failed:", (err as Error)?.message),
-        );
+        // The RPC rolls back automatically on error (insufficient stock, etc.)
+        if (rpcError.message.includes("enough stock") || rpcError.message.includes("Insufficient")) {
+          throw new Error(
+            "One or more items no longer have enough stock. Please refresh your cart and try again.",
+          );
+        }
         throw new Error(
-          `We could not save your order (${orderError.code || "db_error"}). Please try again.`,
+          `We could not save your order (${rpcError.code || "db_error"}). Please try again.`,
         );
-      }
-      if (!order) {
-        // Roll back the stock reservation — the order was never saved.
-        void restoreStock(
-          supabaseAdmin,
-          items.map((i) => ({ productId: i.id, qty: i.qty })),
-        ).catch((err: unknown) =>
-          console.error("Stock restore after order insert failed:", (err as Error)?.message),
-        );
-        throw new Error("Failed to create order: No data returned");
       }
 
-      // 4. Insert items
-      const { error: itemsError } = await getSupabaseAdmin()
-        .from("order_items")
-        .insert(orderItems.map((item) => ({ ...item, order_id: order.id })));
-
-      if (itemsError) {
-        console.error("Failed to create order items:", {
-          message: itemsError.message,
-          details: itemsError.details,
-          hint: itemsError.hint,
-          code: itemsError.code,
-        });
-        // Roll back the stock reservation — the order is incomplete.
-        void restoreStock(
-          supabaseAdmin,
-          items.map((i) => ({ productId: i.id, qty: i.qty })),
-        ).catch((err: unknown) =>
-          console.error("Stock restore after order items failed:", (err as Error)?.message),
-        );
-        throw new Error("Failed to create order items. Please contact support.");
+      if (!rpcResult) {
+        throw new Error("Failed to create order: No data returned from RPC");
       }
+
+      const order = rpcResult;
 
       void newOrderNotification({ data: { orderId: order.id } }).catch((err: unknown) =>
         console.error("Admin notification failed:", (err as Error)?.message),
       );
 
-      // 4b. After the order is fully created, emit idempotent stock alerts for
+      // 5. After the order is fully created, emit idempotent stock alerts for
       // any product that just crossed the low/out threshold.
       void emitStockAlerts(
         supabaseAdmin,

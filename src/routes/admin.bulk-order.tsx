@@ -521,7 +521,7 @@ function BulkItemDialog({
             <Label className="mb-2 block">Item Images</Label>
             <ImageUploader
               images={images}
-              onChange={setImages}
+              setImages={setImages}
             />
           </div>
 

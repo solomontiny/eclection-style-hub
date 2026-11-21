@@ -15,6 +15,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as PaymentInstructionsRouteImport } from './routes/payment-instructions'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FavoritesRouteImport } from './routes/favorites'
@@ -30,6 +31,7 @@ import { Route as ProductSlugRouteImport } from './routes/product.$slug'
 import { Route as ApiPaystackWebhookRouteImport } from './routes/api/paystack-webhook'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
+import { Route as AdminPaymentSettingsRouteImport } from './routes/admin.payment-settings'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminInventoryRouteImport } from './routes/admin.inventory'
@@ -73,6 +75,11 @@ const ShopRoute = ShopRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentInstructionsRoute = PaymentInstructionsRouteImport.update({
+  id: '/payment-instructions',
+  path: '/payment-instructions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -148,6 +155,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
 const AdminProductsRoute = AdminProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPaymentSettingsRoute = AdminPaymentSettingsRouteImport.update({
+  id: '/payment-settings',
+  path: '/payment-settings',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminOrdersRoute = AdminOrdersRouteImport.update({
@@ -232,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/favorites': typeof FavoritesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/payment-instructions': typeof PaymentInstructionsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
@@ -250,6 +263,7 @@ export interface FileRoutesByFullPath {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/payment-settings': typeof AdminPaymentSettingsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
@@ -268,6 +282,7 @@ export interface FileRoutesByTo {
   '/favorites': typeof FavoritesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/payment-instructions': typeof PaymentInstructionsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
@@ -286,6 +301,7 @@ export interface FileRoutesByTo {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/payment-settings': typeof AdminPaymentSettingsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
@@ -306,6 +322,7 @@ export interface FileRoutesById {
   '/favorites': typeof FavoritesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/payment-instructions': typeof PaymentInstructionsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
@@ -324,6 +341,7 @@ export interface FileRoutesById {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/payment-settings': typeof AdminPaymentSettingsRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
@@ -345,6 +363,7 @@ export interface FileRouteTypes {
     | '/favorites'
     | '/forgot-password'
     | '/login'
+    | '/payment-instructions'
     | '/reset-password'
     | '/shop'
     | '/signup'
@@ -363,6 +382,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/login'
     | '/admin/orders'
+    | '/admin/payment-settings'
     | '/admin/products'
     | '/admin/settings'
     | '/api/paystack-webhook'
@@ -381,6 +401,7 @@ export interface FileRouteTypes {
     | '/favorites'
     | '/forgot-password'
     | '/login'
+    | '/payment-instructions'
     | '/reset-password'
     | '/shop'
     | '/signup'
@@ -399,6 +420,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/login'
     | '/admin/orders'
+    | '/admin/payment-settings'
     | '/admin/products'
     | '/admin/settings'
     | '/api/paystack-webhook'
@@ -418,6 +440,7 @@ export interface FileRouteTypes {
     | '/favorites'
     | '/forgot-password'
     | '/login'
+    | '/payment-instructions'
     | '/reset-password'
     | '/shop'
     | '/signup'
@@ -436,6 +459,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/login'
     | '/admin/orders'
+    | '/admin/payment-settings'
     | '/admin/products'
     | '/admin/settings'
     | '/api/paystack-webhook'
@@ -456,6 +480,7 @@ export interface RootRouteChildren {
   FavoritesRoute: typeof FavoritesRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  PaymentInstructionsRoute: typeof PaymentInstructionsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ShopRoute: typeof ShopRoute
   SignupRoute: typeof SignupRoute
@@ -508,6 +533,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment-instructions': {
+      id: '/payment-instructions'
+      path: '/payment-instructions'
+      fullPath: '/payment-instructions'
+      preLoaderRoute: typeof PaymentInstructionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -613,6 +645,13 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/admin/products'
       preLoaderRoute: typeof AdminProductsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/payment-settings': {
+      id: '/admin/payment-settings'
+      path: '/payment-settings'
+      fullPath: '/admin/payment-settings'
+      preLoaderRoute: typeof AdminPaymentSettingsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/orders': {
@@ -751,6 +790,7 @@ interface AdminRouteChildren {
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
+  AdminPaymentSettingsRoute: typeof AdminPaymentSettingsRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -769,6 +809,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminInventoryRoute: AdminInventoryRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminOrdersRoute: AdminOrdersRoute,
+  AdminPaymentSettingsRoute: AdminPaymentSettingsRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminIndexRoute: AdminIndexRoute,
@@ -788,6 +829,7 @@ const rootRouteChildren: RootRouteChildren = {
   FavoritesRoute: FavoritesRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  PaymentInstructionsRoute: PaymentInstructionsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ShopRoute: ShopRoute,
   SignupRoute: SignupRoute,

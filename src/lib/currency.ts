@@ -126,7 +126,7 @@ export function calculatePaystackAmount(baseNgnAmount: number, paymentCurrency: 
  */
 export function getExpectedPaystackAmount(order: { total: number; payment_currency?: string | null; currency?: string | null }): number {
   const paymentCurrency = order.payment_currency || 
-    (order.currency && PAYSTACK_SUPPORTED_CURRENCIES.includes(order.currency) ? order.currency : "NGN");
+    (order.currency && isPaystackSupportedCurrency(order.currency) ? order.currency : "NGN");
   return calculatePaystackAmount(Number(order.total), paymentCurrency);
 }
 
@@ -135,5 +135,5 @@ export function getExpectedPaystackAmount(order: { total: number; payment_curren
  */
 export function getOrderPaymentCurrency(order: { payment_currency?: string | null; currency?: string | null }): string {
   return order.payment_currency || 
-    (order.currency && PAYSTACK_SUPPORTED_CURRENCIES.includes(order.currency) ? order.currency : "NGN");
+    (order.currency && isPaystackSupportedCurrency(order.currency) ? order.currency : "NGN");
 }
