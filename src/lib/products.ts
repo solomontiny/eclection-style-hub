@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { getAllProductsServerFn } from "./orders.functions";
 
 type ProductRow = Database["public"]["Tables"]["products"]["Row"];
 export type Product = ProductRow & {
@@ -51,20 +52,11 @@ export async function getCategories() {
 
 /**
  * Fetch all products (READ)
+ * Uses server function with admin client to bypass RLS/PostgREST anon limits.
  */
 export async function getProducts(): Promise<Product[]> {
-  const { data, error } = await supabase
-    .from("products")
-    .select("*, category:categories(name, active)")
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("getProducts error:", error.message);
-    throw new Error(error.message);
-  }
-
-  return (data || []).map(normalizeProduct);
+  const products = await getAllProductsServerFn({ data: undefined });
+  return products.map(normalizeProduct);
 }
 
 /**

@@ -71,7 +71,7 @@ function CheckoutPage() {
     queryKey: ["shop-settings"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("shop_payment_config")
+        .from("shop_settings")
         .select("bank_transfer_enabled")
         .eq("id", "default")
         .maybeSingle();

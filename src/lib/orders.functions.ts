@@ -194,6 +194,27 @@ export const getTaxSettings = createServerFn({ method: "GET" }).handler(async ()
     vatEnabled: taxPercent > 0,
   };
 });
+
+/**
+ * Server function to fetch all active products using admin client.
+ * Bypasses RLS to ensure all products are visible (fixes PostgREST anon limit issue).
+ */
+export const getAllProductsServerFn = createServerFn({ method: "GET" }).handler(async () => {
+  const supabaseAdmin = getSupabaseAdmin();
+  
+  const { data: products, error } = await supabaseAdmin
+    .from("products")
+    .select("*, category:categories(name, active)")
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("getAllProductsServerFn error:", error);
+    throw new Error(error.message);
+  }
+
+  return products ?? [];
+});
 async function getAuthenticatedUserFromRequest() {
   const headers = getRequestHeaders();
   const authHeader = headers.get("authorization");

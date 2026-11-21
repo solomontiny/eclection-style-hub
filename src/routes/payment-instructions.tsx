@@ -68,7 +68,7 @@ function PaymentInstructionsPage() {
       if (error || !data) throw new Error("Order not found");
 
       const { data: settings } = await supabase
-        .from("shop_payment_config")
+        .from("shop_settings")
         .select("bank_accounts, whatsapp_number, bank_transfer_instructions, bank_transfer_enabled")
         .eq("id", "default")
         .maybeSingle();
