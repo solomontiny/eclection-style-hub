@@ -8,6 +8,7 @@ import { colorToCss } from "@/lib/colors";
 import { SizeChartDialog } from "@/components/SizeChartDialog";
 import { useStore } from "@/lib/store-context";
 import { formatCurrencyPrice } from "@/lib/currency-browser";
+import { formatNaira } from "@/lib/products";
 import { useFavorites } from "@/lib/favorites";
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"];
@@ -91,7 +92,12 @@ export function QuickViewModal({ product, isOpen, onClose }: { product: Product 
             <div>
               <p className="text-xs uppercase tracking-widest text-primary font-bold">{product.category ?? "Collection"}</p>
               <div className="mt-2 flex items-baseline gap-3">
-                <span className="font-display text-3xl">{displayUnitPrice}</span>
+                <div className="flex flex-col">
+                  <span className="font-display text-3xl">{displayUnitPrice}</span>
+                  {currency !== "NGN" && (
+                    <span className="text-sm text-muted-foreground">({formatNaira(unitPrice)} NGN)</span>
+                  )}
+                </div>
                 {displayOriginalPrice && <span className="text-sm text-muted-foreground line-through">{displayOriginalPrice}</span>}
               </div>
               <p className="mt-4 text-sm text-muted-foreground line-clamp-3">{product.description || "A wonderful curated piece from Supplier Affordable."}</p>
@@ -136,7 +142,12 @@ export function QuickViewModal({ product, isOpen, onClose }: { product: Product 
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">Total</p>
-                  <p className="font-display text-xl text-primary font-bold">{displayTotal}</p>
+                  <div className="flex items-end justify-end gap-2">
+                    <p className="font-display text-xl text-primary font-bold">{displayTotal}</p>
+                    {currency !== "NGN" && (
+                      <p className="text-sm text-muted-foreground mb-2">({formatNaira(total)} NGN)</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

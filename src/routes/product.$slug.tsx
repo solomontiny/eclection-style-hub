@@ -10,6 +10,8 @@ import { BuyNowDialog } from "@/components/BuyNowDialog";
 import { SizeChartDialog } from "@/components/SizeChartDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useFavorites } from "@/lib/favorites";
+import { useStore } from "@/lib/store-context";
+import { formatCurrencyPrice } from "@/lib/currency-browser";
 
 const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL", "XXXL"];
 
@@ -22,6 +24,7 @@ function ProductDetails() {
   const { slug } = Route.useParams();
   const { addItem } = useCart();
   const { isFavorited, toggleFavorite } = useFavorites();
+  const { currency } = useStore();
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState("M");
   const [selectedColor, setSelectedColor] = useState<string | undefined>();
@@ -65,7 +68,8 @@ function ProductDetails() {
   const colorImages = product.color_images ?? {};
   const colorSpecificImage = selectedColor ? colorImages[selectedColor] : null;
   const primaryImage = colorSpecificImage ?? images[selectedImage] ?? "";
-  const price = product.sale_price ?? product.price;
+  const priceNGN = product.sale_price ?? product.price;
+  const priceDisplay = formatCurrencyPrice(priceNGN, currency);
   const discount = product.sale_price && product.price > 0 ? Math.round((1 - product.sale_price / product.price) * 100) : product.discount_percent;
   const isOutOfStock = product.stock <= 0;
   const isLowStock = !isOutOfStock && product.stock <= (product.low_stock_threshold ?? 5);
@@ -144,6 +148,15 @@ function ProductDetails() {
                 <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-4 hover:text-primary"><Minus size={18} /></button>
                 <span className="w-12 text-center font-bold">{quantity}</span>
                 <button type="button" onClick={() => setQuantity((value) => value + 1)} className="p-4 hover:text-primary"><Plus size={18} /></button>
+            </div>
+            <div className="flex-1 flex flex-col gap-1">
+              <span className="text-sm text-muted-foreground">Price:</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xl font-bold text-primary">{priceDisplay}</span>
+                {currency !== "NGN" && (
+                  <span className="text-sm text-muted-foreground">({formatNaira(priceNGN)} NGN)</span>
+                )}
+              </div>
             </div>
             <button type="button" disabled={product.stock === 0} onClick={() => addItem(product, selectedSize, selectedColor, quantity)} className="btn-primary flex-1 justify-center disabled:opacity-50 !py-4 !text-base">Add to cart</button>
             <button

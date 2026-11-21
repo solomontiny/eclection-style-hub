@@ -18,8 +18,11 @@ import {
 } from "./currency";
 import {
   isValidWholesaleQuantity,
+  isValidBundleCount,
   getWholesaleTier,
   WHOLESALE_BUNDLE_SIZE,
+  MAX_BUNDLES_PER_ORDER,
+  MAX_WHOLESALE_QUANTITY,
 } from "./wholesale-pricing";
 import { createHash } from "node:crypto";
 
@@ -389,7 +392,15 @@ try {
         // Validate wholesale quantity
         if (!isValidWholesaleQuantity(totalBundleQty)) {
           throw new Error(
-            `Invalid wholesale quantity for bundle ${bundleId.slice(0, 8)}: ${totalBundleQty} pieces. Must be at least ${WHOLESALE_BUNDLE_SIZE} and a multiple of ${WHOLESALE_BUNDLE_SIZE}.`
+            `Invalid wholesale quantity for bundle ${bundleId.slice(0, 8)}: ${totalBundleQty} pieces. Must be at least ${WHOLESALE_BUNDLE_SIZE} and a multiple of ${WHOLESALE_BUNDLE_SIZE}, maximum ${MAX_WHOLESALE_QUANTITY} pieces (${MAX_BUNDLES_PER_ORDER} bundles).`
+          );
+        }
+
+        // Validate bundle count
+        const bundleCount = totalBundleQty / WHOLESALE_BUNDLE_SIZE;
+        if (!isValidBundleCount(bundleCount)) {
+          throw new Error(
+            `Invalid bundle count for bundle ${bundleId.slice(0, 8)}: ${bundleCount} bundles. Maximum ${MAX_BUNDLES_PER_ORDER} bundles per order.`
           );
         }
 
@@ -432,9 +443,18 @@ try {
           // Single bulk item without bundle - validate and price individually
           if (!isValidWholesaleQuantity(item.qty)) {
             throw new Error(
-              `Invalid wholesale quantity for ${product.name}: ${item.qty} pieces. Must be at least ${WHOLESALE_BUNDLE_SIZE} and a multiple of ${WHOLESALE_BUNDLE_SIZE}.`
+              `Invalid wholesale quantity for ${product.name}: ${item.qty} pieces. Must be at least ${WHOLESALE_BUNDLE_SIZE} and a multiple of ${WHOLESALE_BUNDLE_SIZE}, maximum ${MAX_WHOLESALE_QUANTITY} pieces (${MAX_BUNDLES_PER_ORDER} bundles).`
             );
           }
+          
+          // Validate bundle count for single bulk item
+          const bundleCount = item.qty / WHOLESALE_BUNDLE_SIZE;
+          if (!isValidBundleCount(bundleCount)) {
+            throw new Error(
+              `Invalid bundle count for ${product.name}: ${bundleCount} bundles. Maximum ${MAX_BUNDLES_PER_ORDER} bundles per order.`
+            );
+          }
+
           // Business rule: A single product selected inside a bundle cannot exceed quantity 10.
           if (item.qty > 10) {
             throw new Error(

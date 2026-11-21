@@ -7,18 +7,22 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/lib/cart";
-import { Trash2, AlertCircle, CheckCircle, Package, Check, Calculator } from "lucide-react";
+import { Trash2, AlertCircle, CheckCircle, Package, Check, Calculator, XCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrencyPrice, COUNTRIES } from "@/lib/currency-browser";
+import { formatNaira } from "@/lib/products";
 import { useStore } from "@/lib/store-context";
 import {
   getEffectiveProductBasePrice,
   getNextWholesaleTier,
   getWholesaleTier,
+  isValidBundleCount,
   WHOLESALE_BUNDLE_SIZE,
   WHOLESALE_TIERS,
+  MAX_BUNDLES_PER_ORDER,
+  MAX_WHOLESALE_QUANTITY,
 } from "@/lib/wholesale-pricing";
 
 export const Route = createFileRoute("/bulk-order")({
@@ -290,6 +294,15 @@ function BulkOrderPage() {
     },
     0,
   );
+  // Calculate NGN total for bank transfer clarity
+  const totalPriceNGN = bundleItems.reduce(
+    (sum, item) => {
+      const retailPrice = getEffectiveProductBasePrice(item.product);
+      const unit = wholesalePricePerPiece ?? retailPrice;
+      return sum + item.qty * unit;
+    },
+    0,
+  );
   // Stock is aggregated per product across every order line before it is
   // compared with that product's available stock. Different products are never
   // combined with each other.
@@ -309,11 +322,17 @@ function BulkOrderPage() {
         stock,
       };
     });
+  
+  // Validate bundle count (max 10 bundles = 100 pieces)
+  const isValidBundleCountResult = isValidBundleCount(bundleCount);
+  const bundleCountExceeded = bundleCount > MAX_BUNDLES_PER_ORDER;
+  
   const bundleValid =
     bundleItems.length > 0 &&
     currentBundleTotal >= WHOLESALE_BUNDLE_SIZE &&
     currentBundleTotal % WHOLESALE_BUNDLE_SIZE === 0 &&
-    outOfStockProducts.length === 0;
+    outOfStockProducts.length === 0 &&
+    isValidBundleCountResult;
 
   const addToBundle = (product: Product, lines: ColourLine[]) => {
     setBundleItems((current) => {
@@ -345,6 +364,10 @@ function BulkOrderPage() {
       toast.error(`Total pieces must be a multiple of ${WHOLESALE_BUNDLE_SIZE}.`);
       return;
     }
+    if (bundleCountExceeded) {
+      toast.error(`Maximum ${MAX_BUNDLES_PER_ORDER} bundles (${MAX_WHOLESALE_QUANTITY} pieces) per order. Please reduce your selection.`);
+      return;
+    }
     if (outOfStockProducts.length > 0) {
       toast.error(
         `${outOfStockProducts.map((p) => `${p.name} (need ${p.qty}, have ${p.stock})`).join(", ")}`,
@@ -366,16 +389,21 @@ function BulkOrderPage() {
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-display text-primary">Build Your Custom Wholesale Order</h1>
         <p className="text-lg">
-          {WHOLESALE_BUNDLE_SIZE} pieces = 1 bundle &nbsp;|&nbsp; Tiered pricing per piece
+          {WHOLESALE_BUNDLE_SIZE} pieces = 1 bundle &nbsp;|&nbsp; Tiered pricing per piece &nbsp;|&nbsp; Max {MAX_BUNDLES_PER_ORDER} bundles per order
         </p>
-        <div className={`mx-auto flex max-w-md items-center justify-center gap-2 p-4 rounded-xl font-bold ${bundleValid ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" : "bg-primary/10 text-primary"}`}>
-          {bundleValid ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-          {currentBundleTotal} Pieces Selected {bundleValid ? `(Ready: ${bundleCount} Bundle${bundleCount > 1 ? "s" : ""})` : `(Must be multiple of ${WHOLESALE_BUNDLE_SIZE})`}
+        <div className={`mx-auto flex max-w-md items-center justify-center gap-2 p-4 rounded-xl font-bold ${bundleValid ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" : bundleCountExceeded ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200" : "bg-primary/10 text-primary"}`}>
+          {bundleValid ? <CheckCircle size={20} /> : bundleCountExceeded ? <XCircle size={20} /> : <AlertCircle size={20} />}
+          {currentBundleTotal} Pieces Selected {bundleValid ? `(Ready: ${bundleCount} Bundle${bundleCount > 1 ? "s" : ""})` : bundleCountExceeded ? `(Max ${MAX_BUNDLES_PER_ORDER} bundles exceeded)` : `(Must be multiple of ${WHOLESALE_BUNDLE_SIZE})`}
         </div>
         {bundleValid && (
           <Button onClick={finalizeBundle} className="btn-accent">
             Add Bulk Order to Cart ({formatCurrencyPrice(totalPrice, currency)})
           </Button>
+        )}
+        {bundleCountExceeded && (
+          <p className="text-sm text-red-600 dark:text-red-400">
+            Maximum {MAX_BUNDLES_PER_ORDER} bundles ({MAX_WHOLESALE_QUANTITY} pieces) per order. Please remove some items.
+          </p>
         )}
       </div>
 
@@ -446,6 +474,12 @@ function BulkOrderPage() {
                     <span>Grand Total</span>
                     <span className="text-primary">{formatCurrencyPrice(totalPrice, currency)}</span>
                   </div>
+                  {currency !== "NGN" && (
+                    <div className="flex justify-between text-sm text-muted-foreground pt-2 border-t border-border/50">
+                      <span>Amount to transfer (NGN)</span>
+                      <span className="font-semibold text-primary">{formatNaira(totalPriceNGN)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </>

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { useCart, cartItemKey } from "@/lib/cart";
 import { useStore } from "@/lib/store-context";
@@ -19,7 +19,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { DELIVERY_INFO } from "@/lib/contact";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CreditCard, Building2 } from "lucide-react";
+import { CreditCard, Building2, AlertCircle, Loader2 } from "lucide-react";
 
 const CustomerSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -46,7 +46,9 @@ function CheckoutPage() {
   const { items, subtotal, clear } = useCart();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [serverFnError, setServerFnError] = useState<string | null>(null);
   const submittingRef = useRef(false);
+  const formSubmittedRef = useRef(false);
   
   // Idempotency: generate/reuse attempt key for this checkout session
   const [attemptKey, setAttemptKey] = useState<string>(() => {
@@ -78,6 +80,24 @@ function CheckoutPage() {
     },
   });
 
+  // Pre-fill form with user data if available
+  useEffect(() => {
+    if (user && !formSubmittedRef.current) {
+      form.reset({
+        name: user.user_metadata?.display_name || user.user_metadata?.full_name || "",
+        email: user.email || "",
+        phone: user.user_metadata?.phone || "",
+        address: "",
+        city: "",
+        state: "",
+        country: "Nigeria",
+        postalCode: "",
+        deliveryInstructions: "",
+        paymentMethod: "bank_transfer",
+      });
+    }
+  }, [user, form]);
+
   // Auth is still resolving: render a lightweight placeholder instead of the
   // "sign in" screen, so the checkout form appears as soon as the session is
   // known. Protection is unchanged — an unauthenticated visitor still gets the
@@ -85,7 +105,7 @@ function CheckoutPage() {
   if (authLoading) {
     return (
       <section className="container-x py-16 text-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent mx-auto" />
+        <Loader2 className="mx-auto animate-spin text-primary" size={40} />
         <p className="mt-4 text-muted-foreground">Loading checkout…</p>
       </section>
     );
@@ -94,7 +114,8 @@ function CheckoutPage() {
   if (!user) {
     return (
       <section className="container-x py-16 text-center">
-        <h1 className="text-3xl font-display">Sign in to checkout</h1>
+        <AlertCircle className="mx-auto text-destructive" size={48} />
+        <h1 className="text-3xl mt-4 font-display">Sign in to checkout</h1>
         <p className="mt-4 text-muted-foreground">Please login or create an account to securely place your order.</p>
         <div className="mt-8 flex justify-center gap-4">
           <Button onClick={() => navigate({ to: "/login", search: { redirect: "/checkout" } })}>Login / Signup</Button>
@@ -106,7 +127,7 @@ function CheckoutPage() {
   if (settingsLoading) {
     return (
       <section className="container-x py-16 text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto" />
+        <Loader2 className="mx-auto animate-spin text-primary" size={48} />
         <p className="mt-4 text-muted-foreground">Loading checkout settings…</p>
       </section>
     );
@@ -115,6 +136,7 @@ function CheckoutPage() {
   if (!settings?.bank_transfer_enabled) {
     return (
       <section className="container-x py-16 text-center">
+        <AlertCircle className="mx-auto text-amber-500" size={48} />
         <h1 className="text-3xl font-display">Payments Temporarily Unavailable</h1>
         <p className="mt-4 text-muted-foreground">Bank transfer payments are currently disabled. Please contact support.</p>
       </section>
@@ -122,12 +144,13 @@ function CheckoutPage() {
   }
 
   const handleCheckout = async (data: CustomerForm) => {
-    if (submittingRef.current) {
+    if (submittingRef.current || formSubmittedRef.current) {
       if (import.meta.env.DEV) console.warn("[checkout] duplicate submit ignored");
       return;
     }
     if (items.length === 0) {
       if (import.meta.env.DEV) console.warn("[checkout] submit blocked: cart is empty");
+      toast.error("Your cart is empty");
       return;
     }
 
@@ -172,7 +195,9 @@ function CheckoutPage() {
     })();
 
     submittingRef.current = true;
+    formSubmittedRef.current = true;
     setLoading(true);
+    setServerFnError(null);
     if (import.meta.env.DEV) {
       console.log("[checkout] submit start", { paymentMethod: data.paymentMethod, items: items.length, attemptKey });
     }
@@ -199,6 +224,9 @@ function CheckoutPage() {
 
       if (!order.success) {
         toast.error(("message" in order && order.message) || "Could not start the payment.");
+        formSubmittedRef.current = false;
+        submittingRef.current = false;
+        setLoading(false);
         return;
       }
 
@@ -217,7 +245,10 @@ function CheckoutPage() {
     } catch (e: any) {
       if (import.meta.env.DEV) console.error("[checkout] failed", e);
       // Keep attempt key for retry - do not clear on error
-      toast.error(e?.message || "Checkout failed. Please try again.");
+      const errorMessage = e?.message || "Checkout failed. Please try again.";
+      toast.error(errorMessage);
+      setServerFnError(errorMessage);
+      formSubmittedRef.current = false;
     } finally {
       submittingRef.current = false;
       setLoading(false);
@@ -230,21 +261,26 @@ function CheckoutPage() {
   return (
     <section className="container-x py-10 md:py-12">
       <h1 className="text-2xl sm:text-3xl font-display">Checkout</h1>
+      {serverFnError && (
+        <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive" role="alert">
+          {serverFnError}
+        </div>
+      )}
       <div className="grid gap-8 md:grid-cols-2 md:gap-12 mt-8">
         <form onSubmit={form.handleSubmit(handleCheckout)} className="space-y-4">
           <div>
             <Label>Full Name</Label>
-            <Input {...form.register("name")} />
+            <Input {...form.register("name")} disabled={loading} />
             {form.formState.errors.name && <p className="text-red-500 text-sm">{form.formState.errors.name.message}</p>}
           </div>
           <div>
             <Label>Email</Label>
-            <Input {...form.register("email")} />
+            <Input {...form.register("email")} disabled={loading} />
             {form.formState.errors.email && <p className="text-red-500 text-sm">{form.formState.errors.email.message}</p>}
           </div>
           <div>
             <Label>Phone</Label>
-            <Input {...form.register("phone")} />
+            <Input {...form.register("phone")} disabled={loading} />
             {form.formState.errors.phone && <p className="text-red-500 text-sm">{form.formState.errors.phone.message}</p>}
           </div>
 
@@ -253,35 +289,35 @@ function CheckoutPage() {
           </div>
           <div>
             <Label>Full delivery address</Label>
-            <Input {...form.register("address")} placeholder="Street, building, apartment" />
+            <Input {...form.register("address")} placeholder="Street, building, apartment" disabled={loading} />
             {form.formState.errors.address && <p className="text-red-500 text-sm">{form.formState.errors.address.message}</p>}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>City</Label>
-              <Input {...form.register("city")} />
+              <Input {...form.register("city")} disabled={loading} />
               {form.formState.errors.city && <p className="text-red-500 text-sm">{form.formState.errors.city.message}</p>}
             </div>
             <div>
               <Label>State / Region</Label>
-              <Input {...form.register("state")} />
+              <Input {...form.register("state")} disabled={loading} />
               {form.formState.errors.state && <p className="text-red-500 text-sm">{form.formState.errors.state.message}</p>}
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>Country</Label>
-              <Input {...form.register("country")} />
+              <Input {...form.register("country")} disabled={loading} />
               {form.formState.errors.country && <p className="text-red-500 text-sm">{form.formState.errors.country.message}</p>}
             </div>
             <div>
               <Label>Postal / ZIP code (optional)</Label>
-              <Input {...form.register("postalCode")} />
+              <Input {...form.register("postalCode")} disabled={loading} />
             </div>
           </div>
           <div>
             <Label>Delivery instructions (optional)</Label>
-            <Textarea {...form.register("deliveryInstructions")} placeholder="Gate code, floor, dispatch contact, etc." rows={2} />
+            <Textarea {...form.register("deliveryInstructions")} placeholder="Gate code, floor, dispatch contact, etc." rows={2} disabled={loading} />
           </div>
           <div className="pt-4 border-t border-border">
             <div className="flex items-center space-x-2 text-sm text-muted-foreground">
@@ -290,7 +326,14 @@ function CheckoutPage() {
             </div>
           </div>
           <Button type="submit" disabled={loading || items.length === 0}>
-            {loading ? "Processing..." : "Continue to Payment"}
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Continue to Payment"
+            )}
           </Button>
         </form>
         <div className="border rounded-lg p-4 sm:p-6 bg-card h-fit">

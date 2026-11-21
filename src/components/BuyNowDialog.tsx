@@ -8,6 +8,7 @@ import { colorToCss } from "@/lib/colors";
 import { SizeChartDialog } from "@/components/SizeChartDialog";
 import { useStore } from "@/lib/store-context";
 import { formatCurrencyPrice } from "@/lib/currency-browser";
+import { formatNaira } from "@/lib/products";
 import { useFavorites } from "@/lib/favorites";
 
 export function BuyNowDialog({ product, trigger, preselectedColor }: { product: Product; trigger: React.ReactNode; preselectedColor?: string }) {
@@ -62,7 +63,12 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
           )}
           <div className="flex-1 min-w-0">
             <p className="text-xs uppercase tracking-widest text-muted-foreground">{product.category ?? "Uncategorized"}</p>
-            <p className="mt-1 font-semibold text-primary">{displayUnitPrice}</p>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="font-semibold text-primary">{displayUnitPrice}</span>
+              {currency !== "NGN" && (
+                <span className="text-sm text-muted-foreground">({formatNaira(unitPrice)} NGN)</span>
+              )}
+            </div>
               <div className="mt-3">
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-xs font-medium">Size</p>
@@ -101,7 +107,12 @@ export function BuyNowDialog({ product, trigger, preselectedColor }: { product: 
           </div>
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Total</p>
-            <p className="font-display text-2xl text-primary">{displayTotal}</p>
+            <div className="flex items-end justify-end gap-2">
+              <p className="font-display text-2xl text-primary">{displayTotal}</p>
+              {currency !== "NGN" && (
+                <p className="text-sm text-muted-foreground mb-2">({formatNaira(total)} NGN)</p>
+              )}
+            </div>
           </div>
         </div>
 
