@@ -19,13 +19,7 @@ export function CartDrawer() {
   const { currency } = useStore();
   const { items, count, subtotal, open, setOpen, updateQty, removeItem } = useCart();
   const navigate = useNavigate();
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
-
-  // Store the trigger element when it receives focus
-  const handleTriggerFocus = (event: React.FocusEvent<HTMLButtonElement>) => {
-    triggerRef.current = event.currentTarget;
-  };
 
   // Track the previously focused element before opening the drawer
   useEffect(() => {
@@ -73,7 +67,6 @@ export function CartDrawer() {
       <SheetTrigger asChild>
         <button
           type="button"
-          ref={handleTriggerFocus}
           className="relative p-2 rounded-full text-primary"
           aria-label={count > 0 ? `Open cart with ${count} items` : "Open empty cart"}
         >
