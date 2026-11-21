@@ -318,7 +318,7 @@ export const createOrderServerFn = createServerFn({ method: "POST" })
       errorMessage: settingsError?.message ?? null,
       recordFound: !!shopSettings,
       bankTransferEnabled: shopSettings?.bank_transfer_enabled ?? null,
-      isExpectedProject: serverUrl.includes("qwwpaxljefedekeysuye"),
+      isExpectedProject: serverUrl.includes("clvxfobvtqwdmuzqbehk"),
     });
 
     if (settingsError || !shopSettings?.bank_transfer_enabled) {
