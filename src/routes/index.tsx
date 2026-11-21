@@ -151,7 +151,7 @@ function Home() {
             {[
                 { icon: Sparkles, title: "Browse", text: "Explore our latest collections" },
                 { icon: ShoppingBag, title: "Select", text: "Pick your favorite pieces" },
-                { icon: CreditCard, title: "Pay", text: "Secure checkout via Paystack" },
+                { icon: CreditCard, title: "Pay", text: "Secure bank transfer via Moniepoint" },
                 { icon: Package, title: "Receive", text: "Get your order delivered" },
             ].map((i, idx) => (
                 <div key={idx} className="text-center relative">
@@ -171,7 +171,7 @@ function Home() {
         <div className="rounded-3xl p-10 md:p-16 text-center" style={{ background: "var(--gradient-soft)" }}>
           <h2 className="font-display text-3xl md:text-5xl max-w-2xl mx-auto">Found a piece you love?</h2>
           <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
-            Pick your size, add it to your cart and pay securely online with your card or bank transfer via Paystack — no messaging needed.
+            Pick your size, add it to your cart and pay securely by bank transfer via Moniepoint — no messaging needed.
           </p>
           <p className="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">{LAGOS_DELIVERY_NOTE}</p>
           <div className="mt-7 flex flex-wrap gap-3 justify-center">
